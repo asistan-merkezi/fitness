@@ -21,7 +21,7 @@ DO $$ BEGIN
   CREATE ROLE service_role NOLOGIN BYPASSRLS;
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS auth.users (id uuid PRIMARY KEY, email text);
 
 CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
   SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid
@@ -82,17 +82,30 @@ export async function isletmeOlustur(db: PGlite, ad = "Test Salon"): Promise<str
   return id;
 }
 
+let telefonSayaci = 0;
+
 export async function kullaniciOlustur(
   db: PGlite,
-  { isletmeId, rol, adSoyad = "Test Kullanıcı" }: { isletmeId: string | null; rol: string; adSoyad?: string }
+  {
+    isletmeId,
+    rol,
+    adSoyad = "Test Kullanıcı",
+    telefon = null,
+    eposta = null,
+  }: { isletmeId: string | null; rol: string; adSoyad?: string; telefon?: string | null; eposta?: string | null }
 ): Promise<string> {
   const id = uuid();
-  await db.query("INSERT INTO auth.users (id) VALUES ($1)", [id]);
-  await db.query("INSERT INTO public.kullanici (id, isletme_id, ad_soyad, rol) VALUES ($1, $2, $3, $4)", [
+  // Yönetici dışı roller için telefon zorunlu (CHECK): verilmezse benzersiz sahte numara üretilir.
+  if (telefon === null && rol !== "isletme_admin" && rol !== "super_admin") {
+    telefon = `0500${String(++telefonSayaci).padStart(7, "0")}`;
+  }
+  await db.query("INSERT INTO auth.users (id, email) VALUES ($1, $2)", [id, eposta ?? `${id}@test.local`]);
+  await db.query("INSERT INTO public.kullanici (id, isletme_id, ad_soyad, rol, telefon) VALUES ($1, $2, $3, $4, $5)", [
     id,
     isletmeId,
     adSoyad,
     rol,
+    telefon,
   ]);
   return id;
 }
