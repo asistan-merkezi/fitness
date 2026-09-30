@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Landmark } from "lucide-react";
+import { Banknote, ChevronLeft, ChevronRight, CreditCard, Landmark, Plus, Wallet, type LucideIcon } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
@@ -68,7 +69,18 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
 
   return (
     <>
-      <PageHeader title="Kasa ve Cari" description="Tahsilat/iade özeti (İstanbul takvimine göre) ve açık alacaklar." icon={Landmark} />
+      <PageHeader
+        title="Kasa ve Cari"
+        description="Tahsilat/iade özeti (İstanbul takvimine göre) ve açık alacaklar."
+        icon={Landmark}
+        actions={
+          musteriLinki ? (
+            <Link href="/panel/kasa/hizli-tahsilat" className={buttonVariants()}>
+              <Plus aria-hidden /> Hızlı Tahsilat
+            </Link>
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div role="tablist" aria-label="Görünüm" className="inline-flex rounded-lg border border-border p-0.5">
@@ -99,46 +111,35 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Tahsilat" value={kurusTLyazi(toplam("tahsilat_kurus"))} />
+        <KpiCard vurgu label="Net tahsilat" value={kurusTLyazi(toplam("net_kurus"))} icon={Wallet} />
+        <KpiCard label="Tahsilat" value={kurusTLyazi(toplam("tahsilat_kurus"))} icon={Banknote} />
         <KpiCard label="İade" value={kurusTLyazi(toplam("iade_kurus"))} />
-        <KpiCard label="Net" value={kurusTLyazi(toplam("net_kurus"))} />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Yönteme göre</CardTitle>
-        </CardHeader>
-        <CardContent className="px-0">
-          {kasa.length === 0 ? (
-            <div className="px-6">
-              <EmptyState compact title="Bu dönemde tahsilat/iade yok." />
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Yöntem</TableHead>
-                  <TableHead className="text-right">Tahsilat</TableHead>
-                  <TableHead className="text-right">İade</TableHead>
-                  <TableHead className="text-right">Net</TableHead>
-                  <TableHead className="text-right">Adet</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {kasa.map((k) => (
-                  <TableRow key={k.odeme_yontemi}>
-                    <TableCell className="font-medium">{YONTEM_ETIKETLERI[k.odeme_yontemi]}</TableCell>
-                    <TableCell className="text-right tabular-nums">{kurusTLyazi(k.tahsilat_kurus)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{kurusTLyazi(k.iade_kurus)}</TableCell>
-                    <TableCell className="text-right font-medium tabular-nums">{kurusTLyazi(k.net_kurus)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{k.adet}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <section aria-label="Yönteme göre" className="flex flex-col gap-3">
+        <h2 className="text-etiket text-muted-foreground">Yönteme göre</h2>
+        {kasa.length === 0 ? (
+          <EmptyState compact title="Bu dönemde tahsilat/iade yok." />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-3">
+            {kasa.map((k) => {
+              const Ikon: LucideIcon = k.odeme_yontemi === "nakit" ? Banknote : k.odeme_yontemi === "kredi_karti" ? CreditCard : Landmark;
+              return (
+                <Card key={k.odeme_yontemi} className="gap-3">
+                  <div className="flex items-center gap-2 px-(--card-spacing) text-etiket text-muted-foreground">
+                    <Ikon className="size-4 text-primary" strokeWidth={1.5} aria-hidden />
+                    {YONTEM_ETIKETLERI[k.odeme_yontemi]} · {k.adet} işlem
+                  </div>
+                  <p className="px-(--card-spacing) text-metric">{kurusTLyazi(k.net_kurus)}</p>
+                  <p className="px-(--card-spacing) text-xs text-muted-foreground tabular-nums">
+                    Tahsilat {kurusTLyazi(k.tahsilat_kurus)} · İade {kurusTLyazi(k.iade_kurus)}
+                  </p>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </section>
 
       <Card>
         <CardHeader>
@@ -179,7 +180,7 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
                         <StatusBadge tone={t.ton}>{t.etiket}</StatusBadge>
                         {h.odeme_yontemi && <span className="ml-2 text-xs text-muted-foreground">{YONTEM_ETIKETLERI[h.odeme_yontemi]}</span>}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell className={`text-right font-semibold tabular-nums ${h.tur === "odeme" ? "text-success" : "text-destructive"}`}>
                         {h.tur === "odeme" ? "+" : "−"}
                         {kurusTLyazi(h.tutar_kurus)}
                       </TableCell>

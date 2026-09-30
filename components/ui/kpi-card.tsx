@@ -5,42 +5,41 @@ import { Card } from "@/components/ui/card";
 import { IconTile, type IconTileTone } from "@/components/ui/icon-tile";
 
 /**
- * docs/DESIGN.md "KPI kartları" (Panel ana ekran referansı) — etiket
- * (label-sm uppercase muted), büyük sayı (display-lg, tabular), opsiyonel
- * alt satır (trend/ilerleme), sağ üst ikon rozeti. Yeni bileşen — henüz
- * hiçbir sayfa kullanmıyor (Faz 3'te Panel ana ekranına bağlanacak).
- * `value` null/undefined ise gerçek veri kaynağı yoksa "—" gösterilir —
- * kartın kendisi UYDURMA sayı basmaz, çağıran taraf veri yoksa değeri
- * boş bırakır.
+ * KPI kartı (DESIGN.md): etiket 11px büyük harf, değer `text-metric` (28px kalın, tabular), opsiyonel alt satır.
+ * `vurgu`: tek ana metrik için marka rengi dolu kart (ekranda en fazla bir tane).
+ * `value` boşsa "—" gösterilir; kart UYDURMA sayı basmaz.
  */
 export function KpiCard({
   label,
   value,
   icon: Icon,
-  iconTone = "blue",
+  iconTone = "neutral",
   trend,
+  vurgu = false,
   className,
 }: {
   label: string;
-  /** Zaten formatlanmış gösterim değeri (₺, %, adet vb. çağıran tarafta formatlanır). null/undefined → "—". */
+  /** Zaten formatlanmış gösterim değeri (₺, adet vb. çağıran tarafta biçimlenir). */
   value: React.ReactNode | null | undefined;
   icon?: LucideIcon;
   iconTone?: IconTileTone;
-  /** Alt satır — trend metni, ilerleme çubuğu veya kırılım. */
   trend?: React.ReactNode;
+  vurgu?: boolean;
   className?: string;
 }) {
   return (
-    <Card className={cn("gap-3", className)}>
+    <Card className={cn("min-h-[120px] justify-between gap-3", vurgu && "border-primary bg-primary text-primary-foreground", className)}>
       <div className="flex items-start justify-between px-(--card-spacing)">
-        <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">{label}</span>
-        {Icon && <IconTile icon={Icon} tone={iconTone} className="size-8 rounded-lg" />}
+        <span className={cn("text-etiket", vurgu ? "text-primary-foreground/80" : "text-muted-foreground")}>{label}</span>
+        {Icon && (
+          <IconTile icon={Icon} tone={vurgu ? "neutral" : iconTone} className={cn("size-8", vurgu && "bg-primary-foreground/15 text-primary-foreground")} />
+        )}
       </div>
       <div className="px-(--card-spacing)">
-        <p className="text-[1.75rem] leading-9 font-bold tabular-nums text-foreground">
+        <p className={cn("text-metric", vurgu ? "text-primary-foreground" : "text-foreground")}>
           {value === null || value === undefined || value === "" ? "—" : value}
         </p>
-        {trend && <div className="mt-1 text-xs text-muted-foreground">{trend}</div>}
+        {trend && <div className={cn("mt-1 text-xs", vurgu ? "text-primary-foreground/80" : "text-muted-foreground")}>{trend}</div>}
       </div>
     </Card>
   );

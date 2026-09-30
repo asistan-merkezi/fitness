@@ -38,16 +38,16 @@ export function PageHeader({
     <div className={cn("flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between", className)}>
       <div className="flex min-w-0 items-start gap-3">
         {Icon && (
-          <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/50 text-muted-foreground">
-            <Icon className="size-5" aria-hidden />
+          <span className="mt-0.5 flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-surface-2 text-primary">
+            <Icon className="size-5" strokeWidth={1.5} aria-hidden />
           </span>
         )}
         <div className="min-w-0">
           {breadcrumb && <div className="mb-1 text-sm text-muted-foreground">{breadcrumb}</div>}
-          <h1 className="text-2xl leading-8 font-semibold tracking-tight text-foreground sm:text-[1.875rem] sm:leading-[2.375rem]">
+          <h1 className="text-[1.625rem] leading-[2.125rem] font-bold tracking-[-0.015em] text-foreground sm:text-[2rem] sm:leading-10 sm:tracking-[-0.02em]">
             {title}
           </h1>
-          {description && <p className="mt-1 text-sm text-muted-foreground sm:text-base">{description}</p>}
+          {description && <p className="mt-1 text-sm text-muted-foreground">{description}</p>}
         </div>
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

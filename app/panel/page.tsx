@@ -1,6 +1,8 @@
 import Link from "next/link";
-import { DoorOpen, LayoutDashboard, Link2Off, TriangleAlert, Users, Wallet } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { BellRing, CalendarClock, LayoutDashboard, Link2Off, Phone, RefreshCw, ScanLine, TriangleAlert, UserPlus, Users, Wallet, Banknote } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
+import { buttonVariants } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -10,8 +12,11 @@ import { bugunIstanbulTarihi, gunYazi } from "@/lib/datetime";
 import { gunDonemi, gunEkle } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
 import { FINANS_ROLLERI, MUSTERI_ROLLERI } from "@/lib/panel/roller";
+import { kalanGun } from "@/lib/panel/uyelik-ozeti";
 import { createClient } from "@/lib/supabase/server";
 import type { UyelikGorunumSatiri } from "@/types/veritabani";
+
+type YaklasanSatiri = Pick<UyelikGorunumSatiri, "id" | "musteri_id" | "paket_adi" | "tur" | "bitis_tarihi" | "kalan_hak" | "baslangic_tarihi" | "toplam_hak" | "gecerli_durum">;
 
 export default async function PanelAnaSayfa() {
   const oturum = await gecerliKullanici();
@@ -56,7 +61,7 @@ export default async function PanelAnaSayfa() {
     finansYetkisi
       ? supabase
           .from("uyelik_gorunum")
-          .select("id, musteri_id, paket_adi, tur, bitis_tarihi, kalan_hak")
+          .select("id, musteri_id, paket_adi, tur, baslangic_tarihi, bitis_tarihi, kalan_hak, toplam_hak, gecerli_durum")
           .eq("gecerli_durum", "aktif")
           .or(`kalan_hak.lte.2,bitis_tarihi.lte.${hafta}`)
           .order("bitis_tarihi", { ascending: true, nullsFirst: false })
@@ -66,60 +71,126 @@ export default async function PanelAnaSayfa() {
     finansYetkisi ? supabase.from("cari_alacak").select("borc_kurus") : Promise.resolve(null),
   ]);
 
-  const yaklasan = (yaklasanSonuc?.data ?? []) as Pick<UyelikGorunumSatiri, "id" | "musteri_id" | "paket_adi" | "tur" | "bitis_tarihi" | "kalan_hak">[];
+  const yaklasan = (yaklasanSonuc?.data ?? []) as YaklasanSatiri[];
+  const musteriIdleri = [...new Set(yaklasan.map((u) => u.musteri_id))];
+
   const adHaritasi = new Map<string, string>();
-  if (yaklasan.length) {
-    const { data } = await supabase.from("musteri_ozet").select("id, ad_soyad").in("id", [...new Set(yaklasan.map((u) => u.musteri_id))]);
-    for (const m of (data ?? []) as { id: string; ad_soyad: string }[]) adHaritasi.set(m.id, m.ad_soyad);
+  const telefonHaritasi = new Map<string, string>();
+  const bakiyeHaritasi = new Map<string, number>();
+  if (musteriIdleri.length) {
+    const [{ data: adlar }, { data: telefonlar }, { data: bakiyeler }] = await Promise.all([
+      supabase.from("musteri_ozet").select("id, ad_soyad").in("id", musteriIdleri),
+      musteriYetkisi ? supabase.from("musteri").select("id, telefon").in("id", musteriIdleri) : Promise.resolve({ data: [] }),
+      supabase.from("musteri_bakiye").select("musteri_id, bakiye_kurus").in("musteri_id", musteriIdleri),
+    ]);
+    for (const m of (adlar ?? []) as { id: string; ad_soyad: string }[]) adHaritasi.set(m.id, m.ad_soyad);
+    for (const m of (telefonlar ?? []) as { id: string; telefon: string }[]) telefonHaritasi.set(m.id, m.telefon);
+    for (const b of (bakiyeler ?? []) as { musteri_id: string; bakiye_kurus: number }[]) bakiyeHaritasi.set(b.musteri_id, Number(b.bakiye_kurus));
   }
 
   const netTahsilat = ((kasaSonuc?.data ?? []) as { net_kurus: number }[]).reduce((t, k) => t + Number(k.net_kurus), 0);
   const toplamAlacak = ((alacakSonuc?.data ?? []) as { borc_kurus: number }[]).reduce((t, a) => t + Number(a.borc_kurus), 0);
+  const girisSayisi = girisSonuc?.count ?? 0;
 
   return (
     <>
       <PageHeader title="Panel" description={`Bugün · ${gunYazi(bugun)}`} icon={LayoutDashboard} />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {musteriYetkisi && <KpiCard label="Bugünkü giriş" value={girisSonuc?.count ?? 0} icon={DoorOpen} />}
-        {finansYetkisi && <KpiCard label="Aktif üyelik" value={aktifSonuc?.count ?? 0} icon={Users} />}
+      <section aria-label="Operasyonel metrikler" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {musteriYetkisi ? <KpiCard vurgu label="Bugünkü giriş" value={<>{girisSayisi} <span className="text-base font-medium">kişi</span></>} icon={Users} /> : null}
+        {finansYetkisi && <KpiCard label="Aktif üyelik" value={<>{aktifSonuc?.count ?? 0} <span className="text-base font-medium text-muted-foreground">üye</span></>} icon={Users} />}
         {finansYetkisi && <KpiCard label="Bugün net tahsilat" value={kurusTLyazi(netTahsilat)} icon={Wallet} />}
         {finansYetkisi && <KpiCard label="Açık alacak" value={kurusTLyazi(toplamAlacak)} icon={TriangleAlert} iconTone="amber" />}
-      </div>
+      </section>
+
+      {musteriYetkisi && (
+        <section aria-label="Hızlı işlemler" className="flex flex-col gap-3">
+          <h2 className="text-etiket text-muted-foreground">Hızlı resepsiyon işlemleri</h2>
+          <div className="grid grid-cols-3 gap-3 sm:max-w-xl">
+            {[
+              { href: "/panel/kasa/hizli-tahsilat", etiket: "Hızlı Tahsilat", ikon: Banknote },
+              { href: "/panel/musteriler/yeni", etiket: "Yeni Kayıt", ikon: UserPlus },
+              { href: "/panel/check-in", etiket: "Check-in", ikon: ScanLine },
+            ].map(({ href, etiket, ikon: Ikon }) => (
+              <Link
+                key={href}
+                href={href}
+                className="flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl border border-border bg-card p-3 text-center text-sm font-semibold transition-colors hover:border-primary/60"
+              >
+                <span className="flex size-10 items-center justify-center rounded-lg bg-primary/14 text-primary">
+                  <Ikon className="size-5" strokeWidth={1.5} aria-hidden />
+                </span>
+                {etiket}
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {finansYetkisi && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Yenileme bekleyenler</CardTitle>
-            <CardDescription>Kalan hakkı 2 veya daha az, ya da 7 gün içinde bitecek aktif üyelikler.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {yaklasan.length === 0 ? (
-              <EmptyState compact title="Yenileme bekleyen üyelik yok." />
-            ) : (
-              <ul className="flex flex-col divide-y divide-border text-sm">
-                {yaklasan.map((u) => (
-                  <li key={u.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5">
-                    <div>
-                      {musteriYetkisi ? (
-                        <Link href={`/panel/musteriler/${u.musteri_id}`} className="font-medium hover:underline">
-                          {adHaritasi.get(u.musteri_id) ?? "Müşteri"}
-                        </Link>
+        <section aria-label="Yenileme bekleyenler" className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+              <BellRing className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
+              Yenileme bekleyenler
+            </h2>
+            {yaklasan.length > 0 && <StatusBadge tone="amber">{yaklasan.length} üyelik</StatusBadge>}
+          </div>
+          <p className="text-sm text-muted-foreground">Kalan hakkı 2 veya daha az, ya da 7 gün içinde bitecek aktif üyelikler.</p>
+
+          {yaklasan.length === 0 ? (
+            <EmptyState compact icon={CalendarClock} title="Yenileme bekleyen üyelik yok." />
+          ) : (
+            <div className="grid gap-4 lg:grid-cols-2">
+              {yaklasan.map((u) => {
+                const ad = adHaritasi.get(u.musteri_id) ?? "Müşteri";
+                const telefon = telefonHaritasi.get(u.musteri_id);
+                const bakiye = bakiyeHaritasi.get(u.musteri_id) ?? 0;
+                const gun = kalanGun(u, bugun);
+                const hakUyari = u.kalan_hak !== null && u.kalan_hak <= 2;
+                return (
+                  <Card key={u.id} className="gap-4">
+                    <div className="flex items-start justify-between gap-3 px-(--card-spacing)">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <Avatar name={ad} />
+                        <div className="min-w-0">
+                          <p className="truncate font-bold tracking-tight">{ad}</p>
+                          <p className="truncate text-sm text-muted-foreground">{u.paket_adi}</p>
+                        </div>
+                      </div>
+                      {hakUyari ? <StatusBadge tone="amber">{u.kalan_hak} hak kaldı</StatusBadge> : <StatusBadge tone="amber">{gun === 0 ? "Bugün bitiyor" : `${gun} gün kaldı`}</StatusBadge>}
+                    </div>
+                    <div className="mx-(--card-spacing) flex items-center justify-between gap-3 rounded-lg bg-surface p-3 text-sm">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <CalendarClock className="size-4" strokeWidth={1.5} aria-hidden />
+                        Bitiş: <span className="font-semibold text-foreground tabular-nums">{u.bitis_tarihi ? gunYazi(u.bitis_tarihi) : "Süresiz"}</span>
+                      </span>
+                      {bakiye < 0 ? (
+                        <span className="font-semibold text-destructive tabular-nums">{kurusTLyazi(-bakiye)} borç</span>
                       ) : (
-                        <span className="font-medium">{adHaritasi.get(u.musteri_id) ?? "Müşteri"}</span>
+                        <span className="text-muted-foreground tabular-nums">Bakiye {kurusTLyazi(bakiye)}</span>
                       )}
-                      <span className="ml-2 text-muted-foreground">{u.paket_adi}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {u.kalan_hak !== null && u.kalan_hak <= 2 && <StatusBadge tone="amber">{u.kalan_hak} hak kaldı</StatusBadge>}
-                      {u.bitis_tarihi && u.bitis_tarihi <= hafta && <StatusBadge tone="amber">Bitiş {gunYazi(u.bitis_tarihi)}</StatusBadge>}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </CardContent>
-        </Card>
+                    {musteriYetkisi && (
+                      <div className="grid grid-cols-2 gap-2 px-(--card-spacing)">
+                        {telefon ? (
+                          <a href={`tel:${telefon}`} className={buttonVariants({ variant: "outline" })}>
+                            <Phone aria-hidden /> Ara
+                          </a>
+                        ) : (
+                          <span />
+                        )}
+                        <Link href={`/panel/musteriler/${u.musteri_id}?sekme=uyelikler#uyelik-sat`} className={buttonVariants()}>
+                          <RefreshCw aria-hidden /> Yenile
+                        </Link>
+                      </div>
+                    )}
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </section>
       )}
     </>
   );

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ayDonemi, donemCoz, gunDonemi, gunEkle, yilDonemi } from "./donem";
+import { ayDonemi, donemCoz, gunDonemi, gunEkle, gunFarki, yilDonemi } from "./donem";
 
 describe("gunDonemi — İstanbul takvim günü, yarı açık aralık", () => {
   it("00:00 İstanbul = önceki gün 21:00Z; bitiş ertesi gün 00:00 İstanbul (dışlayıcı)", () => {
@@ -93,5 +93,15 @@ describe("gunEkle", () => {
     expect(gunEkle("2028-02-28", 1)).toBe("2028-02-29");
     expect(gunEkle("2026-10-01", -1)).toBe("2026-09-30");
     expect(gunEkle("2026-10-01", 0)).toBe("2026-10-01");
+  });
+});
+
+describe("gunFarki", () => {
+  it("takvim günü farkı (ay/yıl/artık yıl sınırları dahil)", () => {
+    expect(gunFarki("2026-10-01", "2026-10-08")).toBe(7);
+    expect(gunFarki("2026-10-08", "2026-10-01")).toBe(-7);
+    expect(gunFarki("2026-12-31", "2027-01-01")).toBe(1);
+    expect(gunFarki("2028-02-28", "2028-03-01")).toBe(2);
+    expect(gunFarki("2026-10-01", "2026-10-01")).toBe(0);
   });
 });

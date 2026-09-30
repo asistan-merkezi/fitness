@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { kurusGirdiYazi, kurusTLyazi, tlYaziKurusa } from "./para";
+import { kurusGirdiYazi, kurusTLyazi, tlYaziKurusa, tusMetniGoster, tusUygula } from "./para";
 
 describe("tlYaziKurusa", () => {
   it.each([
@@ -52,5 +52,39 @@ describe("kurusGirdiYazi", () => {
     for (const k of [0, 1, 99, 100, 123_456, 99_999_999]) {
       expect(tlYaziKurusa(kurusGirdiYazi(k))).toBe(k);
     }
+  });
+});
+
+describe("tusUygula / tusMetniGoster (tahsilat tuş takımı)", () => {
+  const yaz = (...tuslar: string[]) => tuslar.reduce((m, t) => tusUygula(m, t), "");
+
+  it("rakamlar, virgül ve ,00", () => {
+    expect(yaz("1", "2", "5", "0")).toBe("1250");
+    expect(yaz("1", ",", "5")).toBe("1,5");
+    expect(yaz(",", "5")).toBe("0,5");
+    expect(yaz("4", "5", "0", ",00")).toBe("450,00");
+  });
+  it("kurallar: tek virgül, en çok 2 kuruş hanesi, en çok 9 tam hane, baştaki sıfır", () => {
+    expect(yaz("1", ",", "5", ",")).toBe("1,5");
+    expect(yaz("1", ",", "2", "5", "9")).toBe("1,25");
+    expect(yaz("1", ",00", ",00")).toBe("1,00");
+    expect(yaz(..."1234567890".split(""))).toBe("123456789");
+    expect(yaz("0", "0", "0")).toBe("0");
+    expect(yaz("0", "7")).toBe("7");
+  });
+  it("sil son karakteri kaldırır; boşta bir şey yapmaz", () => {
+    expect(yaz("1", "2", "sil")).toBe("1");
+    expect(yaz("sil")).toBe("");
+    expect(yaz("1", ",", "sil")).toBe("1");
+  });
+  it("geçersiz tuş yok sayılır", () => {
+    expect(yaz("1", "x", "2")).toBe("12");
+  });
+  it("gösterim: binlik nokta, virgül korunur; tlYaziKurusa ile gidiş-dönüş", () => {
+    expect(tusMetniGoster("")).toBe("0");
+    expect(tusMetniGoster("1250")).toBe("1.250");
+    expect(tusMetniGoster("1234567,5")).toBe("1.234.567,5");
+    expect(tusMetniGoster("450,00")).toBe("450,00");
+    expect(tlYaziKurusa(yaz("1", "2", "5", "0", ",", "5"))).toBe(125_050);
   });
 });

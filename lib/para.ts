@@ -55,3 +55,33 @@ export function kurusGirdiYazi(kurus: number | bigint | string | null | undefine
   const kesir = String(Math.abs(sayi % 100)).padStart(2, "0");
   return `${tam},${kesir}`;
 }
+
+/**
+ * Tahsilat tuş takımı: girilen metne tek bir tuş uygular ("1250,5" gibi; ondalık ayracı virgül).
+ * Kurallar: en çok 9 tam basamak, en çok 2 kuruş hanesi, tek virgül, baştaki gereksiz sıfır atılır.
+ * Tuşlar: "0"-"9", ",", ",00", "sil".
+ */
+export function tusUygula(metin: string, tus: string): string {
+  const virgul = metin.indexOf(",");
+  const tam = virgul === -1 ? metin : metin.slice(0, virgul);
+  const kesir = virgul === -1 ? "" : metin.slice(virgul + 1);
+
+  if (tus === "sil") return metin.slice(0, -1);
+  if (tus === ",") return virgul === -1 ? `${metin || "0"},` : metin;
+  if (tus === ",00") return virgul === -1 ? `${metin || "0"},00` : metin;
+  if (!/^\d$/.test(tus)) return metin;
+
+  if (virgul !== -1) return kesir.length >= 2 ? metin : `${metin}${tus}`;
+  if (tam.length >= 9) return metin;
+  if (tam === "0") return tus === "0" ? metin : tus;
+  return `${metin}${tus}`;
+}
+
+/** Tuş takımı metnini ekranda göster: "1250,5" -> "1.250,5"; boş -> "0". */
+export function tusMetniGoster(metin: string): string {
+  if (!metin) return "0";
+  const virgul = metin.indexOf(",");
+  const tam = virgul === -1 ? metin : metin.slice(0, virgul);
+  const kesir = virgul === -1 ? "" : metin.slice(virgul);
+  return `${tam.replace(/\B(?=(\d{3})+(?!\d))/g, ".")}${kesir}`;
+}

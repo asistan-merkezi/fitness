@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
  */
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div className="relative w-full overflow-x-auto rounded-2xl border border-border">
+    <div className="relative w-full overflow-x-auto rounded-xl border border-border bg-card">
       <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   );
@@ -21,7 +21,7 @@ function TableHeader({ className, ...props }: React.ComponentProps<"thead">) {
   return (
     <thead
       data-slot="table-header"
-      className={cn("bg-muted [&_tr]:border-b [&_tr]:border-border", className)}
+      className={cn("bg-surface [&_tr]:border-b [&_tr]:border-border", className)}
       {...props}
     />
   );
@@ -45,7 +45,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
   return (
     <tr
       data-slot="table-row"
-      className={cn("border-b border-border transition-colors hover:bg-background", className)}
+      className={cn("border-b border-border/70 transition-colors hover:bg-surface-3", className)}
       {...props}
     />
   );
@@ -56,7 +56,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-10 px-4 text-left align-middle text-xs font-semibold tracking-wide text-muted-foreground uppercase [&:has([role=checkbox])]:pr-0",
+        "h-10 px-4 text-left align-middle text-[11px] font-bold tracking-[0.04em] text-muted-foreground uppercase [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -68,7 +68,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
       data-slot="table-cell"
-      className={cn("h-14 px-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+      className={cn("h-[52px] px-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
       {...props}
     />
   );
