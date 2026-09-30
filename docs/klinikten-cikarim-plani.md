@@ -35,7 +35,7 @@ Kaynak: `asistan-merkezi/klinik`, commit'lenmiş `main` (`0a273c8`; 640 dosya, 1
 ## Aşamalar (her biri ayrı dal, doğrulamalı)
 
 - **F0 — İskelet** ✅ repo, `.claude/` (21 skill, 10 agent), `CLAUDE.md`, bu plan.
-- **F1 — Temel uygulama**: Next 16 + Tailwind v4 iskeleti, altyapı modülleri (yukarıdaki "Tut"), giriş; derlenir ve testleri geçer.
+- **F1 — Temel uygulama** ✅ Next 16 + Tailwind v4 iskeleti, `proxy.ts`, altyapı modülleri (supabase, auth, datetime, utils, UI bileşenleri), e-posta girişi, `/panel` kabuğu; `tsc`/`eslint`/`vitest`/`next build` temiz, duman testi geçti. Not: `npm install` npm 10.9'un vitest peer çözümleme hatasına takıldığı için klinik `package-lock.json`'ı tohum olarak kullanıldı.
 - **F2 — Taban şema**: `isletme`, kullanıcı/üyelik/rol, RLS + helper'lar (`current_isletme_id()`), audit log; RLS izolasyon testleri.
 - **F3 — Müşteri**: `musteri`, `musteri_hassas`, veli, belge, KVKK onayları, `isim-bicimi`.
 - **F4 — Üyelik**: `uyelik_paketi`, `paket_satis`, **üyelik + dondurma + yenileme** (yeni tasarım; önce kural kararları).
