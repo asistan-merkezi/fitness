@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { bugunIstanbulTarihi, toUTC } from "@/lib/datetime";
+import { ibanGecerli } from "@/lib/iban";
 import { tlYaziKurusa } from "@/lib/para";
 import { tcKimlikGecerli } from "@/lib/tc-kimlik";
 import { isimNormalle, resitDegilMi, telefonE164 } from "@/lib/utils";
@@ -394,6 +395,73 @@ export const izinDegerlendirSemasi = z.object({
 });
 
 export const izinIptalSemasi = z.object({ izin_id: z.uuid() });
+
+// ---------------------------------------------------------------------------------------------------------
+const saatOpsiyonel = z
+  .string()
+  .trim()
+  .optional()
+  .refine((v) => !v || /^([01]\d|2[0-3]):[0-5]\d$/.test(v), "Geçerli bir saat girin (SS:DD).")
+  .transform((v) => (v ? v : null));
+const vergiNoOpsiyonel = z
+  .string()
+  .trim()
+  .optional()
+  .refine((v) => !v || /^\d{10,11}$/.test(v), "Vergi numarası 10 veya 11 haneli olmalı.")
+  .transform((v) => (v ? v : null));
+
+/** Şirket bilgileri formu. İsimler Title Case'e çevrilir; adres detayı ve açıklamalara dokunulmaz. */
+export const sirketSemasi = z
+  .object({
+    ad: isimAlani,
+    unvan: isimOpsiyonel,
+    adres_il: metinOpsiyonel(60),
+    adres_ilce: metinOpsiyonel(60),
+    adres_mahalle: metinOpsiyonel(100),
+    adres: metinOpsiyonel(300),
+    vergi_dairesi: isimOpsiyonel,
+    vergi_no: vergiNoOpsiyonel,
+    telefon: telefonOpsiyonel,
+    whatsapp_no: telefonOpsiyonel,
+    eposta: epostaOpsiyonel,
+    yetkili_kisi: isimOpsiyonel,
+    yetkili_telefon: telefonOpsiyonel,
+    yetkili_eposta: epostaOpsiyonel,
+    hafta_ici_baslangic: saatOpsiyonel,
+    hafta_ici_bitis: saatOpsiyonel,
+    cumartesi_baslangic: saatOpsiyonel,
+    cumartesi_bitis: saatOpsiyonel,
+    pazar_baslangic: saatOpsiyonel,
+    pazar_bitis: saatOpsiyonel,
+  })
+  .superRefine((v, ctx) => {
+    const gunler: [string, string | null, string | null][] = [
+      ["Hafta içi", v.hafta_ici_baslangic, v.hafta_ici_bitis],
+      ["Cumartesi", v.cumartesi_baslangic, v.cumartesi_bitis],
+      ["Pazar", v.pazar_baslangic, v.pazar_bitis],
+    ];
+    for (const [gun, bas, bit] of gunler) {
+      if ((bas === null) !== (bit === null)) ctx.addIssue({ code: "custom", message: `${gun} için başlangıç ve bitiş saatini birlikte girin (kapalıysa ikisini de boş bırakın).` });
+      else if (bas !== null && bas === bit) ctx.addIssue({ code: "custom", message: `${gun} için başlangıç ve bitiş saati aynı olamaz.` });
+    }
+  });
+
+export const bankaHesabiSemasi = z.object({
+  hesap_id: z
+    .string()
+    .optional()
+    .transform((v) => (v ? v : undefined))
+    .pipe(z.uuid().optional()),
+  banka_adi: isimAlani,
+  sube: isimOpsiyonel,
+  hesap_sahibi: isimAlani,
+  iban: z
+    .string()
+    .trim()
+    .refine((v) => ibanGecerli(v), "Geçerli bir TR IBAN girin (TR ile başlayan 26 karakter)."),
+  hesap_tipi: z.enum(["isletme", "sahis"]).default("isletme"),
+  aktif: onay,
+});
 
 /** İlk hata mesajını döndürür (form üstünde tek satır gösterim için). */
 export function ilkHata(hata: z.ZodError): string {

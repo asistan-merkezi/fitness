@@ -12,6 +12,8 @@ import {
   CreditCard,
   DoorOpen,
   HandCoins,
+  Landmark,
+  Percent,
   History,
   LayoutDashboard,
   LifeBuoy,
@@ -68,6 +70,10 @@ export const MENU_IKONLARI = {
   sohbet: Bot,
   talep: MessageSquareWarning,
   izin: CalendarOff,
+  gelir: HandCoins,
+  banka: Landmark,
+  iskonto: Percent,
+  hizmet: ClipboardList,
   hakedis: Coins,
 } as const satisfies Record<string, LucideIcon>;
 

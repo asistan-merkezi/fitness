@@ -32,6 +32,6 @@ export async function alanKaydet(_onceki: Onceki, formData: FormData): Promise<O
     }
   }
 
-  revalidatePath("/panel/yonetim/alanlar");
+  revalidatePath("/panel/yonetim/donanim");
   return basari(v.alan_id ? "Alan güncellendi." : "Alan eklendi.");
 }

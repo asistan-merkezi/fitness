@@ -103,7 +103,7 @@ export default async function YeniDersSayfasi({ searchParams }: { searchParams: 
                 <EmptyState
                   compact
                   icon={UserRound}
-                  title={antrenorler.length === 0 ? "Önce Ayarlar > Personel Tanımlama'dan bir antrenör ekleyin." : "Önce Yönetim > Alanlar ve Stüdyolar'dan bir alan ekleyin."}
+                  title={antrenorler.length === 0 ? "Önce Ayarlar > Personel Tanımlama'dan bir antrenör ekleyin." : "Önce Yönetim > Donanım'dan bir alan ekleyin."}
                 />
               ) : (
                 <DersFormu musteriId={secili.id} antrenorler={antrenorler} alanlar={alanlar} varsayilanBaslangic={`${gunParam}T10:00`} />

@@ -21,6 +21,7 @@ Bu adımlar **sizin** Supabase projenizde yapılır; anahtarlar asla repoya yaz�
 | `20260930160000_ders_seansi.sql` | alan/stüdyo, ders seansı (çakışma kontrolü), ders hakkı/borç, paket kapsamı |
 | `20260930170000_personel_hakedis.sql` | personel maaş/prim profili, aylık hakediş, dönem kapatma, personel hesap defteri |
 | `20260930180000_personel_izin.sql` | izin talep-onay akışı, yıllık izin bakiyesi, resmi tatiller, izinli antrenöre ders atanamaması |
+| `20260930190000_sirket_bilgileri.sql` | şirket bilgileri (adres, vergi, yetkili, çalışma saatleri, logo), banka hesapları, IBAN doğrulama, logo depolama kovası |
 
 Supabase CLI ile: `supabase link --project-ref <ref>` → `supabase db push`. SQL Editor ile: her dosyayı sırayla yapıştırın.
 Hepsi idempotent yazılmıştır; yine de **önce test projesinde** deneyin.

@@ -5,6 +5,7 @@ import { FINANS_ROLLERI, FINANS_YONETIM_ROLLERI, MUSTERI_ROLLERI, PAKET_GORUNTUL
 /**
  * Menü yapısı (klinikteki düzenle aynı): üstte tekil linkler, altta ana başlıklar (Finans, Yönetim, Ayarlar, Destek).
  * Her ana başlık, alt sayfaları kart ızgarası olarak gösteren bir "hub" sayfasına (/panel/<anahtar>) gider.
+ * Alt sayfa adları ve sırası klinikle aynıdır; fitness'a özgü olanlar ayrıca belirtilmiştir.
  * `yakinda: true` olanlar planlanmış ama henüz yazılmamış modüllerdir: kartı görünür, tıklanmaz.
  * Bu yalnız görünürlüktür; asıl yetki kontrolü sayfada ve RLS/RPC'dedir.
  */
@@ -16,9 +17,11 @@ const HERKES = ["isletme_admin", "resepsiyon", "muhasebe", "antrenor"] as const 
 export const ANA_OGELER: readonly MenuOgesi[] = [
   { href: "/panel", etiket: "Ana Ekran", ikon: "panel", roller: HERKES },
   { href: "/panel/musteriler", etiket: "Müşteriler", ikon: "musteriler", roller: MUSTERI_ROLLERI },
-  { href: "/panel/dersler", etiket: "Dersler", ikon: "ders", roller: [...MUSTERI_ROLLERI, "antrenor"] },
+  { href: "/panel/dersler", etiket: "Randevular", ikon: "ders", roller: [...MUSTERI_ROLLERI, "antrenor"] },
+  // Fitness'a özgü: personelin kendi kayıtları.
   { href: "/panel/izinlerim", etiket: "İzinlerim", ikon: "izin", roller: HERKES },
   { href: "/panel/hakedisim", etiket: "Hakedişim", ikon: "hakedis", roller: ["resepsiyon", "antrenor", "muhasebe"] },
+  // Fitness'a özgü: salona giriş.
   { href: "/panel/check-in", etiket: "Check-in", ikon: "check-in", roller: MUSTERI_ROLLERI },
 ];
 
@@ -28,13 +31,14 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
     etiket: "Finans",
     ikon: "finans",
     ogeler: [
-      { href: "/panel/finans/personel", etiket: "Personel ve Hakediş", ikon: "personel", roller: FINANS_YONETIM_ROLLERI },
-      { href: "/panel/kasa", etiket: "Kasa ve Cari", ikon: "kasa", roller: FINANS_ROLLERI },
-      { href: "/panel/kasa/hizli-tahsilat", etiket: "Hızlı Tahsilat", ikon: "tahsilat", roller: MUSTERI_ROLLERI },
-      { href: "/panel/finans/giderler", etiket: "Giderler", ikon: "gider", roller: FINANS_ROLLERI, yakinda: true },
-      { href: "/panel/finans/faturalandirma", etiket: "Gelirler Takibi ve Faturalandırma", ikon: "fatura", roller: FINANS_ROLLERI, yakinda: true },
-      { href: "/panel/finans/kredi-karti", etiket: "Kredi Kartı", ikon: "kredi-karti", roller: FINANS_ROLLERI, yakinda: true },
-      { href: "/panel/finans/raporlar", etiket: "Raporlar", ikon: "rapor", roller: FINANS_ROLLERI, yakinda: true },
+      { href: "/panel/finans/personel", etiket: "Personel", ikon: "personel", roller: FINANS_YONETIM_ROLLERI },
+      { href: "/panel/finans/giderler", etiket: "Giderler", ikon: "gider", roller: FINANS_YONETIM_ROLLERI, yakinda: true },
+      { href: "/panel/finans/gelirler-takibi", etiket: "Gelirler Takibi ve Faturalandırma", ikon: "gelir", roller: FINANS_ROLLERI, yakinda: true },
+      { href: "/panel/finans/banka", etiket: "Banka", ikon: "banka", roller: FINANS_YONETIM_ROLLERI, yakinda: true },
+      { href: "/panel/kasa", etiket: "Kasa", ikon: "kasa", roller: FINANS_ROLLERI },
+      { href: "/panel/finans/kredi-karti", etiket: "Kredi Kartı", ikon: "kredi-karti", roller: FINANS_YONETIM_ROLLERI, yakinda: true },
+      { href: "/panel/finans/raporlar", etiket: "Raporlar", ikon: "rapor", roller: FINANS_YONETIM_ROLLERI, yakinda: true },
+      { href: "/panel/finans/kategori-iskonto-oranlari", etiket: "Kategori / İskonto Oranları", ikon: "iskonto", roller: FINANS_YONETIM_ROLLERI, yakinda: true },
     ],
   },
   {
@@ -42,12 +46,13 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
     etiket: "Yönetim",
     ikon: "yonetim",
     ogeler: [
-      { href: "/panel/uyelik-paketleri", etiket: "Üyelik Paketleri", ikon: "paket", roller: PAKET_GORUNTULEME_ROLLERI },
-      { href: "/panel/yonetim/izinler", etiket: "İzin Talepleri", ikon: "izin", roller: YONETICI_ROLLERI },
-      { href: "/panel/yonetim/denetim-gecmisi", etiket: "Denetim Geçmişi", ikon: "denetim", roller: YONETICI_ROLLERI },
+      { href: "/panel/uyelik-paketleri", etiket: "Paketler", ikon: "paket", roller: PAKET_GORUNTULEME_ROLLERI },
+      { href: "/panel/yonetim/donanim", etiket: "Donanım", ikon: "ekipman", roller: YONETICI_ROLLERI },
+      { href: "/panel/yonetim/hizmet-tanimlari", etiket: "Hizmet Tanımları", ikon: "hizmet", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/yonetim/antrenman-programlari", etiket: "Antrenman Programları", ikon: "program", roller: YONETICI_ROLLERI, yakinda: true },
-      { href: "/panel/yonetim/alanlar", etiket: "Alanlar ve Stüdyolar", ikon: "ekipman", roller: YONETICI_ROLLERI },
-      { href: "/panel/yonetim/ekipman", etiket: "Ekipman", ikon: "program", roller: YONETICI_ROLLERI, yakinda: true },
+      { href: "/panel/yonetim/denetim-gecmisi", etiket: "Denetim Geçmişi", ikon: "denetim", roller: YONETICI_ROLLERI },
+      // Fitness'a özgü: klinikte izinler Personel sekmesi altındadır.
+      { href: "/panel/yonetim/izinler", etiket: "İzin Talepleri", ikon: "izin", roller: YONETICI_ROLLERI },
     ],
   },
   {
@@ -55,14 +60,14 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
     etiket: "Ayarlar",
     ikon: "ayarlar",
     ogeler: [
-      { href: "/panel/ayarlar/isletme", etiket: "İşletme Bilgileri", ikon: "isletme", roller: YONETICI_ROLLERI },
+      { href: "/panel/ayarlar/sirket-bilgileri", etiket: "Şirket Bilgileri", ikon: "isletme", roller: FINANS_YONETIM_ROLLERI },
       { href: "/panel/ayarlar/personel", etiket: "Personel Tanımlama", ikon: "personel", roller: YONETICI_ROLLERI },
-      { href: "/panel/ayarlar/yetkilendirme", etiket: "Yetkilendirme", ikon: "yetki", roller: YONETICI_ROLLERI, yakinda: true },
+      { href: "/panel/ayarlar/muhasebe-sync", etiket: "Muhasebe Sync", ikon: "senkron", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/ayarlar/mesajlasma", etiket: "SMS/Whatsapp/Mail Ayarları", ikon: "mesaj", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/ayarlar/kapi-tablet", etiket: "Kapı Tablet Ayarları", ikon: "tablet", roller: YONETICI_ROLLERI, yakinda: true },
-      { href: "/panel/ayarlar/qr-kodlari", etiket: "QR Kodları", ikon: "qr", roller: YONETICI_ROLLERI, yakinda: true },
-      { href: "/panel/ayarlar/muhasebe-sync", etiket: "Muhasebe Sync", ikon: "senkron", roller: YONETICI_ROLLERI, yakinda: true },
+      { href: "/panel/ayarlar/yetkilendirme", etiket: "Yetkilendirme", ikon: "yetki", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/ayarlar/arsiv", etiket: "Arşiv Yükleme ve Yedekleme", ikon: "arsiv", roller: YONETICI_ROLLERI, yakinda: true },
+      { href: "/panel/ayarlar/qr-kodlari", etiket: "QR Kodları", ikon: "qr", roller: YONETICI_ROLLERI, yakinda: true },
     ],
   },
   {

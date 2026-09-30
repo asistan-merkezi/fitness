@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LogOut, Menu, ScanLine } from "lucide-react";
-import { Logo, MarkaIsareti } from "@/components/marka/logo";
+import { IsletmeLogosu } from "@/components/marka/isletme-logosu";
+import { Logo } from "@/components/marka/logo";
 import { MENU_IKONLARI, type MenuIkonu } from "@/components/panel/menu-ikonlari";
 import { TemaDugmesi } from "@/components/panel/tema-anahtari";
 import { UstCubuk } from "@/components/panel/ust-cubuk";
@@ -32,6 +33,8 @@ export function PanelKabugu({
   kullaniciAdi,
   rolEtiketi,
   isletmeAdi,
+  logoUrl,
+  logoUrlKoyu,
   cikisEylemi,
   ust,
   children,
@@ -40,6 +43,9 @@ export function PanelKabugu({
   kullaniciAdi: string;
   rolEtiketi: string | null;
   isletmeAdi: string | null;
+  /** Şirket Bilgileri'nde yüklenen logolar (açık/koyu tema); yoksa Fitness Asistanı işareti. */
+  logoUrl: string | null;
+  logoUrlKoyu: string | null;
   cikisEylemi: () => Promise<void>;
   /** Masaüstü üst çubuğu ayarları: Yeni Ders düğmesi, bekleyen izin rozeti (yalnız yönetici), müşteri arama. */
   ust: { yeniDers: boolean; bekleyenIzin: number | null; aramaVar: boolean };
@@ -57,20 +63,29 @@ export function PanelKabugu({
     <div className="min-h-svh">
       {/* Masaüstü menü / tablet ray */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-16 flex-col border-r border-sidebar-border bg-sidebar md:flex xl:w-[260px]">
-        <div className="flex h-16 items-center justify-center border-b border-sidebar-border px-3 xl:justify-start xl:px-5">
-          <span className="xl:hidden">
-            <MarkaIsareti boyut={32} />
-          </span>
-          <span className="hidden xl:inline-flex">
-            <Logo />
-          </span>
-        </div>
-
-        {isletmeAdi && (
-          <p className="text-etiket hidden truncate px-5 pt-4 text-muted-foreground xl:block" title={isletmeAdi}>
-            {isletmeAdi}
-          </p>
-        )}
+        {/* Marka bloğu (klinikteki gibi): logo + şirket adı + "Yönetim Asistanı"; şirket adı yoksa ürün logosu. */}
+        <Link href="/panel" className="flex h-16 items-center justify-center gap-3 border-b border-sidebar-border px-3 xl:justify-start xl:px-5" aria-label="Ana ekran">
+          {isletmeAdi ? (
+            <>
+              <IsletmeLogosu logoUrl={logoUrl} logoUrlKoyu={logoUrlKoyu} boyut={36} />
+              <span className="hidden min-w-0 flex-col leading-tight xl:flex">
+                <span className="truncate text-sm font-bold tracking-tight" title={isletmeAdi}>
+                  {isletmeAdi}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">Yönetim Asistanı</span>
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="xl:hidden">
+                <IsletmeLogosu logoUrl={null} logoUrlKoyu={null} boyut={32} />
+              </span>
+              <span className="hidden xl:inline-flex">
+                <Logo />
+              </span>
+            </>
+          )}
+        </Link>
 
         <nav aria-label="Ana menü" className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {menu.map((o) => {
@@ -123,7 +138,7 @@ export function PanelKabugu({
       {/* Mobil üst çubuk */}
       <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 md:hidden">
         <span className="flex min-w-0 items-center gap-2.5">
-          <MarkaIsareti boyut={28} />
+          <IsletmeLogosu logoUrl={logoUrl} logoUrlKoyu={logoUrlKoyu} boyut={28} />
           <span className="flex min-w-0 flex-col leading-none">
             {isletmeAdi && <span className="text-etiket truncate text-muted-foreground">{isletmeAdi}</span>}
             <span className="mt-1 text-sm font-bold tracking-tight">Fitness Asistanı</span>

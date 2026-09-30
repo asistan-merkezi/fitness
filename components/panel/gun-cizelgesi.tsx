@@ -36,7 +36,7 @@ export function GunCizelgesi({
   maxYukseklik?: number;
 }) {
   if (alanlar.length === 0) {
-    return <EmptyState compact icon={DoorOpen} title="Çizelge için önce Yönetim > Alanlar ve Stüdyolar'dan bir alan ekleyin." />;
+    return <EmptyState compact icon={DoorOpen} title="Çizelge için önce Yönetim > Donanım'dan bir alan ekleyin." />;
   }
 
   const aralik = cizelgeSaatAraligi(dersler);

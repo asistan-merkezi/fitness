@@ -27,10 +27,14 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   ];
 
   let isletmeAdi: string | null = null;
+  let logoUrl: string | null = null;
+  let logoUrlKoyu: string | null = null;
   if (kullanici?.isletme_id) {
     const supabase = await createClient();
-    const { data } = await supabase.from("isletme").select("ad").eq("id", kullanici.isletme_id).maybeSingle<{ ad: string }>();
+    const { data } = await supabase.from("isletme").select("ad, logo_url, logo_url_koyu").eq("id", kullanici.isletme_id).maybeSingle<{ ad: string; logo_url: string | null; logo_url_koyu: string | null }>();
     isletmeAdi = data?.ad ?? null;
+    logoUrl = data?.logo_url ?? null;
+    logoUrlKoyu = data?.logo_url_koyu ?? null;
   }
 
   // Üst çubuk: yalnız yönetici/resepsiyon müşteri arar ve ders açar; bekleyen izin rozeti yalnız yöneticide.
@@ -48,6 +52,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       kullaniciAdi={gorunenAd}
       rolEtiketi={rolEtiketi}
       isletmeAdi={isletmeAdi}
+      logoUrl={logoUrl}
+      logoUrlKoyu={logoUrlKoyu}
       cikisEylemi={cikisYap}
       ust={{ yeniDers: musteriYetkisi, bekleyenIzin, aramaVar: musteriYetkisi }}
     >
