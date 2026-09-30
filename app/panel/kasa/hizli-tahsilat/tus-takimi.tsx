@@ -16,7 +16,7 @@ const YONTEMLER = [
 const TUSLAR = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "sil", "0", ",00"] as const;
 
 /** Tutar tuş takımı + ödeme yöntemi + kaydet. Tutar sunucuda yeniden doğrulanır; kayıt idempotent anahtarla gider. */
-export function TusTakimi({ musteriId, borcKurus }: { musteriId: string; borcKurus: number }) {
+export function TusTakimi({ musteriId, borcKurus, hesaplar }: { musteriId: string; borcKurus: number; hesaplar: { id: string; ad: string }[] }) {
   const [tutar, setTutar] = useState("");
   const [yontem, setYontem] = useState<(typeof YONTEMLER)[number]["kod"]>("kredi_karti");
   const [anahtar] = useState(() => crypto.randomUUID());
@@ -61,6 +61,20 @@ export function TusTakimi({ musteriId, borcKurus }: { musteriId: string; borcKur
           </button>
         ))}
       </div>
+
+      {yontem !== "nakit" && hesaplar.length > 0 && (
+        <label className="flex flex-col gap-1.5 text-sm font-medium">
+          Banka hesabı
+          <select name="banka_hesap_id" defaultValue="" className="h-10 w-full rounded-lg border border-input bg-input-bg px-3 text-sm font-normal">
+            <option value="">Hesap seçilmedi</option>
+            {hesaplar.map((h) => (
+              <option key={h.id} value={h.id}>
+                {h.ad}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Tuş takımı">
         {TUSLAR.map((tus) => (

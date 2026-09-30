@@ -27,6 +27,7 @@ export async function hizliTahsilatKaydet(_onceki: EylemSonucu | null, formData:
     p_yontem: v.yontem,
     p_aciklama: v.aciklama ?? "Hızlı tahsilat",
     p_anahtar: v.anahtar,
+    p_banka_hesap_id: v.banka_hesap_id,
   });
   if (error) {
     console.error("[hizliTahsilatKaydet]", error.code);

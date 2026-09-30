@@ -95,6 +95,7 @@ export async function personelHareketEkle(_onceki: Onceki, formData: FormData): 
     p_yontem: v.yontem,
     p_aciklama: v.aciklama ?? undefined,
     p_anahtar: v.anahtar,
+    p_banka_hesap_id: v.banka_hesap_id,
   });
   if (error) {
     console.error("[personelHareketEkle]", error.code);

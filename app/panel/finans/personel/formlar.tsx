@@ -2,6 +2,7 @@
 
 import { Alan } from "@/components/panel/form-alanlari";
 import { EylemFormu, SecimKutusu } from "@/components/panel/eylem-formu";
+import { YontemHesapSecimi, type HesapSecenegi } from "@/components/panel/yontem-hesap-secimi";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { kurusGirdiYazi } from "@/lib/para";
@@ -35,7 +36,7 @@ export function ProfilFormu({
   );
 }
 
-export function HareketFormu({ kullaniciId }: { kullaniciId: string }) {
+export function HareketFormu({ kullaniciId, hesaplar }: { kullaniciId: string; hesaplar: HesapSecenegi[] }) {
   return (
     <EylemFormu eylem={personelHareketEkle} gonder="Kaydet" anahtarli>
       <input type="hidden" name="kullanici_id" value={kullaniciId} />
@@ -49,12 +50,7 @@ export function HareketFormu({ kullaniciId }: { kullaniciId: string }) {
         <Alan etiket="Tutar (₺)" htmlFor="ph_tutar">
           <Input id="ph_tutar" name="tutar" inputMode="decimal" required autoComplete="off" />
         </Alan>
-        <Alan etiket="Yöntem" htmlFor="ph_yontem">
-          <SecimKutusu id="ph_yontem" name="yontem" defaultValue="havale">
-            <option value="havale">Havale / EFT</option>
-            <option value="nakit">Nakit</option>
-          </SecimKutusu>
-        </Alan>
+        <YontemHesapSecimi id="ph" yontemler={{ havale: "Havale / EFT", nakit: "Nakit" }} hesaplar={hesaplar} hesapGerektirenler={["havale"]} varsayilan="havale" />
       </div>
       <Alan etiket="Açıklama" htmlFor="ph_aciklama">
         <Textarea id="ph_aciklama" name="aciklama" rows={2} maxLength={300} />

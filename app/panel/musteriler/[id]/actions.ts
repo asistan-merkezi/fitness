@@ -58,6 +58,7 @@ export async function odemeAl(_onceki: Onceki, formData: FormData): Promise<Once
     p_yontem: v.yontem,
     p_aciklama: v.aciklama,
     p_anahtar: v.anahtar,
+    p_banka_hesap_id: v.banka_hesap_id,
   });
   if (error) {
     console.error("[odemeAl]", error.code);
@@ -85,6 +86,7 @@ export async function iadeYap(_onceki: Onceki, formData: FormData): Promise<Once
     p_aciklama: v.aciklama,
     p_iade_edilen_hareket_id: v.iade_edilen_hareket_id,
     p_anahtar: v.anahtar,
+    p_banka_hesap_id: v.banka_hesap_id,
   });
   if (error) {
     console.error("[iadeYap]", error.code);

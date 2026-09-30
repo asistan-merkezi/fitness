@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { Alan, IsimGirdisi, OnayKutusu } from "@/components/panel/form-alanlari";
 import { EylemFormu, SecimKutusu } from "@/components/panel/eylem-formu";
+import { YontemHesapSecimi, type HesapSecenegi } from "@/components/panel/yontem-hesap-secimi";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { kurusTLyazi } from "@/lib/para";
+import { kurusGirdiYazi, kurusTLyazi } from "@/lib/para";
 import { KATEGORI_ETIKETLERI, SAGLIK_ETIKETLERI, YONTEM_ETIKETLERI } from "@/lib/panel/etiketler";
 import { ONAM_METINLERI } from "@/lib/onam-metinleri";
 import type { MusteriHassasSatiri, MusteriSatiri, PaketSatiri, UyelikGorunumSatiri } from "@/types/veritabani";
@@ -13,19 +15,8 @@ import { dondurmayiBitir, iadeYap, odemeAl, satisYap, uyelikDondur, uyelikIptal 
 
 const yerelTelefon = (t: string) => (t.startsWith("+90") ? `0${t.slice(3)}` : t);
 
-function YontemSecimi({ id, zorunlu = true }: { id: string; zorunlu?: boolean }) {
-  return (
-    <SecimKutusu id={id} name="yontem" required={zorunlu} defaultValue="">
-      <option value="" disabled>
-        Seçin
-      </option>
-      {Object.entries(YONTEM_ETIKETLERI).map(([k, e]) => (
-        <option key={k} value={k}>
-          {e}
-        </option>
-      ))}
-    </SecimKutusu>
-  );
+function YontemSecimi({ id, hesaplar, yontemEtiketi }: { id: string; hesaplar: HesapSecenegi[]; yontemEtiketi: string }) {
+  return <YontemHesapSecimi id={id} yontemler={YONTEM_ETIKETLERI} hesaplar={hesaplar} yontemEtiketi={yontemEtiketi} />;
 }
 
 export function MusteriBilgiFormu({ musteri }: { musteri: MusteriSatiri }) {
@@ -108,12 +99,25 @@ export function HassasBilgiFormu({ musteriId, hassas }: { musteriId: string; has
   );
 }
 
-export function SatisFormu({ musteriId, paketler, bugun }: { musteriId: string; paketler: PaketSatiri[]; bugun: string }) {
+export function SatisFormu({ musteriId, paketler, bugun, kategoriYuzdesi = 0 }: { musteriId: string; paketler: PaketSatiri[]; bugun: string; /** Müşteri kategorisinin önerilen iskonto yüzdesi (Finans > Kategori / İskonto Oranları). */ kategoriYuzdesi?: number }) {
+  const [paketId, setPaketId] = useState("");
+  const [iskonto, setIskonto] = useState("");
+  const [dokunuldu, setDokunuldu] = useState(false);
+
+  function paketSecildi(id: string) {
+    setPaketId(id);
+    // Kullanıcı iskonto alanına elle dokunmadıysa kategori oranı önerilir; elle girilen değer asla ezilmez.
+    if (dokunuldu) return;
+    const paket = paketler.find((p) => p.id === id);
+    if (!paket || kategoriYuzdesi <= 0) return setIskonto("");
+    setIskonto(kurusGirdiYazi(Math.round((paket.fiyat_kurus * kategoriYuzdesi) / 100)));
+  }
+
   return (
     <EylemFormu eylem={satisYap} gonder="Üyeliği Sat" yukleniyor="Kaydediliyor..." anahtarli>
       <input type="hidden" name="musteri_id" value={musteriId} />
       <Alan etiket="Paket" htmlFor="s_paket">
-        <SecimKutusu id="s_paket" name="paket_id" required defaultValue="">
+        <SecimKutusu id="s_paket" name="paket_id" required value={paketId} onChange={(e) => paketSecildi(e.target.value)}>
           <option value="" disabled>
             Paket seçin
           </option>
@@ -128,8 +132,19 @@ export function SatisFormu({ musteriId, paketler, bugun }: { musteriId: string; 
         <Alan etiket="Başlangıç tarihi" htmlFor="s_baslangic">
           <Input id="s_baslangic" name="baslangic" type="date" defaultValue={bugun} min={bugun} />
         </Alan>
-        <Alan etiket="İskonto (₺)" htmlFor="s_iskonto" ipucu="Boş bırakılırsa iskonto yok.">
-          <Input id="s_iskonto" name="iskonto" inputMode="decimal" placeholder="0,00" autoComplete="off" />
+        <Alan etiket="İskonto (₺)" htmlFor="s_iskonto" ipucu={kategoriYuzdesi > 0 ? `Müşteri kategorisi için %${String(kategoriYuzdesi).replace(".", ",")} iskonto önerilir; değiştirebilirsiniz.` : "Boş bırakılırsa iskonto yok."}>
+          <Input
+            id="s_iskonto"
+            name="iskonto"
+            inputMode="decimal"
+            placeholder="0,00"
+            autoComplete="off"
+            value={iskonto}
+            onChange={(e) => {
+              setDokunuldu(true);
+              setIskonto(e.target.value);
+            }}
+          />
         </Alan>
         <Alan etiket="Şimdi alınan ödeme (₺)" htmlFor="s_odeme" ipucu="Boş bırakılırsa tutar cariye borç yazılır.">
           <Input id="s_odeme" name="odeme" inputMode="decimal" placeholder="0,00" autoComplete="off" />
@@ -149,7 +164,7 @@ export function SatisFormu({ musteriId, paketler, bugun }: { musteriId: string; 
   );
 }
 
-export function OdemeFormu({ musteriId }: { musteriId: string }) {
+export function OdemeFormu({ musteriId, hesaplar }: { musteriId: string; hesaplar: HesapSecenegi[] }) {
   return (
     <EylemFormu eylem={odemeAl} gonder="Ödemeyi Kaydet" anahtarli>
       <input type="hidden" name="musteri_id" value={musteriId} />
@@ -157,9 +172,7 @@ export function OdemeFormu({ musteriId }: { musteriId: string }) {
         <Alan etiket="Tutar (₺)" htmlFor="o_tutar">
           <Input id="o_tutar" name="tutar" inputMode="decimal" placeholder="0,00" required autoComplete="off" />
         </Alan>
-        <Alan etiket="Yöntem" htmlFor="o_yontem">
-          <YontemSecimi id="o_yontem" />
-        </Alan>
+        <YontemSecimi id="o_yontem" hesaplar={hesaplar} yontemEtiketi="Yöntem" />
       </div>
       <Alan etiket="Açıklama" htmlFor="o_aciklama">
         <Input id="o_aciklama" name="aciklama" maxLength={300} autoComplete="off" />
@@ -168,7 +181,7 @@ export function OdemeFormu({ musteriId }: { musteriId: string }) {
   );
 }
 
-export function IadeFormu({ musteriId, odemeler }: { musteriId: string; odemeler: { id: string; etiket: string }[] }) {
+export function IadeFormu({ musteriId, odemeler, hesaplar }: { musteriId: string; odemeler: { id: string; etiket: string }[]; hesaplar: HesapSecenegi[] }) {
   if (odemeler.length === 0) {
     return <p className="text-sm text-muted-foreground">İade edilebilecek ödeme kaydı yok.</p>;
   }
@@ -191,9 +204,7 @@ export function IadeFormu({ musteriId, odemeler }: { musteriId: string; odemeler
         <Alan etiket="İade tutarı (₺)" htmlFor="i_tutar">
           <Input id="i_tutar" name="tutar" inputMode="decimal" placeholder="0,00" required autoComplete="off" />
         </Alan>
-        <Alan etiket="İade yöntemi" htmlFor="i_yontem">
-          <YontemSecimi id="i_yontem" />
-        </Alan>
+        <YontemSecimi id="i_yontem" hesaplar={hesaplar} yontemEtiketi="İade yöntemi" />
       </div>
       <Alan etiket="Açıklama" htmlFor="i_aciklama">
         <Input id="i_aciklama" name="aciklama" maxLength={300} autoComplete="off" />

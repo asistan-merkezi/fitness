@@ -58,6 +58,8 @@ export default async function HizliTahsilatSayfasi({ searchParams }: { searchPar
     }
   }
 
+  const hesaplar = secili ? (((await supabase.rpc("banka_hesap_secenekleri")).data ?? []) as { id: string; ad: string }[]) : [];
+
   // Arama sonuçları
   const adaylar = !secili && sorgu ? (((await supabase.rpc("musteri_ara", { p_sorgu: sorgu, p_limit: 8 })).data ?? []) as MusteriSatiri[]) : [];
 
@@ -151,7 +153,7 @@ export default async function HizliTahsilatSayfasi({ searchParams }: { searchPar
                 </Link>
               </div>
               <CardContent>
-                <TusTakimi musteriId={secili.id} borcKurus={borcKurus} />
+                <TusTakimi musteriId={secili.id} borcKurus={borcKurus} hesaplar={hesaplar} />
               </CardContent>
             </>
           ) : (

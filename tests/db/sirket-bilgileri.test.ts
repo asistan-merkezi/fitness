@@ -96,8 +96,8 @@ describe("şirket bilgileri ve banka hesapları", () => {
       expect(await say(muhasebeA)).toBe(1);
       expect(await say(resepsiyonA)).toBe(0);
       expect(await say(adminB)).toBe(0);
-      expect(await hataMesaji(() => hesapEkle(resepsiyonA, isletmeA, "TR640006400000112345678901"))).toMatch(/row-level security/i);
-      expect(await hataMesaji(() => hesapEkle(adminB, isletmeA, "TR640006400000112345678901"))).toMatch(/row-level security/i);
+      expect(await hataMesaji(() => hesapEkle(resepsiyonA, isletmeA, "TR290006400000112345678901"))).toMatch(/row-level security/i);
+      expect(await hataMesaji(() => hesapEkle(adminB, isletmeA, "TR290006400000112345678901"))).toMatch(/row-level security/i);
       expect(await hataMesaji(() => kimlikle(db, adminA, () => db.query("DELETE FROM public.isletme_banka_hesabi")))).toMatch(/permission denied/i);
     });
 

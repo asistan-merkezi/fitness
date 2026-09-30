@@ -96,6 +96,12 @@ const tamSayiOpsiyonel = (min: number, max: number, mesaj: string) =>
 export const YONTEMLER = ["nakit", "kredi_karti", "havale"] as const;
 export const SAGLIK_BAYRAKLARI = ["kronik_rahatsizlik", "kalp_damar", "tansiyon", "sakatlik", "ortopedik", "hamilelik", "diyabet", "astim", "diger"] as const;
 const yontem = z.enum(YONTEMLER, { error: "Ödeme yöntemi seçin." });
+/** Seçime bağlı banka hesabı (boş gelirse undefined). */
+const hesapIdOpsiyonel = z
+  .string()
+  .optional()
+  .transform((v) => (v ? v : undefined))
+  .pipe(z.uuid().optional());
 
 function diziye(v: unknown): unknown[] {
   if (v === undefined || v === "") return [];
@@ -269,6 +275,7 @@ export const odemeSemasi = z.object({
   musteri_id: z.uuid(),
   tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
   yontem,
+  banka_hesap_id: hesapIdOpsiyonel,
   aciklama: metinOpsiyonel(300),
   anahtar: z.uuid(),
 });
@@ -278,6 +285,7 @@ export const iadeSemasi = z.object({
   iade_edilen_hareket_id: z.uuid({ error: "İade edilecek ödemeyi seçin." }),
   tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
   yontem,
+  banka_hesap_id: hesapIdOpsiyonel,
   aciklama: metinOpsiyonel(300),
   anahtar: z.uuid(),
 });
@@ -364,6 +372,7 @@ export const personelHareketSemasi = z.object({
   tur: z.enum(["odeme", "avans"], { error: "Ödeme veya avans seçin." }),
   tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
   yontem: z.enum(["nakit", "havale"], { error: "Ödeme yöntemi seçin." }),
+  banka_hesap_id: hesapIdOpsiyonel,
   aciklama: metinOpsiyonel(300),
   anahtar: z.uuid(),
 });
@@ -513,6 +522,93 @@ export const qrAyarSemasi = z.object({
   tip: z.enum(["musteri_on_kayit", "anket", "puantaj_giris", "puantaj_cikis"]),
   aktif: onay,
 });
+
+/** "12,5" / "12.5" / "12" -> 0-100 arası yüzde (iki ondalık). */
+const yuzdeAlani = z
+  .string()
+  .trim()
+  .optional()
+  .transform((v) => (v ? Number(v.replace(",", ".")) : 0))
+  .refine((n) => Number.isFinite(n) && n >= 0 && n <= 100, "Yüzde 0 ile 100 arasında olmalı.")
+  .transform((n) => Math.round(n * 100) / 100);
+
+// ---------------------------------------------------------------------------------------------------------
+export const GIDER_KATEGORILERI = ["kira", "elektrik", "su", "dogalgaz", "internet_telefon", "bakim_onarim", "temizlik", "malzeme", "ekipman", "reklam", "sigorta", "vergi_sgk", "yazilim", "diger"] as const;
+const GIDER_YONTEMLERI = ["nakit", "havale", "kredi_karti"] as const;
+
+export const giderSemasi = z
+  .object({
+    tur: z.enum(["gider", "kamusal"]).default("gider"),
+    kategori: z.enum(GIDER_KATEGORILERI, { error: "Kategori seçin." }),
+    tutar: tlTutar("Geçerli bir tutar girin (ör. 1.250,00).").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
+    kdv_orani: tamSayiOpsiyonel(0, 100, "KDV oranı 0-100 olmalı."),
+    tarih: gunOpsiyonel,
+    tedarikci: isimOpsiyonel,
+    aciklama: metinOpsiyonel(300),
+    belge_no: metinOpsiyonel(60),
+    durum: z.enum(["odendi", "bekliyor"]).default("odendi"),
+    vade: gunOpsiyonel,
+    yontem: z.enum(GIDER_YONTEMLERI).optional().or(z.literal("").transform(() => undefined)),
+    banka_hesap_id: hesapIdOpsiyonel,
+    anahtar: z.uuid(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.durum === "odendi" && !v.yontem) ctx.addIssue({ code: "custom", path: ["yontem"], message: "Ödeme yöntemini seçin." });
+    if (v.durum === "bekliyor" && !v.vade) ctx.addIssue({ code: "custom", path: ["vade"], message: "Bekleyen gider için vade tarihi girin." });
+    if (v.banka_hesap_id && v.yontem !== "havale" && v.yontem !== "kredi_karti") ctx.addIssue({ code: "custom", path: ["banka_hesap_id"], message: "Banka hesabı yalnız havale veya kredi kartı ile seçilir." });
+  });
+
+export const giderOdeSemasi = z.object({
+  gider_id: z.uuid(),
+  yontem: z.enum(GIDER_YONTEMLERI, { error: "Ödeme yöntemini seçin." }),
+  banka_hesap_id: hesapIdOpsiyonel,
+});
+
+export const giderIptalSemasi = z.object({ gider_id: z.uuid(), neden: z.string().trim().min(3, "İptal nedenini yazın.").max(300) });
+
+/** Kasa/banka manuel hareketi. `hesap` ve `hedef`: "kasa" veya bir banka hesabının UUID'si. */
+const hesapSecimi = z.string().trim().refine((v) => v === "kasa" || z.uuid().safeParse(v).success, "Hesap seçin.");
+export const kasaBankaHareketSemasi = z
+  .object({
+    tip: z.enum(["giren", "cikan", "transfer"], { error: "Hareket türünü seçin." }),
+    hesap: hesapSecimi,
+    hedef: z.string().trim().optional(),
+    tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
+    karsi_taraf: isimOpsiyonel,
+    aciklama: metinOpsiyonel(300),
+    tarih: gunOpsiyonel,
+    anahtar: z.uuid(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.tip === "transfer") {
+      if (!v.hedef || !(v.hedef === "kasa" || z.uuid().safeParse(v.hedef).success)) ctx.addIssue({ code: "custom", path: ["hedef"], message: "Hedef hesabı seçin." });
+      else if (v.hedef === v.hesap) ctx.addIssue({ code: "custom", path: ["hedef"], message: "Kaynak ve hedef hesap aynı olamaz." });
+    }
+  });
+
+export const acilisBakiyeSemasi = z.object({
+  hesap: hesapSecimi,
+  tutar: z
+    .string()
+    .trim()
+    .refine((v) => /^-?/.test(v) && (tlYaziKurusa(v.replace(/^-/, "")) !== null || v === "" || v === "-"), "Geçerli bir tutar girin.")
+    .transform((v) => {
+      if (v === "" || v === "-") return 0;
+      const eksi = v.startsWith("-");
+      const kurus = tlYaziKurusa(v.replace(/^-/, "")) ?? 0;
+      return eksi ? -kurus : kurus;
+    }),
+});
+
+export const iskontoOranlariSemasi = z.object({
+  standart: yuzdeAlani,
+  gold: yuzdeAlani,
+  vip: yuzdeAlani,
+  platinum: yuzdeAlani,
+});
+
+export const faturaOlusturSemasi = z.object({ hareket_idleri: z.array(z.uuid()).min(1, "En az bir borç satırı seçin.") });
+export const faturaIptalSemasi = z.object({ fatura_id: z.uuid(), neden: z.string().trim().min(3, "İptal nedenini yazın.").max(300) });
 
 /** İlk hata mesajını döndürür (form üstünde tek satır gösterim için). */
 export function ilkHata(hata: z.ZodError): string {

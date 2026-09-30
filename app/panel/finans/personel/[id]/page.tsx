@@ -35,10 +35,11 @@ export default async function PersonelKartiSayfasi({ params }: { params: Promise
   const { data: personel } = await supabase.from("kullanici").select("id, ad_soyad, rol, aktif").eq("id", id).maybeSingle<{ id: string; ad_soyad: string; rol: KullaniciRolu; aktif: boolean }>();
   if (!personel || personel.rol === "super_admin") notFound();
 
-  const [{ data: profilVeri }, { data: hareketVeri }, { data: bakiyeVeri }] = await Promise.all([
+  const [{ data: profilVeri }, { data: hareketVeri }, { data: bakiyeVeri }, { data: hesapVeri }] = await Promise.all([
     supabase.from("personel_profil").select("maas_kurus, ders_prim_kurus, ise_giris_tarihi, isten_cikis_tarihi").eq("kullanici_id", id).maybeSingle<Profil>(),
     supabase.from("personel_hesap_hareket").select("id, tur, tutar_kurus, donem, odeme_yontemi, aciklama, created_at").eq("kullanici_id", id).order("created_at", { ascending: false }).limit(100),
     supabase.from("personel_bakiye").select("hak_edilen_kurus, odenen_kurus, bakiye_kurus").eq("kullanici_id", id).maybeSingle<{ hak_edilen_kurus: number; odenen_kurus: number; bakiye_kurus: number }>(),
+    supabase.rpc("banka_hesap_secenekleri"),
   ]);
   const profil = profilVeri ?? null;
   const hareketler = (hareketVeri ?? []) as Hareket[];
@@ -102,7 +103,7 @@ export default async function PersonelKartiSayfasi({ params }: { params: Promise
           <CardDescription>Kayıtlar değiştirilemez; hatalı kayıt için ters yönde yeni kayıt girin.</CardDescription>
         </CardHeader>
         <CardContent>
-          <HareketFormu kullaniciId={personel.id} />
+          <HareketFormu kullaniciId={personel.id} hesaplar={(hesapVeri ?? []) as { id: string; ad: string }[]} />
         </CardContent>
       </Card>
 

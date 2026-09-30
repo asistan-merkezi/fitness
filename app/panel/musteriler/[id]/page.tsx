@@ -43,7 +43,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
   const { data: musteri } = await supabase.from("musteri").select("*").eq("id", id).maybeSingle<MusteriSatiri>();
   if (!musteri) notFound();
 
-  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc] = await Promise.all([
+  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc, hesapSonuc, iskontoSonuc] = await Promise.all([
     supabase.from("musteri_hassas").select("*").eq("musteri_id", id).maybeSingle<MusteriHassasSatiri>(),
     supabase.from("musteri_veli").select("ad_soyad, telefon, yakinlik").eq("musteri_id", id).maybeSingle<MusteriVeliSatiri>(),
     supabase.from("uyelik_gorunum").select("*").eq("musteri_id", id).order("baslangic_tarihi", { ascending: false }),
@@ -52,7 +52,11 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
     supabase.from("uyelik_paketi").select("*").eq("aktif", true).order("ad"),
     supabase.from("musteri_onam").select("tur, verildi, metin_versiyonu, created_at").eq("musteri_id", id).order("created_at", { ascending: false }),
     supabase.from("musteri_bakiye").select("bakiye_kurus").eq("musteri_id", id).maybeSingle<{ bakiye_kurus: number }>(),
+    supabase.rpc("banka_hesap_secenekleri"),
+    supabase.from("kategori_iskonto_orani").select("yuzde").eq("kategori", musteri.kategori).maybeSingle<{ yuzde: number }>(),
   ]);
+  const hesaplar = (hesapSonuc.data ?? []) as { id: string; ad: string }[];
+  const kategoriYuzdesi = Number(iskontoSonuc.data?.yuzde ?? 0);
 
   const hassas = hassasSonuc.data;
   const veli = veliSonuc.data;
@@ -233,7 +237,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
               ) : paketler.length === 0 ? (
                 <EmptyState compact title="Satışa açık paket yok. Önce “Üyelik Paketleri”nden paket oluşturun." />
               ) : (
-                <SatisFormu musteriId={id} paketler={paketler} bugun={bugun} />
+                <SatisFormu musteriId={id} paketler={paketler} bugun={bugun} kategoriYuzdesi={kategoriYuzdesi} />
               )}
             </CardContent>
           </Card>
@@ -248,12 +252,12 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
               <CardDescription>Kayıtlar değiştirilemez; yanlış kayıt yeni (ters) kayıtla düzeltilir.</CardDescription>
             </CardHeader>
             <CardContent className="flex flex-col gap-6">
-              <OdemeFormu musteriId={id} />
+              <OdemeFormu musteriId={id} hesaplar={hesaplar} />
               {yonetici && (
                 <details>
                   <summary className="cursor-pointer text-sm font-semibold text-muted-foreground select-none">İade yap (yönetici)</summary>
                   <div className="mt-3">
-                    <IadeFormu musteriId={id} odemeler={iadeEdilebilirOdemeler} />
+                    <IadeFormu musteriId={id} odemeler={iadeEdilebilirOdemeler} hesaplar={hesaplar} />
                   </div>
                 </details>
               )}
