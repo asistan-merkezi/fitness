@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellRing, CalendarClock, LayoutDashboard, Link2Off, Phone, RefreshCw, ScanLine, TriangleAlert, UserPlus, Users, Wallet, Banknote } from "lucide-react";
+import { BellRing, CalendarClock, CalendarDays, LayoutDashboard, Link2Off, Phone, RefreshCw, ScanLine, TriangleAlert, UserPlus, Users, Wallet, Banknote } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -43,7 +43,16 @@ export default async function PanelAnaSayfa() {
     return (
       <>
         <PageHeader title="Panel" description="Fitness Asistanı yönetim paneli" icon={LayoutDashboard} />
-        <EmptyState icon={LayoutDashboard} title="Antrenör ekranları yakında" description="Ders, müşteri ölçümü ve program modülleri sonraki aşamalarda eklenecek." />
+        <EmptyState
+          icon={CalendarDays}
+          title="Bugünkü dersleriniz"
+          description="Size atanmış dersleri görmek ve derse başlamak/tamamlamak için Dersler sayfasını açın."
+          action={
+            <Link href="/panel/dersler" className={buttonVariants()}>
+              Derslere Git
+            </Link>
+          }
+        />
       </>
     );
   }

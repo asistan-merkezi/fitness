@@ -24,6 +24,12 @@ export function PaketFormu({ paket }: { paket?: PaketSatiri }) {
             <option value="seans">Seans bazlı (ör. 10 PT)</option>
           </SecimKutusu>
         </Alan>
+        <Alan etiket="Kapsam" htmlFor={`${on}kapsam`} ipucu="Salon girişi: check-in hak düşer. PT dersi: yalnız ders hakkı düşer (seans bazlı olmalı).">
+          <SecimKutusu id={`${on}kapsam`} name="kapsam" defaultValue={paket?.kapsam ?? "giris"}>
+            <option value="giris">Salon girişi</option>
+            <option value="ders">PT dersi</option>
+          </SecimKutusu>
+        </Alan>
         <Alan etiket="Süre (gün)" htmlFor={`${on}sure`} ipucu="Yalnız süre bazlı pakette.">
           <Input id={`${on}sure`} name="sure_gun" inputMode="numeric" defaultValue={paket?.sure_gun ?? ""} autoComplete="off" />
         </Alan>

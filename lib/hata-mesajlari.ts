@@ -31,6 +31,19 @@ const KOD_MESAJLARI: Record<string, string> = {
   defter_degismez: "Cari kayıtları değiştirilemez; düzeltme için yeni kayıt girin.",
   degismez_alan: "Bu alan değiştirilemez.",
   isletme_degistirilemez: "Kullanıcının işletmesi değiştirilemez.",
+  antrenor_dolu: "Antrenörün bu saatte başka bir dersi var.",
+  alan_dolu: "Bu alan/stüdyo bu saatte dolu.",
+  musteri_dolu: "Müşterinin bu saatte başka bir dersi var.",
+  cakisma: "Bu saatte çakışan bir ders var.",
+  sure_gecersiz: "Ders süresi 15-480 dakika olmalı.",
+  ucret_gecersiz: "Ders ücreti geçersiz.",
+  antrenor_bulunamadi: "Antrenör bulunamadı veya pasif.",
+  alan_bulunamadi: "Alan/stüdyo bulunamadı veya pasif.",
+  ders_bulunamadi: "Ders bulunamadı.",
+  ders_tasinamaz: "Yalnızca planlanmış veya ertelenmiş dersler taşınabilir.",
+  gecersiz_durum: "Geçersiz ders durumu.",
+  gecikme_gerekli: "Gecikme süresini (dakika) girin.",
+  borc_islendi: "Bu ders için cariye borç yazıldı; durumu geri alınamaz. Düzeltme gerekiyorsa cari üzerinden yapın.",
 };
 
 /** Kısıt/izin ihlalleri için ipuçları (Postgres standart mesajından). */

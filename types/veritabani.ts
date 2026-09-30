@@ -40,6 +40,8 @@ export type PaketSatiri = {
   id: string;
   ad: string;
   tur: "sure" | "seans";
+  /** giris: salona giriş hakkı (check-in düşer) · ders: yalnız PT dersi düşer. */
+  kapsam: "giris" | "ders";
   sure_gun: number | null;
   seans_sayisi: number | null;
   gecerlilik_gun: number | null;
@@ -100,4 +102,24 @@ export type CheckInSonucu = {
   zaten_giris?: boolean;
   uyari?: boolean;
   giris_id?: string;
+};
+
+export type AlanSatiri = { id: string; ad: string; aktif: boolean };
+
+export type DersDurumu = "planlandi" | "geldi" | "gecikmeli_geldi" | "derste" | "iptal" | "gelmedi" | "ertelendi" | "tamamlandi";
+
+export type DersSeansiSatiri = {
+  id: string;
+  musteri_id: string;
+  antrenor_id: string;
+  alan_id: string;
+  baslangic: string;
+  bitis: string;
+  durum: DersDurumu;
+  gecikme_dakika: number | null;
+  ucret_kurus: number;
+  uyelik_id: string | null;
+  hak_dusuldu: boolean;
+  borc_hareket_id: string | null;
+  not_metni: string | null;
 };

@@ -16,6 +16,7 @@ const HERKES = ["isletme_admin", "resepsiyon", "muhasebe", "antrenor"] as const 
 export const ANA_OGELER: readonly MenuOgesi[] = [
   { href: "/panel", etiket: "Ana Ekran", ikon: "panel", roller: HERKES },
   { href: "/panel/musteriler", etiket: "Müşteriler", ikon: "musteriler", roller: MUSTERI_ROLLERI },
+  { href: "/panel/dersler", etiket: "Dersler", ikon: "ders", roller: [...MUSTERI_ROLLERI, "antrenor"] },
   { href: "/panel/check-in", etiket: "Check-in", ikon: "check-in", roller: MUSTERI_ROLLERI },
 ];
 
@@ -40,9 +41,9 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
     ogeler: [
       { href: "/panel/uyelik-paketleri", etiket: "Üyelik Paketleri", ikon: "paket", roller: PAKET_GORUNTULEME_ROLLERI },
       { href: "/panel/yonetim/denetim-gecmisi", etiket: "Denetim Geçmişi", ikon: "denetim", roller: YONETICI_ROLLERI },
-      { href: "/panel/yonetim/ders-programi", etiket: "Ders Programı", ikon: "ders", roller: MUSTERI_ROLLERI, yakinda: true },
       { href: "/panel/yonetim/antrenman-programlari", etiket: "Antrenman Programları", ikon: "program", roller: YONETICI_ROLLERI, yakinda: true },
-      { href: "/panel/yonetim/ekipman", etiket: "Ekipman ve Alanlar", ikon: "ekipman", roller: YONETICI_ROLLERI, yakinda: true },
+      { href: "/panel/yonetim/alanlar", etiket: "Alanlar ve Stüdyolar", ikon: "ekipman", roller: YONETICI_ROLLERI },
+      { href: "/panel/yonetim/ekipman", etiket: "Ekipman", ikon: "program", roller: YONETICI_ROLLERI, yakinda: true },
     ],
   },
   {
