@@ -5,9 +5,9 @@ import { ayDonemi } from "@/lib/donem";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /**
- * Aylık audit_log bölümü: ayın 1'i 02:00 UTC (= 05:00 İstanbul) gelecek iki ayın bölümünü oluşturur.
+ * Aylık audit_log bölümleri: her gün 02:00 UTC (= 05:00 İstanbul) çalışır, gelecek iki ayın bölümünün var olduğundan emin olur.
  * Vercel Cron `Authorization: Bearer $CRON_SECRET` gönderir; secret yoksa rota KAPALIDIR.
- * İş idempotenttir (var olan bölüm atlanır); gecikmeli/çift tetiklenme zararsızdır.
+ * İş idempotenttir (var olan bölüm atlanır); günlük çalışması ayın 1'ini kaçırma riskini ortadan kaldırır, gecikmeli/çift tetiklenme zararsızdır.
  */
 function yetkiliMi(istek: Request): boolean {
   const secret = process.env.CRON_SECRET;

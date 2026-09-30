@@ -11,7 +11,7 @@ Fitness salonları, PT stüdyoları ve spor kompleksleri için çok kiracılı (
 - Mesajlaşma (SMS/WhatsApp/Mail): `mesaj.asistanmerkezi` merkez ucu; idempotency, versiyon kontrolü, hata kodları ve ödeme referansı ilkeleri klinikteki gibi.
 - Kart ödemesi: TCMB lisanslı kuruluş (iyzico/PayTR) + 3DS. Stripe'ın Türkiye'deki yerel işletmelere açıklığı DOĞRULANMADAN seçilmez.
 - Tablet/kiosk: Supabase Realtime, salt-okunur (PIN/device_token/gizlilik modu); çevrimdışı tolerans (`public/tablet-offline.html` + network-only SW).
-- Cron (`vercel.json`, UTC): `personel-donem-otomatik-kapat` ayın 1'i 03:00 UTC (= 06:00 İstanbul); `audit-log-bolum-olustur` ayın 1'i 02:00 UTC (= 05:00 İstanbul); `mesaj-kuyruk-isle`, `kredi-senkron` tetikleyiciye bağlı.
+- Cron (`vercel.json`, UTC): `personel-donem-otomatik-kapat` ayın 1'i 03:00 UTC (= 06:00 İstanbul); `audit-log-bolum-olustur` her gün 02:00 UTC (= 05:00 İstanbul, idempotent); `mesaj-kuyruk-isle`, `kredi-senkron` tetikleyiciye bağlı.
 
 ## Veri Modeli
 Tenant izolasyonu: `current_isletme_id()` + RLS; müşteri portalı: `current_musteri_id()`. Tüm tablo/kolon/rol adları ASCII Türkçe snake_case (ö,ü,ş,ı,ğ,ç YOK).

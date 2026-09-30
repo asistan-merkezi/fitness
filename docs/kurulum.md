@@ -36,7 +36,7 @@ Sonra `npm run dev` → `/giris`. Yönetici, **Personel** ekranından diğer hes
 
 ## 5. Vercel
 - Projeyi bağlayın (bölge: Frankfurt `fra1`), ortam değişkenlerini Production/Preview için ayrı ayrı girin.
-- `vercel.json` cron'u: `/api/cron/audit-log-bolum-olustur` ayın 1'i 02:00 UTC (= 05:00 İstanbul); `CRON_SECRET` tanımlı olmalı. Hobby planda cron saat hassasiyeti ve günlük sınır vardır (güncel dokümana bakın).
+- `vercel.json` cron'u: `/api/cron/audit-log-bolum-olustur` her gün 02:00 UTC (= 05:00 İstanbul; idempotent, var olan bölümleri atlar); `CRON_SECRET` tanımlı olmalı. Hobby planda cron günde bir kez çalışabilir ve saat hassasiyeti yoktur (belirtilen saat içinde bir an); günlük zamanlama bu sınıra uygundur (güncel dokümana bakın).
 
 ## 6. Yayın öncesi kontrol
 - Test projesinde: üyelik sat → check-in → ödeme → iade → dondurma akışı elle denendi mi?
