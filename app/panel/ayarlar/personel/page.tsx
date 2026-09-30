@@ -36,7 +36,7 @@ export default async function PersonelSayfasi() {
       <Card>
         <CardHeader>
           <CardTitle>Yeni personel</CardTitle>
-          <CardDescription>Hesap oluşturulur; personel e-posta ve geçici şifreyle giriş yapar.</CardDescription>
+          <CardDescription>Hesap oluşturulur. Yönetici e-posta, diğer personel telefon numarası ve geçici şifreyle giriş yapar.</CardDescription>
         </CardHeader>
         <CardContent>
           <PersonelEkleFormu />

@@ -30,6 +30,9 @@ export function PersonelEkleFormu() {
         <Alan etiket="Rol" htmlFor="pe_rol">
           <RolSecimi id="pe_rol" varsayilan="resepsiyon" />
         </Alan>
+        <Alan etiket="Telefon" htmlFor="pe_telefon" ipucu="Yönetici dışındaki roller bu numarayla giriş yapar; yönetici için boş bırakılabilir.">
+          <Input id="pe_telefon" name="telefon" type="tel" autoComplete="off" placeholder="05xx xxx xx xx" />
+        </Alan>
         <Alan etiket="E-posta" htmlFor="pe_eposta">
           <Input id="pe_eposta" name="eposta" type="email" autoComplete="off" required />
         </Alan>

@@ -70,7 +70,7 @@ export default function GirisSayfasi() {
           <Card className="w-full max-w-sm" elevated>
             <CardHeader>
               <CardTitle className="text-xl">Giriş</CardTitle>
-              <CardDescription>İşletme hesabınızla giriş yapın.</CardDescription>
+              <CardDescription>Yönetici e-posta, personel telefon numarasıyla giriş yapar.</CardDescription>
             </CardHeader>
             <CardContent>
               <LoginForm />

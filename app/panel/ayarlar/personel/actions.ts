@@ -7,7 +7,7 @@ import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/e
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
 import { YONETICI_ROLLERI } from "@/lib/panel/roller";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isimNormalle } from "@/lib/utils";
+import { isimNormalle, telefonE164 } from "@/lib/utils";
 
 type Onceki = EylemSonucu | null;
 
@@ -21,6 +21,7 @@ const personelEkleSemasi = z.object({
     .min(10, "Şifre en az 10 karakter olmalı.")
     .max(72, "Şifre en fazla 72 karakter olabilir.")
     .refine((s) => /[a-zA-Z]/.test(s) && /\d/.test(s), "Şifre harf ve rakam içermeli."),
+  telefon: z.string().trim().max(30).optional(),
   rol: z.enum(ROLLER, { error: "Rol seçin." }),
 });
 
@@ -35,6 +36,11 @@ export async function personelEkle(_onceki: Onceki, formData: FormData): Promise
   const ayristirma = personelEkleSemasi.safeParse(formVerisi(formData));
   if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
   const v = ayristirma.data;
+
+  // Giriş kuralı: yönetici e-posta ile, diğer roller TELEFON ile girer → yönetici dışında telefon zorunlu.
+  const telefon = telefonE164(v.telefon);
+  if (v.telefon && !telefon) return hata("Geçerli bir cep telefonu girin (ör. 0532 123 45 67).");
+  if (v.rol !== "isletme_admin" && !telefon) return hata("Bu rol telefon numarasıyla giriş yapar; telefon zorunlu.");
 
   const admin = createAdminClient();
   const { data: olusan, error: authHatasi } = await admin.auth.admin.createUser({
@@ -52,15 +58,16 @@ export async function personelEkle(_onceki: Onceki, formData: FormData): Promise
     isletme_id: oturum.kullanici.isletme_id,
     ad_soyad: v.ad_soyad,
     rol: v.rol,
+    telefon,
   });
   if (profilHatasi) {
     console.error("[personelEkle:profil]", profilHatasi.code);
     await admin.auth.admin.deleteUser(olusan.user.id); // yarım kalan hesabı geri al
-    return hata("Personel kaydı oluşturulamadı.");
+    return hata(profilHatasi.code === "23505" ? "Bu telefon numarası başka bir hesapta kayıtlı." : "Personel kaydı oluşturulamadı.");
   }
 
   revalidatePath("/panel/ayarlar/personel");
-  return basari(`${v.ad_soyad} için hesap oluşturuldu. Şifreyi kişiye güvenli bir yolla iletin.`);
+  return basari(`${v.ad_soyad} için hesap oluşturuldu. Giriş: ${v.rol === "isletme_admin" ? "e-posta" : "telefon"} + şifre. Şifreyi kişiye güvenli bir yolla iletin.`);
 }
 
 const personelGuncelleSemasi = z.object({
