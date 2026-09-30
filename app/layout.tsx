@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -14,9 +14,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const ACIKLAMA = "Üyelik, check-in, cari ve kasa tek yerde. Spor salonları ve PT stüdyoları için güvenli, hızlı yönetim paneli.";
+
 export const metadata: Metadata = {
-  title: "Fitness Asistanı",
-  description: "Fitness salonları ve PT stüdyoları için işletme yönetim paneli",
+  metadataBase: new URL("https://fitness.asistanmerkezi.com"),
+  title: { default: "Fitness Asistanı | Spor Salonu Yönetim Yazılımı", template: "%s | Fitness Asistanı" },
+  description: ACIKLAMA,
+  applicationName: "Fitness Asistanı",
+  openGraph: {
+    type: "website",
+    siteName: "Fitness Asistanı",
+    locale: "tr_TR",
+    title: "Fitness Asistanı | Spor Salonu Yönetim Yazılımı",
+    description: ACIKLAMA,
+    url: "/",
+  },
+  twitter: { card: "summary_large_image", title: "Fitness Asistanı", description: ACIKLAMA },
+  robots: { index: true, follow: true },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#121316" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f2" },
+  ],
+  colorScheme: "dark light",
 };
 
 export default function RootLayout({
@@ -31,7 +53,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+        {/* Koyu tema varsayılan; kullanıcı Açık / Koyu / Sistem seçebilir ve seçim bu cihazda hatırlanır. */}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           {children}
         </ThemeProvider>
       </body>

@@ -51,6 +51,13 @@ export function gunEkle(tarih: string, gun: number): string {
   return `${t.getUTCFullYear()}-${pad2(t.getUTCMonth() + 1)}-${pad2(t.getUTCDate())}`;
 }
 
+/** İki "YYYY-MM-DD" arasındaki takvim günü farkı (b - a); saat dilimi kaymasından bağımsız. */
+export function gunFarki(a: string, b: string): number {
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86_400_000);
+}
+
 /** ay: 1-12 */
 function ayBaslangiciUTC(yil: number, ay1Indeksli: number): string {
   return startOfDayUTC(new Date(Date.UTC(yil, ay1Indeksli - 1, 1, 12)));

@@ -4,445 +4,281 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * Fitness Asistanı — "Kinetic Performance Core" tasarım sistemi (Stitch çıktısı, DESIGN.md).
+ * Koyu (grafit/mürekkep) VARSAYILAN; açık (sıcak kırık beyaz) eşit vatandaştır.
+ * Tek marka vurgusu "Electric Volt" limon-yeşili: koyuda #C8F53C, açıkta #5E8A00 (WCAG AA).
+ * Kurallar: gradyan/cam efekti/bulanıklık YOK; hiyerarşi düz tonlar ve 1px kenarlıkla kurulur.
+ * Kart 12px, form kontrolü/düğme 8px, durum hapı tam yuvarlak. Para/sayı: tabular rakam.
+ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-jakarta);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive-soft: var(--destructive-soft);
   --color-destructive-border: var(--destructive-border);
   --color-success: var(--success);
-  --color-success-foreground: var(--success-foreground);
   --color-success-soft: var(--success-soft);
   --color-success-border: var(--success-border);
   --color-warning: var(--warning);
-  --color-warning-foreground: var(--warning-foreground);
   --color-warning-soft: var(--warning-soft);
   --color-warning-border: var(--warning-border);
   --color-info: var(--info);
-  --color-info-foreground: var(--info-foreground);
   --color-info-soft: var(--info-soft);
   --color-info-border: var(--info-border);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-clinical: var(--clinical);
-  --color-clinical-foreground: var(--clinical-foreground);
-  --color-clinical-hover: var(--clinical-hover);
-  --color-clinical-accent: var(--clinical-accent);
-  --color-clinical-soft: var(--clinical-soft);
-  --color-clinical-border: var(--clinical-border);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-primary-hover: var(--primary-hover);
-  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-input: var(--input);
   --color-input-bg: var(--input-bg);
-  --color-surface: var(--card);
-  --color-border-subtle: var(--border);
-  --color-tablet-zemin: var(--tablet-zemin);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-ring: var(--sidebar-ring);
 
-  /* Radius ölçeği — docs/DESIGN.md "Shapes" bölümüyle birebir: sm 0.25rem,
-     DEFAULT/md 0.5rem (form kontrolleri), lg 0.75rem (ara katman), xl/2xl
-     1rem (kart/konteyner — mevcut Card bileşeni zaten rounded-2xl kullanıyor,
-     böylece hiçbir component dokunulmadan doğru radiusa oturuyor), 3xl/4xl
-     1.5rem (hero/modal tavanı, DESIGN'ın en büyük tanımlı değeri — hiçbir
-     yerde bundan daha yuvarlak olunmaz). */
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
-  --radius-2xl: 1rem;
-  --radius-3xl: 1.5rem;
-  --radius-4xl: 1.5rem;
+  --shadow-z1: var(--shadow-kart);
+  --shadow-z2: var(--shadow-ust);
+  --shadow-z3: var(--shadow-ust);
 
-  /* Elevation — docs/DESIGN.md "Elevation & Depth" (Z1/Z2/Z3), açık/koyu
-     karşılıkları :root/.dark'ta --elevation-* olarak tanımlı. */
-  --shadow-z1: var(--elevation-z1);
-  --shadow-z2: var(--elevation-z2);
-  --shadow-z3: var(--elevation-z3);
-
-  /* Shell ölçüleri — docs/DESIGN.md "Layout & Spacing". */
-  --spacing-sidebar: 17.5rem;
-  --spacing-topbar: 4.25rem;
-  --spacing-rail: 5rem;
-  --spacing-gutter: 1.5rem;
-  --spacing-gutter-sm: 1rem;
+  --breakpoint-xl: 80rem; /* 1280px: sol menü 260px */
 }
 
-/* docs/DESIGN.md "tabular-data" tipografi token'ı — ROM/VAS skoru, seans
-   süresi/ücreti gibi ölçüm sütunlarında dikey hizalama için. Sade
-   `tabular-nums` yeterli olmayan yerlerde (DESIGN'ın kendi boyut/ağırlık
-   spesifikasyonuyla) kullanılır; Faz 2/3'te tablo/kart bileşenlerine
-   uygulanacak. */
-@utility text-tabular {
-  font-variant-numeric: tabular-nums;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.125rem;
-  letter-spacing: 0.01em;
-}
-
+/* ---- Açık tema (sıcak kırık beyaz) ---- */
 :root {
-  /* Açık tema paleti — docs/DESIGN.md (Klinik Asistanı Design System) ile
-     birebir: "Modern Clinical Minimalism + Soft Layered Elevation". Primary
-     derin klinik ultramarine (#1E40AF), secondary restoratif teal (#0D9488).
-     Önceki cyan/electric-blue açık tema paleti (2026-08-04 kararı) bu turda
-     DESIGN.md'ye geçirildi (2026-09-08 kararı) — .dark KALDIRILMADI, ayrı
-     bloktan bağımsız kalmaya devam ediyor (sadece neon primary/ring/sidebar
-     vurguları DESIGN'ın lacivert/teal diline çekildi, bkz. .dark notu). */
-  color-scheme: light;
-  --background: #F8FAFC;
-  --foreground: #0F172A;
-  --card: #FFFFFF;
-  --card-foreground: #0F172A;
-  --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
-  --primary: #1E40AF;
-  --primary-foreground: #FFFFFF;
-  --primary-hover: #1D4ED8;
-  /* shadcn'in nötr "secondary" semantiği (2026-09-08 düzeltmesi) — DESIGN.md'nin
-     klinik teal'i bunun yerine geçmiyor, ayrı --clinical token setinde. */
-  --secondary: #F1F5F9;
-  --secondary-foreground: #334155;
-  /* --clinical: docs/DESIGN.md "Secondary Palette (Rehabilitasyon & Klinik
-     İlerleme)" — "Seansı Başlat" gibi prosedürel/olumlu aksiyonlar ve aktif
-     tedavi/protokol göstergeleri bu tonu kullanır.
-     Kontrast düzeltmesi (2026-09-08, Faz 1 kullanıcı kararı "b"): DESIGN'ın
-     literal "Teal 600 #0D9488 + beyaz metin" buton spesifikasyonu AA'yı
-     geçmiyordu (3.74:1) — dolu zemin/beyaz metin artık Teal 700 #0F766E
-     (5.47:1). Teal 600 SİLİNMEDİ, --clinical-accent olarak metin taşımayan
-     kullanımlara (ilerleme çubuğu, aktif seans ring'i, ikon tonu, chart
-     plot — DESIGN'ın "accent base" rolü) taşındı. */
-  --clinical: #0F766E;
-  --clinical-foreground: #FFFFFF;
-  --clinical-hover: #115E59;
-  --clinical-accent: #0D9488;
-  --clinical-soft: #F0FDFA;
-  --clinical-border: #99F6E4;
-  --muted: #F1F5F9;
-  /* WCAG düzeltmesi (Faz 4, açık tema geneli): #64748B (slate-500), --card
-     üzerinde 4.76:1 ile zaten sınırdaydı — panelin renkli yüzeyleri (randevu
-     kutusu dolguları, StatusBadge soft arka planları) üzerinde 4.04-4.59:1'e
-     düşüp AA'yı kaçırıyordu. Bir Tailwind kademesi koyultuldu (slate-600,
-     #475569) — card/background'da 7.24-7.58:1, TÜM 8 randevu kutusu dolgusu
-     ve TÜM 8 StatusBadge soft yüzeyinde 6.43:1+ (node ile sRGB relative
-     luminance formülüyle hesaplandı, en düşük değer primary/10 dolgusunda
-     6.43:1). Bu token proje genelinde paylaşıldığı için (durum-tonlari.ts'teki
-     "slate" StatusBadge'e özel text-slate-600 fix'i artık gereksiz hale geldi
-     ama geri alınmadı — ikisi aynı değeri taşıyor, çakışma yok) geniş bir etki
-     alanı var; #334155 (slate-700, --secondary-foreground) sınırı aşılmadı. */
-  --muted-foreground: #475569;
-  --accent: #EFF6FF;
-  --accent-foreground: #1E40AF;
-  --destructive: #E11D48;
-  --destructive-foreground: #FFFFFF;
-  --destructive-soft: #FFF1F2;
-  --destructive-border: #FECDD3;
-  --success: #059669;
-  --success-foreground: #FFFFFF;
-  --success-soft: #ECFDF5;
-  --success-border: #A7F3D0;
-  --warning: #D97706;
-  --warning-foreground: #FFFFFF;
-  --warning-soft: #FFFBEB;
-  --warning-border: #FDE68A;
-  --info: #4F46E5;
-  --info-foreground: #FFFFFF;
-  --info-soft: #EEF2FF;
-  --info-border: #C7D2FE;
-  --border: #E2E8F0;
-  --input: #CBD5E1;
-  --input-bg: #FFFFFF;
-  --ring: #3B82F6;
-  --surface-2: #FFFFFF;
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.5rem;
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #0F172A;
-  --sidebar-primary: #1E40AF;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EFF6FF;
-  --sidebar-accent-foreground: #1E40AF;
-  --sidebar-border: #E2E8F0;
-  --sidebar-ring: #3B82F6;
+  --background: #f7f6f2;
+  --foreground: #14171c;
+  --card: #ffffff;
+  --card-foreground: #14171c;
+  --popover: #ffffff;
+  --popover-foreground: #14171c;
 
-  /* Elevation — docs/DESIGN.md "Elevation & Depth" Z1/Z2/Z3 (açık tema). */
-  --elevation-z1: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
-  --elevation-z2: 0 10px 25px -5px rgba(30, 64, 175, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
-  --elevation-z3: 0 20px 35px -8px rgba(15, 23, 42, 0.16), 0 1px 3px rgba(15, 23, 42, 0.06);
-  --elevation-backdrop: rgba(15, 23, 42, 0.35);
-  --elevation-active-ring: 0 0 0 3px rgba(20, 184, 166, 0.2);
+  --primary: #5e8a00;
+  --primary-foreground: #ffffff;
+  --primary-hover: #4f7500;
+  --secondary: #efece4;
+  --secondary-foreground: #14171c;
+  --muted: #efece4;
+  --muted-foreground: #5b6470;
+  --accent: #efece4;
+  --accent-foreground: #14171c;
 
-  /* Kapı tableti: panelin kendi --background'ından bilinçli olarak ayrı —
-     tam ekran, doku katmanı üstünde okunacak, saf siyah/beyaz olmayan bir
-     zemin (bkz. TabletBackground). */
-  --tablet-zemin: #F8FAFC;
-  --tablet-doku-nokta: #0F172A;
-  --tablet-doku-nokta-opacity: 0.06;
+  --destructive: #be123c;
+  --destructive-foreground: #ffffff;
+  --success: #047857;
+  --warning: #b45309;
+  --info: #0369a1;
+
+  --border: #ddd8cd;
+  --input: #ddd8cd;
+  --input-bg: #ffffff;
+  --ring: #5e8a00;
+
+  --surface: #ffffff; /* Seviye 1: yapısal paneller (menü, üst çubuk) */
+  --surface-2: #efece4; /* Seviye 2: iç alanlar */
+  --surface-3: #e6e2d6; /* Seviye 3: hover */
+
+  --chart-1: #5e8a00;
+  --chart-2: #0369a1;
+  --chart-3: #b45309;
+  --chart-4: #047857;
+  --chart-5: #be123c;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #14171c;
+  --sidebar-border: #ddd8cd;
+  --sidebar-accent: #efece4;
+  --sidebar-accent-foreground: #14171c;
+  --sidebar-primary: #5e8a00;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-ring: #5e8a00;
+
+  --shadow-kart: 0 1px 2px 0 rgba(20, 23, 28, 0.06);
+  --shadow-ust: 0 12px 24px -4px rgba(20, 23, 28, 0.14), 0 0 0 1px #ddd8cd;
 }
 
+/* ---- Koyu tema (grafit / mürekkep) — VARSAYILAN ---- */
 .dark {
-  /* Koyu (glassmorphism) tema KALDIRILMADI — zemin/kart/border/muted vb.
-     aynen korunuyor. Tek değişiklik (2026-09-08, docs/DESIGN.md turu):
-     neon cyan primary/ring/sidebar vurguları DESIGN.md'nin lacivert/teal
-     diline çekildi — aynı token isimleri, sadece bu isimlerin koyu
-     karşılığı artık marka rengiyle tutarlı. Bkz. tailwind.config.ts
-     (app/(marketing) için, ayrı skope).
-     Kontrast düzeltmesi (Faz 1 doğrulaması): ilk turda Primary 500
-     (#3B82F6) kullanılmıştı ama beyaz metinle 3.68:1 — WCAG AA 4.5:1'i
-     GEÇEMİYOR (gerçek hesapla bulundu). DESIGN.md'nin kendisi #3B82F6'yı
-     zaten "secondary interactive triggers, links" için ayırıyor, dolu
-     buton/aktif-nav zemini için değil (o rol DESIGN'da Primary 800
-     #1E40AF/"Brand Base"). Bu yüzden koyu temada dolu zeminler için
-     Primary 600 (#2563EB, beyaz metinle 5.17:1) kullanılıyor — bu benim
-     kendi ara-değerimdi (DESIGN'ın literal bir hex talimatı değildi),
-     düzeltme bu yüzden serbestçe yapıldı. */
-  color-scheme: dark;
-  --background: #090d16;
-  --foreground: #f8fafc;
-  --card: #1e293b;
-  --card-foreground: #f8fafc;
-  --popover: #1e293b;
-  --popover-foreground: #f8fafc;
-  --primary: #2563EB;
-  --primary-foreground: #FFFFFF;
-  --primary-hover: #3B82F6;
-  /* Değiştirilmeden önce (Faz 0 turu) burada nötr bir slate-900 zemindi —
-     2026-09-08 düzeltmesiyle aynı nötr role geri döndü (teal ayrı --clinical
-     token setine taşındı). */
-  --secondary: #0f172a;
-  --secondary-foreground: #f8fafc;
-  /* Kontrast düzeltmesi (2026-09-08, Faz 1 kullanıcı kararı "b"): koyu
-     zeminde HİÇBİR teal tonunda beyaz metin AA'yı geçmiyor — bunun yerine
-     koyu metin (#0F172A) kullanılıyor (7.17:1). --clinical-accent (metin
-     taşımayan roller) burada --clinical ile aynı değeri paylaşıyor, ayrı
-     bir koyulaştırma gerekmedi (zaten AA'yı geçiyordu). */
-  --clinical: #14B8A6;
-  --clinical-foreground: #0F172A;
-  --clinical-hover: #2DD4BF;
-  --clinical-accent: #14B8A6;
-  --clinical-soft: rgba(20, 184, 166, 0.12);
-  --clinical-border: rgba(20, 184, 166, 0.4);
-  --muted: #0f172a;
+  --background: #121316;
+  --foreground: #f8f9fa;
+  --card: #22252a;
+  --card-foreground: #f8f9fa;
+  --popover: #2c3037;
+  --popover-foreground: #f8f9fa;
+
+  --primary: #c8f53c;
+  --primary-foreground: #121316;
+  --primary-hover: #d4f75e;
+  --secondary: #22252a;
+  --secondary-foreground: #f8f9fa;
+  --muted: #1a1c20;
   --muted-foreground: #94a3b8;
-  --accent: #24344a;
-  --accent-foreground: #f8fafc;
-  /* WCAG düzeltmesi (Faz 4): rose-500 (#f43f5e) + beyaz metin solid destructive
-     butonlarda (durum-butonlari.tsx "Gelmedi"/"İptal", bildirim rozetleri) sadece
-     3.67:1 veriyordu — primary'nin 500→600 düzeltmesiyle AYNI yöntem: hue
-     korunarak bir Tailwind tier koyulaştırıldı (rose-600, 4.70:1). Işık temanın
-     --destructive'i zaten #E11D48 (rose-600) idi, artık ikisi eşit. */
-  --destructive: #E11D48;
-  --destructive-foreground: #FFFFFF;
-  --destructive-soft: rgba(244, 63, 94, 0.12);
-  --destructive-border: rgba(244, 63, 94, 0.4);
-  --success: #10B981;
-  --success-foreground: #052e21;
-  --success-soft: rgba(16, 185, 129, 0.12);
-  --success-border: rgba(16, 185, 129, 0.4);
-  --warning: #F59E0B;
-  --warning-foreground: #2c1a02;
-  --warning-soft: rgba(245, 158, 11, 0.12);
-  --warning-border: rgba(245, 158, 11, 0.4);
-  --info: #818CF8;
-  --info-foreground: #1a1a3d;
-  --info-soft: rgba(129, 140, 248, 0.12);
-  --info-border: rgba(129, 140, 248, 0.4);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 15%);
-  --input-bg: transparent;
-  --ring: #3B82F6;
-  --surface-2: #1e293b;
-  --chart-1: #22d3ee;
-  --chart-2: #10b981;
+  --accent: #2c3037;
+  --accent-foreground: #f8f9fa;
+
+  --destructive: #f43f5e;
+  --destructive-foreground: #ffffff;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --info: #0ea5e9;
+
+  --border: #3b404a;
+  --input: #3b404a;
+  --input-bg: #1a1c20;
+  --ring: #c8f53c;
+
+  --surface: #1a1c20;
+  --surface-2: #22252a;
+  --surface-3: #2c3037;
+
+  --chart-1: #c8f53c;
+  --chart-2: #0ea5e9;
   --chart-3: #f59e0b;
-  --chart-4: #f43f5e;
-  --chart-5: #94a3b8;
-  --sidebar: #1e293b;
-  --sidebar-foreground: #f8fafc;
-  --sidebar-primary: #2563EB;
-  --sidebar-primary-foreground: #FFFFFF;
-  /* Eskiden bu sidebar hover'ı bg-muted kullanıyordu; aynı görünümü korumak
-     için --muted ile aynı değer (stok #24344a'dan farklıydı, değiştirmeyip
-     korumak amacıyla eşitlendi). */
-  --sidebar-accent: #0f172a;
-  --sidebar-accent-foreground: #f8fafc;
-  --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: #3B82F6;
+  --chart-4: #10b981;
+  --chart-5: #f43f5e;
 
-  /* Elevation — koyu temada beyaz Z1/Z2/Z3 gölgeleri anlamsız, siyah bazlı
-     ambient gölgeye çevrildi (DESIGN.md açık tema için tarif ediyor, koyu
-     karşılığı doğrudan belirtilmiyor — burada aynı kademelendirme mantığı
-     korunarak uyarlandı). */
-  --elevation-z1: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 12px -2px rgba(0, 0, 0, 0.2);
-  --elevation-z2: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-  --elevation-z3: 0 20px 35px -8px rgba(0, 0, 0, 0.55), 0 1px 3px rgba(0, 0, 0, 0.3);
-  --elevation-backdrop: rgba(2, 6, 23, 0.6);
-  --elevation-active-ring: 0 0 0 3px rgba(20, 184, 166, 0.28);
+  --sidebar: #1a1c20;
+  --sidebar-foreground: #f8f9fa;
+  --sidebar-border: #3b404a;
+  --sidebar-accent: #2c3037;
+  --sidebar-accent-foreground: #f8f9fa;
+  --sidebar-primary: #c8f53c;
+  --sidebar-primary-foreground: #121316;
+  --sidebar-ring: #c8f53c;
 
-  --tablet-zemin: #0B1220;
-  --tablet-doku-nokta: #7DD3FC;
-  --tablet-doku-nokta-opacity: 0.14;
+  --shadow-kart: 0 1px 3px 0 rgba(0, 0, 0, 0.35);
+  --shadow-ust: 0 12px 24px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px #3b404a;
 }
 
-/* :root'taki açık tema değerleriyle birebir aynı — ama koyu temalı bir üst
-   elemanın (ör. panel varsayılan .dark'ı) içine gömülü küçük bir alanı
-   (tablet tema önizlemesi gibi) zorla açık göstermek için kullanılır. Sadece
-   .dark class'ını KALDIRMAK yetmez, çünkü CSS custom property'leri üst
-   elemandan miras kalmaya devam eder — burada değerler yeniden tanımlanmalı. */
-.light {
-  color-scheme: light;
-  --background: #F8FAFC;
-  --foreground: #0F172A;
-  --card: #FFFFFF;
-  --card-foreground: #0F172A;
-  --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
-  --primary: #1E40AF;
-  --primary-foreground: #FFFFFF;
-  --primary-hover: #1D4ED8;
-  --secondary: #F1F5F9;
-  --secondary-foreground: #334155;
-  --clinical: #0F766E;
-  --clinical-foreground: #FFFFFF;
-  --clinical-hover: #115E59;
-  --clinical-accent: #0D9488;
-  --clinical-soft: #F0FDFA;
-  --clinical-border: #99F6E4;
-  --muted: #F1F5F9;
-  /* :root'taki muted-foreground WCAG düzeltmesiyle senkron (bkz. yukarıdaki not). */
-  --muted-foreground: #475569;
-  --accent: #EFF6FF;
-  --accent-foreground: #1E40AF;
-  --destructive: #E11D48;
-  --destructive-foreground: #FFFFFF;
-  --destructive-soft: #FFF1F2;
-  --destructive-border: #FECDD3;
-  --success: #059669;
-  --success-foreground: #FFFFFF;
-  --success-soft: #ECFDF5;
-  --success-border: #A7F3D0;
-  --warning: #D97706;
-  --warning-foreground: #FFFFFF;
-  --warning-soft: #FFFBEB;
-  --warning-border: #FDE68A;
-  --info: #4F46E5;
-  --info-foreground: #FFFFFF;
-  --info-soft: #EEF2FF;
-  --info-border: #C7D2FE;
-  --border: #E2E8F0;
-  --input: #CBD5E1;
-  --input-bg: #FFFFFF;
-  --ring: #3B82F6;
-  --surface-2: #FFFFFF;
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #0F172A;
-  --sidebar-primary: #1E40AF;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #EFF6FF;
-  --sidebar-accent-foreground: #1E40AF;
-  --sidebar-border: #E2E8F0;
-  --sidebar-ring: #3B82F6;
-
-  --elevation-z1: 0 1px 3px rgba(15, 23, 42, 0.04), 0 4px 12px -2px rgba(15, 23, 42, 0.03);
-  --elevation-z2: 0 10px 25px -5px rgba(30, 64, 175, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
-  --elevation-z3: 0 20px 35px -8px rgba(15, 23, 42, 0.16), 0 1px 3px rgba(15, 23, 42, 0.06);
-  --elevation-backdrop: rgba(15, 23, 42, 0.35);
-  --elevation-active-ring: 0 0 0 3px rgba(20, 184, 166, 0.2);
-
-  --tablet-zemin: #F8FAFC;
-  --tablet-doku-nokta: #0F172A;
-  --tablet-doku-nokta-opacity: 0.06;
+/* Hafif tonlar: durum/vurgu renklerinin %12 şeffaf zemin ve kenarlığı */
+:root,
+.dark {
+  --radius: 0.5rem;
+  --destructive-soft: color-mix(in srgb, var(--destructive) 12%, transparent);
+  --destructive-border: color-mix(in srgb, var(--destructive) 28%, transparent);
+  --success-soft: color-mix(in srgb, var(--success) 12%, transparent);
+  --success-border: color-mix(in srgb, var(--success) 28%, transparent);
+  --warning-soft: color-mix(in srgb, var(--warning) 12%, transparent);
+  --warning-border: color-mix(in srgb, var(--warning) 28%, transparent);
+  --info-soft: color-mix(in srgb, var(--info) 12%, transparent);
+  --info-border: color-mix(in srgb, var(--info) 28%, transparent);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
     @apply bg-background text-foreground;
+    font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
   }
-  html {
-    @apply font-sans;
+
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Tema geçişi: 150ms yumuşak renk geçişi, yerleşim kayması yok */
+  body,
+  [data-slot="card"],
+  [data-slot="input"],
+  [data-slot="button"] {
+    transition:
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body,
+    [data-slot="card"],
+    [data-slot="input"],
+    [data-slot="button"] {
+      transition: none;
+    }
   }
 }
 
-/* Vücut haritası işaret glow'u — 2D vücut haritası bölge işaretlerinde kullanılır. */
-@keyframes vucut-glow-pulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 2px currentColor) drop-shadow(0 0 6px currentColor);
-  }
-  50% {
-    filter: drop-shadow(0 0 5px currentColor) drop-shadow(0 0 12px currentColor);
-  }
+/* Tüm para/sayaç/zaman değerleri: tabular rakam (dikey hizalı) */
+.tabular-nums,
+.text-tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "ss01" 1;
 }
 
-.vucut-glow {
-  animation: vucut-glow-pulse 2.4s ease-in-out infinite;
+/* Tipografi rolleri (DESIGN.md) */
+@utility text-metric {
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "ss01" 1;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .vucut-glow {
-    animation: none;
-    filter: drop-shadow(0 0 4px currentColor);
-  }
+@utility text-etiket {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-/* Kart/liste öğelerinin sayfa girişinde hafif yukarı + fade animasyonu
-   (hasta listesi, özet grid, zaman çizelgesi vb.) — stagger için her öğeye
-   inline `animationDelay` verilir. */
-@keyframes kart-giris {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+@utility text-baslik-xl {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
-.animate-kart-giris {
-  animation: kart-giris 320ms ease-out both;
+@utility text-baslik-lg {
+  font-size: 24px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .animate-kart-giris {
-    animation: none;
-  }
+@utility text-baslik-md {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }

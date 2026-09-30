@@ -20,6 +20,7 @@ export function EylemFormu({
   anahtarli = false,
   onay,
   varyant = "default",
+  boyut = "default",
   className,
   gonderSinifi,
 }: {
@@ -30,6 +31,7 @@ export function EylemFormu({
   anahtarli?: boolean;
   onay?: string;
   varyant?: "default" | "outline" | "destructive" | "secondary";
+  boyut?: "default" | "sm" | "lg";
   className?: string;
   gonderSinifi?: string;
 }) {
@@ -48,11 +50,17 @@ export function EylemFormu({
       {anahtarli && <input type="hidden" name="anahtar" value={durum?.anahtar ?? ilkAnahtar} suppressHydrationWarning />}
       {children}
       {durum && (
-        <p role={durum.success ? "status" : "alert"} className={cn("text-sm", durum.success ? "text-emerald-600 dark:text-emerald-400" : "text-destructive")}>
+        <p
+          role={durum.success ? "status" : "alert"}
+          className={cn(
+            "rounded-lg border px-3 py-2 text-sm font-medium",
+            durum.success ? "border-success-border bg-success-soft text-success" : "border-destructive-border bg-destructive-soft text-destructive"
+          )}
+        >
           {durum.message}
         </p>
       )}
-      <Button type="submit" variant={varyant} disabled={bekliyor} className={gonderSinifi}>
+      <Button type="submit" variant={varyant} size={boyut} disabled={bekliyor} className={gonderSinifi}>
         {bekliyor ? yukleniyor : gonder}
       </Button>
     </form>
@@ -64,7 +72,7 @@ export function SecimKutusu({ className, ...props }: React.ComponentProps<"selec
   return (
     <select
       className={cn(
-        "h-8 w-full min-w-0 rounded-lg border border-input bg-transparent px-2.5 text-sm transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/15 disabled:opacity-50 dark:bg-input/30",
+        "h-10 w-full min-w-0 rounded-lg border border-input bg-input-bg px-3 text-sm text-foreground transition-colors outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50",
         className
       )}
       {...props}

@@ -36,11 +36,11 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border px-4 py-8 text-center",
+        "flex min-h-[140px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-surface px-4 py-8 text-center",
         className
       )}
     >
-      {Icon && <Icon className="size-8 text-muted-foreground opacity-40" aria-hidden />}
+      {Icon && <Icon className="size-8 text-muted-foreground opacity-60" strokeWidth={1.5} aria-hidden />}
       <p className="text-sm font-medium">{title}</p>
       {description && <p className="max-w-xs text-sm text-muted-foreground">{description}</p>}
       {action && <div className="mt-1">{action}</div>}
