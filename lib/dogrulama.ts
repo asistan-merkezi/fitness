@@ -1,0 +1,297 @@
+import { z } from "zod";
+import { bugunIstanbulTarihi } from "@/lib/datetime";
+import { tlYaziKurusa } from "@/lib/para";
+import { tcKimlikGecerli } from "@/lib/tc-kimlik";
+import { isimNormalle, resitDegilMi, telefonE164 } from "@/lib/utils";
+
+/**
+ * Sunucu tarafı girdi doğrulaması (client doğrulaması yalnız UX'tir). İsim alanları `isimNormalle`
+ * ile kaydedilir; açıklama/not alanlarına DOKUNULMAZ (skill: isim-bicimi). Para kuruş tamsayıdır.
+ */
+
+/** FormData -> düz nesne. Aynı anahtar birden çok kez varsa dizi; File yok sayılır. */
+export function formVerisi(formData: FormData): Record<string, string | string[]> {
+  const cikti: Record<string, string | string[]> = {};
+  for (const anahtar of new Set(formData.keys())) {
+    const degerler = formData.getAll(anahtar).filter((d): d is string => typeof d === "string");
+    if (degerler.length === 0) continue;
+    cikti[anahtar] = degerler.length === 1 ? degerler[0] : degerler;
+  }
+  return cikti;
+}
+
+const GUN_FORMATI = /^\d{4}-\d{2}-\d{2}$/;
+
+const isimAlani = z.string().trim().min(2, "En az 2 karakter girin.").max(100, "En fazla 100 karakter.").transform(isimNormalle);
+const isimOpsiyonel = z
+  .string()
+  .trim()
+  .max(100)
+  .optional()
+  .transform((v) => (v ? isimNormalle(v) : null));
+const metinOpsiyonel = (max: number) =>
+  z
+    .string()
+    .trim()
+    .max(max, `En fazla ${max} karakter.`)
+    .optional()
+    .transform((v) => (v ? v : null));
+const telefonAlani = z
+  .string()
+  .trim()
+  .refine((v) => telefonE164(v) !== null, "Geçerli bir telefon numarası girin (ör. 0532 123 45 67).")
+  .transform((v) => telefonE164(v) as string);
+const telefonOpsiyonel = z
+  .string()
+  .trim()
+  .optional()
+  .refine((v) => !v || telefonE164(v) !== null, "Geçerli bir telefon numarası girin.")
+  .transform((v) => (v ? telefonE164(v) : null));
+const epostaOpsiyonel = z
+  .string()
+  .trim()
+  .max(254)
+  .optional()
+  .refine((v) => !v || z.email().safeParse(v).success, "Geçerli bir e-posta adresi girin.")
+  .transform((v) => (v ? v : null));
+const gunOpsiyonel = z
+  .string()
+  .trim()
+  .optional()
+  .refine((v) => !v || (GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v))), "Geçerli bir tarih girin.")
+  .transform((v) => (v ? v : null));
+/** Onay kutusu: işaretliyse "on"/"true" gelir, değilse alan hiç gelmez. */
+const onay = z
+  .string()
+  .optional()
+  .transform((v) => v === "on" || v === "true");
+const tlTutar = (mesaj: string) =>
+  z
+    .string()
+    .trim()
+    .refine((v) => tlYaziKurusa(v) !== null, mesaj)
+    .transform((v) => tlYaziKurusa(v) as number);
+const tlOpsiyonel = (mesaj: string) =>
+  z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || tlYaziKurusa(v) !== null, mesaj)
+    .transform((v) => (v ? (tlYaziKurusa(v) as number) : 0));
+const tamSayi = (min: number, max: number, mesaj: string) =>
+  z
+    .string()
+    .trim()
+    .refine((v) => /^\d+$/.test(v) && Number(v) >= min && Number(v) <= max, mesaj)
+    .transform(Number);
+const tamSayiOpsiyonel = (min: number, max: number, mesaj: string) =>
+  z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || (/^\d+$/.test(v) && Number(v) >= min && Number(v) <= max), mesaj)
+    .transform((v) => (v ? Number(v) : null));
+
+export const YONTEMLER = ["nakit", "kredi_karti", "havale"] as const;
+export const SAGLIK_BAYRAKLARI = ["kronik_rahatsizlik", "kalp_damar", "tansiyon", "sakatlik", "ortopedik", "hamilelik", "diyabet", "astim", "diger"] as const;
+const yontem = z.enum(YONTEMLER, { error: "Ödeme yöntemi seçin." });
+
+function diziye(v: unknown): unknown[] {
+  if (v === undefined || v === "") return [];
+  return Array.isArray(v) ? v : [v];
+}
+
+// ---------------------------------------------------------------------------------------------------------
+export const musteriSemasi = z
+  .object({
+    ad_soyad: isimAlani,
+    telefon: telefonAlani,
+    eposta: epostaOpsiyonel,
+    dogum_tarihi: gunOpsiyonel,
+    cinsiyet: z.enum(["kadin", "erkek", "belirtilmemis"]).default("belirtilmemis"),
+    kategori: z.enum(["standart", "gold", "vip", "platinum"]).default("standart"),
+    not_metni: metinOpsiyonel(1000),
+    tc_kimlik_no: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || tcKimlikGecerli(v), "Geçerli bir T.C. kimlik numarası girin.")
+      .transform((v) => (v ? v : null)),
+    il: metinOpsiyonel(100),
+    ilce: metinOpsiyonel(100),
+    mahalle: metinOpsiyonel(150),
+    adres_detay: metinOpsiyonel(500),
+    acil_durum_ad_soyad: isimOpsiyonel,
+    acil_durum_telefon: telefonOpsiyonel,
+    saglik_bayraklari: z.preprocess(diziye, z.array(z.enum(SAGLIK_BAYRAKLARI))).default([]),
+    saglik_notu: metinOpsiyonel(1000),
+    veli_ad_soyad: isimOpsiyonel,
+    veli_telefon: telefonOpsiyonel,
+    veli_yakinlik: z.enum(["anne", "baba", "vasi", "diger"]).default("diger"),
+    onay_kvkk_aydinlatma: onay,
+    onay_acik_riza_saglik: onay,
+    onay_ticari_ileti: onay,
+    onay_taahhutname: onay,
+    onay_veli: onay,
+  })
+  .superRefine((v, ctx) => {
+    if (!v.onay_kvkk_aydinlatma) {
+      ctx.addIssue({ code: "custom", path: ["onay_kvkk_aydinlatma"], message: "KVKK aydınlatma metni müşteriye okutulmalı/bildirilmelidir." });
+    }
+    if (v.dogum_tarihi) {
+      if (v.dogum_tarihi > bugunIstanbulTarihi() || v.dogum_tarihi < "1900-01-01") {
+        ctx.addIssue({ code: "custom", path: ["dogum_tarihi"], message: "Doğum tarihi geçerli bir geçmiş tarih olmalı." });
+      } else if (resitDegilMi(v.dogum_tarihi)) {
+        if (!v.veli_ad_soyad || !v.veli_telefon) {
+          ctx.addIssue({ code: "custom", path: ["veli_ad_soyad"], message: "18 yaş altı müşteri için veli adı ve telefonu zorunludur." });
+        }
+        if (!v.onay_veli) {
+          ctx.addIssue({ code: "custom", path: ["onay_veli"], message: "18 yaş altı müşteri için veli onayı zorunludur." });
+        }
+      }
+    }
+    if ((v.saglik_bayraklari.length > 0 || v.saglik_notu) && !v.onay_acik_riza_saglik) {
+      ctx.addIssue({ code: "custom", path: ["onay_acik_riza_saglik"], message: "Sağlık bilgisi kaydetmek için açık rıza onayı gerekir." });
+    }
+    if (Boolean(v.acil_durum_ad_soyad) !== Boolean(v.acil_durum_telefon)) {
+      ctx.addIssue({ code: "custom", path: ["acil_durum_ad_soyad"], message: "Acil durum kişisi için ad ve telefon birlikte girilmelidir." });
+    }
+  });
+
+export type MusteriVerisi = z.infer<typeof musteriSemasi>;
+
+/** `musteri_olustur` RPC argümanları (KVKK onamları metin sürümüyle kaydedilir). */
+export function musteriRpcArgumanlari(v: MusteriVerisi, metinSurumu: string) {
+  const risk: string[] = [];
+  if (v.saglik_bayraklari.length > 0) risk.push("saglik_riski");
+  if (v.saglik_bayraklari.includes("sakatlik") || v.saglik_bayraklari.includes("ortopedik")) risk.push("sakatlik_riski");
+
+  const hassasVar = v.tc_kimlik_no || v.il || v.ilce || v.mahalle || v.adres_detay || v.acil_durum_ad_soyad || v.saglik_bayraklari.length > 0 || v.saglik_notu;
+  const onamlar = [
+    { tur: "kvkk_aydinlatma", verildi: true, metin_versiyonu: metinSurumu },
+    ...(v.onay_acik_riza_saglik ? [{ tur: "acik_riza_saglik", verildi: true, metin_versiyonu: metinSurumu }] : []),
+    { tur: "ticari_ileti", verildi: v.onay_ticari_ileti, metin_versiyonu: metinSurumu },
+    ...(v.onay_taahhutname ? [{ tur: "taahhutname", verildi: true, metin_versiyonu: metinSurumu }] : []),
+    ...(v.onay_veli ? [{ tur: "veli_onayi", verildi: true, metin_versiyonu: metinSurumu, veren: "veli" }] : []),
+  ];
+
+  return {
+    p_ad_soyad: v.ad_soyad,
+    p_telefon: v.telefon,
+    p_eposta: v.eposta,
+    p_dogum_tarihi: v.dogum_tarihi,
+    p_cinsiyet: v.cinsiyet,
+    p_kategori: v.kategori,
+    p_kayit_kanali: "resepsiyon",
+    p_risk_bayraklari: risk,
+    p_not: v.not_metni,
+    p_hassas: hassasVar
+      ? {
+          tc_kimlik_no: v.tc_kimlik_no,
+          il: v.il,
+          ilce: v.ilce,
+          mahalle: v.mahalle,
+          adres_detay: v.adres_detay,
+          acil_durum_ad_soyad: v.acil_durum_ad_soyad,
+          acil_durum_telefon: v.acil_durum_telefon,
+          saglik_bayraklari: v.saglik_bayraklari,
+          saglik_notu: v.saglik_notu,
+        }
+      : null,
+    p_veli: v.veli_ad_soyad && v.veli_telefon ? { ad_soyad: v.veli_ad_soyad, telefon: v.veli_telefon, yakinlik: v.veli_yakinlik } : null,
+    p_onamlar: onamlar,
+  };
+}
+
+/** Müşterinin temel bilgilerini güncelleme (hassas veri ayrı akış). */
+export const musteriGuncelleSemasi = z.object({
+  musteri_id: z.uuid(),
+  ad_soyad: isimAlani,
+  telefon: telefonAlani,
+  eposta: epostaOpsiyonel,
+  kategori: z.enum(["standart", "gold", "vip", "platinum"]),
+  not_metni: metinOpsiyonel(1000),
+  aktif: onay,
+});
+
+// ---------------------------------------------------------------------------------------------------------
+export const paketSemasi = z
+  .object({
+    ad: isimAlani,
+    tur: z.enum(["sure", "seans"], { error: "Paket türü seçin." }),
+    sure_gun: tamSayiOpsiyonel(1, 3650, "Süre 1-3650 gün olmalı."),
+    seans_sayisi: tamSayiOpsiyonel(1, 1000, "Seans sayısı 1-1000 olmalı."),
+    gecerlilik_gun: tamSayiOpsiyonel(1, 3650, "Geçerlilik 1-3650 gün olmalı."),
+    fiyat: tlTutar("Geçerli bir fiyat girin (ör. 1.250,00)."),
+    kdv_orani: tamSayi(0, 100, "KDV oranı 0-100 olmalı.").default(20),
+    dondurma_izni: onay,
+    azami_dondurma_gun: tamSayiOpsiyonel(0, 365, "Azami dondurma 0-365 gün olmalı."),
+    dondurma_ucret: tlOpsiyonel("Geçerli bir dondurma ücreti girin."),
+    satis_bitis_tarihi: gunOpsiyonel,
+    aktif: onay,
+  })
+  .superRefine((v, ctx) => {
+    if (v.tur === "sure" && !v.sure_gun) ctx.addIssue({ code: "custom", path: ["sure_gun"], message: "Süre bazlı pakette gün sayısı zorunlu." });
+    if (v.tur === "sure" && (v.seans_sayisi || v.gecerlilik_gun)) {
+      ctx.addIssue({ code: "custom", path: ["seans_sayisi"], message: "Süre bazlı pakette seans sayısı ve geçerlilik girilmez." });
+    }
+    if (v.tur === "seans" && !v.seans_sayisi) ctx.addIssue({ code: "custom", path: ["seans_sayisi"], message: "Seans bazlı pakette seans sayısı zorunlu." });
+    if (v.tur === "seans" && v.sure_gun) ctx.addIssue({ code: "custom", path: ["sure_gun"], message: "Seans bazlı pakette süre girilmez (geçerlilik kullanın)." });
+    if (!v.dondurma_izni && ((v.azami_dondurma_gun ?? 0) > 0 || v.dondurma_ucret > 0)) {
+      ctx.addIssue({ code: "custom", path: ["dondurma_izni"], message: "Dondurma izni kapalıyken dondurma günü/ücreti girilemez." });
+    }
+    if (v.dondurma_izni && !(v.azami_dondurma_gun && v.azami_dondurma_gun > 0)) {
+      ctx.addIssue({ code: "custom", path: ["azami_dondurma_gun"], message: "Dondurma izni açıkken azami dondurma günü girin." });
+    }
+  });
+
+export type PaketVerisi = z.infer<typeof paketSemasi>;
+
+// ---------------------------------------------------------------------------------------------------------
+export const satisSemasi = z
+  .object({
+    musteri_id: z.uuid(),
+    paket_id: z.uuid({ error: "Paket seçin." }),
+    baslangic: gunOpsiyonel,
+    iskonto: tlOpsiyonel("Geçerli bir iskonto girin."),
+    odeme: tlOpsiyonel("Geçerli bir ödeme tutarı girin."),
+    odeme_yontemi: z.enum(YONTEMLER).optional().or(z.literal("").transform(() => undefined)),
+    anahtar: z.uuid(),
+  })
+  .superRefine((v, ctx) => {
+    if (v.odeme > 0 && !v.odeme_yontemi) ctx.addIssue({ code: "custom", path: ["odeme_yontemi"], message: "Ödeme yöntemi seçin." });
+  });
+
+export const odemeSemasi = z.object({
+  musteri_id: z.uuid(),
+  tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
+  yontem,
+  aciklama: metinOpsiyonel(300),
+  anahtar: z.uuid(),
+});
+
+export const iadeSemasi = z.object({
+  musteri_id: z.uuid(),
+  iade_edilen_hareket_id: z.uuid({ error: "İade edilecek ödemeyi seçin." }),
+  tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
+  yontem,
+  aciklama: metinOpsiyonel(300),
+  anahtar: z.uuid(),
+});
+
+export const dondurSemasi = z.object({
+  uyelik_id: z.uuid(),
+  gun: tamSayi(1, 365, "Dondurma günü 1-365 olmalı."),
+});
+
+export const uyelikIslemSemasi = z.object({
+  uyelik_id: z.uuid(),
+  neden: metinOpsiyonel(300),
+});
+
+export const girisSemasi = z.object({ musteri_id: z.uuid() });
+
+/** İlk hata mesajını döndürür (form üstünde tek satır gösterim için). */
+export function ilkHata(hata: z.ZodError): string {
+  return hata.issues[0]?.message ?? "Girdi hatalı.";
+}

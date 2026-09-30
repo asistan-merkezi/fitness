@@ -7,6 +7,7 @@ import {
   formatDateForInput,
   formatDateTime,
   formatTime,
+  gunYazi,
   simdikiYilIstanbul,
   startOfDayUTC,
   toUTC,
@@ -118,5 +119,14 @@ describe("bugunIstanbulTarihi / simdikiYilIstanbul — UTC gün/yıl sınırı",
     vi.setSystemTime(new Date("2026-12-31T21:30:00Z"));
     expect(simdikiYilIstanbul()).toBe(2027);
     expect(bugunIstanbulTarihi()).toBe("2027-01-01");
+  });
+});
+
+describe("gunYazi", () => {
+  it("date kolonu saat dilimi kayması olmadan biçimlenir", () => {
+    expect(gunYazi("2026-10-01")).toBe("01.10.2026");
+    expect(gunYazi("2026-12-31")).toBe("31.12.2026");
+    expect(gunYazi(null)).toBe("—");
+    expect(gunYazi("bozuk")).toBe("—");
   });
 });

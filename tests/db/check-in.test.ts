@@ -205,7 +205,9 @@ describe("check-in: giriş kaydı, FIFO, hak düşümü, red nedenleri, iptal", 
     expect(b.rows).toHaveLength(0);
   });
 
-  it("eşzamanlı çift istek: tek kabul, tek hak düşümü", async () => {
+  // Not: PGlite tek oturumlu olduğundan bu GERÇEK eşzamanlılık testi değildir (çift istek sıralı işlenir);
+  // gerçek koruma pg_advisory_xact_lock + uq_giris_gunluk_kabul kısmi tekil indeksidir.
+  it("çift istek: tek kabul, tek hak düşümü", async () => {
     const m = await musteriOlustur(resepsiyonA, "Çift Tıklayan");
     const uy = await sat(resepsiyonA, m, paketSeans);
     await db.exec(`SET ROLE authenticated; SELECT set_config('request.jwt.claim.sub', '${resepsiyonA}', false);`);
