@@ -88,3 +88,10 @@ export function endOfDayUTC(date: Date = new Date()): string {
   const gunBaslangicMs = new Date(startOfDayUTC(date)).getTime();
   return new Date(gunBaslangicMs + 24 * 60 * 60 * 1000).toISOString();
 }
+
+/** "yyyy-MM-dd" (`date` kolonu, saatsiz takvim günü) -> "dd.MM.yyyy". Saat dilimi dönüşümü GEREKMEZ. */
+export function gunYazi(tarih: string | null | undefined): string {
+  if (!tarih || !/^\d{4}-\d{2}-\d{2}/.test(tarih)) return "—";
+  const [y, m, g] = tarih.slice(0, 10).split("-");
+  return `${g}.${m}.${y}`;
+}

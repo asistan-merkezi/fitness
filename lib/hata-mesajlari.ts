@@ -1,0 +1,60 @@
+/**
+ * Veritabanı hatalarını kullanıcıya gösterilecek Türkçe mesajlara çevirir.
+ * SQL fonksiyonları `RAISE EXCEPTION '<kod>'` ile kısa kodlar atar; kısıt ihlalleri
+ * Postgres'in standart mesajını taşır. Teknik ayrıntı (SQL mesajı, tablo adı) kullanıcıya ASLA gösterilmez.
+ */
+const KOD_MESAJLARI: Record<string, string> = {
+  isletme_yok: "Hesabınız bir işletmeye bağlı değil.",
+  yetki_yetersiz: "Bu işlem için yetkiniz yok.",
+  musteri_bulunamadi: "Müşteri bulunamadı.",
+  paket_bulunamadi: "Paket bulunamadı.",
+  uyelik_bulunamadi: "Üyelik bulunamadı.",
+  giris_bulunamadi: "Giriş kaydı bulunamadı veya zaten iptal edilmiş.",
+  giris_iptal_suresi_doldu: "Giriş kaydı yalnızca aynı gün içinde iptal edilebilir.",
+  veli_gerekli: "18 yaş altı müşteri için veli bilgisi (ad ve telefon) zorunludur.",
+  veli_onayi_gerekli: "18 yaş altı müşteri için veli onayı zorunludur.",
+  saglik_riza_gerekli: "Sağlık bilgisi kaydetmek için açık rıza onayı gerekir.",
+  paket_satisa_kapali: "Bu paket satışa kapalı.",
+  gecmis_baslangic: "Başlangıç tarihi bugünden önce olamaz.",
+  iskonto_asildi: "İskonto paket fiyatını aşamaz.",
+  odeme_asildi: "Ödeme, iskonto sonrası tutarı aşamaz.",
+  odeme_yontemi_gerekli: "Ödeme yöntemi seçin.",
+  dondurma_izni_yok: "Bu üyelik dondurulamaz.",
+  dondurma_gun_gecersiz: "Dondurma gün sayısı en az 1 olmalı.",
+  dondurma_uygun_degil: "Üyelik şu an dondurulamaz (aktif olmalı ve bitiş tarihi olmalı).",
+  dondurma_limiti: "Dondurma hakkı yetersiz.",
+  dondurma_cakisma: "Bu tarihlerde zaten bir dondurma var.",
+  aktif_dondurma_yok: "Aktif bir dondurma bulunamadı.",
+  iade_icin_odeme_gerekli: "İade bir ödemeye bağlı olmalıdır.",
+  iade_musteri_uyumsuz: "İade, ödemeyi yapan müşteriye yapılmalıdır.",
+  iade_tutari_asildi: "İade tutarı ödeme tutarını aşamaz.",
+  defter_degismez: "Cari kayıtları değiştirilemez; düzeltme için yeni kayıt girin.",
+  degismez_alan: "Bu alan değiştirilemez.",
+  isletme_degistirilemez: "Kullanıcının işletmesi değiştirilemez.",
+};
+
+/** Kısıt/izin ihlalleri için ipuçları (Postgres standart mesajından). */
+const IPUCLARI: Array<[RegExp, string]> = [
+  [/row-level security|permission denied/i, "Bu işlem için yetkiniz yok."],
+  [/musteri_telefon_check|telefon.*check/i, "Telefon numarası geçerli değil."],
+  [/tc_kimlik/i, "T.C. kimlik numarası geçerli değil."],
+  [/paket_tur_kurali|paket_dondurma_kurali/i, "Paket bilgileri tutarsız: tür, süre/seans ve dondurma alanlarını kontrol edin."],
+  [/hareket_yontem_kurali/i, "Ödeme yöntemi eksik veya hatalı."],
+  [/hareket_iskonto_kurali/i, "İskonto tutardan büyük olamaz."],
+  [/duplicate key|unique/i, "Bu kayıt zaten mevcut."],
+  [/foreign key/i, "İlişkili kayıtlar nedeniyle bu işlem yapılamaz."],
+  [/check constraint/i, "Girilen bilgiler geçerli değil."],
+];
+
+export const GENEL_HATA = "Bir hata oluştu, lütfen tekrar deneyin.";
+
+export function hataMesajiCoz(hata: { message?: string } | null | undefined): string {
+  const mesaj = hata?.message ?? "";
+  for (const [kod, metin] of Object.entries(KOD_MESAJLARI)) {
+    if (mesaj === kod || mesaj.includes(kod)) return metin;
+  }
+  for (const [desen, metin] of IPUCLARI) {
+    if (desen.test(mesaj)) return metin;
+  }
+  return GENEL_HATA;
+}

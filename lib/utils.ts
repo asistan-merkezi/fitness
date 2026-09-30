@@ -48,6 +48,19 @@ export function telefonYerelHaneleriCikar(telefon: string | null | undefined): s
   return rakamlar.slice(0, 10)
 }
 
+/**
+ * Kullanıcı girdisini veritabanı biçimine ("+90" + 10 hane) çevirir; geçersizse null.
+ * Kabul: "0532 227 55 12", "532 227 55 12", "+90 532 227 55 12", "90532...". Fazla/eksik hane KABUL EDİLMEZ
+ * (telefonYerelHaneleriCikar gibi sessizce kırpmaz).
+ */
+export function telefonE164(girdi: string | null | undefined): string | null {
+  if (!girdi) return null
+  let rakamlar = girdi.replace(/\D/g, "")
+  if (rakamlar.startsWith("90") && rakamlar.length === 12) rakamlar = rakamlar.slice(2)
+  else if (rakamlar.startsWith("0") && rakamlar.length === 11) rakamlar = rakamlar.slice(1)
+  return /^[1-9]\d{9}$/.test(rakamlar) ? `+90${rakamlar}` : null
+}
+
 /** "YYYY-MM-DD" doğum tarihi, İSTANBUL takvim günü itibarıyla 18 yaşından küçükse true döner. */
 export function resitDegilMi(dogumTarihi: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dogumTarihi)) return false

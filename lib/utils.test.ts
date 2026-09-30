@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ayAraligi, gunAraligi, haftaAraligi, isimBasHarfBuyukYap, isimNormalle, resitDegilMi } from "./utils";
+import { ayAraligi, gunAraligi, haftaAraligi, isimBasHarfBuyukYap, isimNormalle, resitDegilMi, telefonE164 } from "./utils";
 
 describe("gunAraligi — İstanbul gün sınırı", () => {
   it("gece yarısına yakın (İstanbul 00:15) bir anı doğru güne bağlar", () => {
@@ -83,5 +83,20 @@ describe("resitDegilMi — İstanbul takvim günü", () => {
   it("geçersiz girdide false", () => {
     expect(resitDegilMi("")).toBe(false);
     expect(resitDegilMi("2008-13-40")).toBe(false);
+  });
+});
+
+describe("telefonE164", () => {
+  it.each([
+    ["0532 227 55 12", "+905322275512"],
+    ["532 227 55 12", "+905322275512"],
+    ["+90 532 227 55 12", "+905322275512"],
+    ["905322275512", "+905322275512"],
+    ["(0532) 227-5512", "+905322275512"],
+  ])("%j -> %j", (girdi, beklenen) => {
+    expect(telefonE164(girdi)).toBe(beklenen);
+  });
+  it.each([[""], [null], [undefined], ["123"], ["0532 227 55 123"], ["+1 555 123 4567"], ["abc"], ["05322275512345"]])("%j geçersiz", (girdi) => {
+    expect(telefonE164(girdi as string | null | undefined)).toBeNull();
   });
 });

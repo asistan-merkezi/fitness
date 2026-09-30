@@ -11,7 +11,7 @@ Fitness salonları, PT stüdyoları ve spor kompleksleri için çok kiracılı (
 - Mesajlaşma (SMS/WhatsApp/Mail): `mesaj.asistanmerkezi` merkez ucu; idempotency, versiyon kontrolü, hata kodları ve ödeme referansı ilkeleri klinikteki gibi.
 - Kart ödemesi: TCMB lisanslı kuruluş (iyzico/PayTR) + 3DS. Stripe'ın Türkiye'deki yerel işletmelere açıklığı DOĞRULANMADAN seçilmez.
 - Tablet/kiosk: Supabase Realtime, salt-okunur (PIN/device_token/gizlilik modu); çevrimdışı tolerans (`public/tablet-offline.html` + network-only SW).
-- Cron (`vercel.json`, UTC): `personel-donem-otomatik-kapat` ayın 1'i 03:00 UTC (= 06:00 İstanbul); `audit-log-bolum-olustur` ayın 1'i 02:00 UTC (= 05:00 İstanbul); `mesaj-kuyruk-isle`, `kredi-senkron` tetikleyiciye bağlı.
+- Cron (`vercel.json`, UTC): `personel-donem-otomatik-kapat` ayın 1'i 03:00 UTC (= 06:00 İstanbul); `audit-log-bolum-olustur` her gün 02:00 UTC (= 05:00 İstanbul, idempotent); `mesaj-kuyruk-isle`, `kredi-senkron` tetikleyiciye bağlı.
 
 ## Veri Modeli
 Tenant izolasyonu: `current_isletme_id()` + RLS; müşteri portalı: `current_musteri_id()`. Tüm tablo/kolon/rol adları ASCII Türkçe snake_case (ö,ü,ş,ı,ğ,ç YOK).
@@ -40,10 +40,12 @@ Fitness'e özgü, klinikte OLMAYAN (tasarlanacak): zaman bazlı üyelik (aylık/
 - Tasarım: skill `brand-ui`; marka/palet kararı bekliyor.
 
 ## Yol Haritası / Durum
-- **Şu an**: F1 tamamlandı (Next 16 iskeleti, `proxy.ts`, e-posta+şifre girişi, `/panel` kabuğu, UI bileşenleri, `lib/datetime`+`lib/utils` testli). Sıradaki: F2 taban şema (yeni Supabase test projesi gerekli). Plan: `docs/klinikten-cikarim-plani.md`.
-- **F1'de bilinçli dışarıda bırakılanlar (klinik kararları, fitness'te yeniden karar verilecek)**: gece zorla oturum kapatma (`ScheduledLogout`), tek oturum kilidi, telefon ile personel girişi (yönetici e-posta/personel telefon ayrımı). F1 girişi herkes için e-posta + şifre; rol girişten sonra `kullanici.rol`'den okunur.
-- **MVP-1 — Üyelik + giriş + cari**: müşteri kaydı (+hassas/KVKK), üyelik paketi/satışı (dondurma dahil), resepsiyon check-in, cari ve kasa.
-- **Sonra**: ders/PT takvimi + grup dersi kapasitesi; antrenman programı + ölçüm + kas haritası; tablet/kiosk; personel hakediş; müşteri portalı; QR akışları; Paraşüt; mesajlaşma.
-- **Açık sorular**: turnike/giriş cihazı markası ve entegrasyon yöntemi · kart ödemesi sağlayıcısı (iyzico/PayTR; Stripe doğrulanacak) · dondurma kuralları (gün limiti, ücret) · otomatik yenileme tahsilatı (abonelik) · marka adı/paleti · fiyat kademeleri.
+- **Tamam (kodlandı, testli, Supabase'e UYGULANMADI)**: F1 iskelet · F2 çekirdek şema (işletme/kullanıcı/rol, RLS, audit log) · F3 müşteri (hassas veri, veli, onam, arama, atomik kayıt) · F4 üyelik (paket, satış, dondurma, iptal) · F5 check-in (FIFO, hak düşümü, iptal) · F6 cari defter + kasa özeti · F7 KVKK taslakları (`docs/hukuki/`, avukat onayı bekliyor).
+- **Doğrulama**: 172 test (PGlite = gerçek Postgres: RLS, rol matrisi, KVKK kuralları, cari, üyelik, check-in; + birim testleri), `tsc`, `eslint`, `next build` temiz. **Gerçek Supabase'de henüz denenmedi**; kurulum: `docs/kurulum.md`.
+- **Uygulanan tablolar**: `isletme`, `kullanici`, `isletme_sayac`, `audit_log` (aylık bölüm), `musteri`, `musteri_hassas`, `musteri_veli`, `musteri_onam` (insert-only), `musteri_bakiye_hareket` (değişmez defter), `uyelik_paketi`, `uyelik`, `uyelik_dondurma`, `giris_kaydi`. Görünüm: `musteri_ozet`, `musteri_bakiye`, `cari_alacak`, `uyelik_gorunum`. Yazma RPC'leri (SECURITY DEFINER, rol+tenant kontrollü): `uyelik_sat`, `uyelik_dondur`, `uyelik_dondurmayi_bitir`, `uyelik_iptal`, `check_in`, `check_in_iptal`; invoker RPC'ler: `musteri_olustur`, `musteri_ara`, `hareket_ekle`, `kasa_ozet`. `uyelik`/`uyelik_dondurma`/`giris_kaydi` tablolarına kullanıcıların DOĞRUDAN yazma yetkisi yoktur.
+- **Verilen varsayılan kararlar (değiştirilebilir)**: dondurma koşulları PAKET bazlıdır (izin, azami gün, ücret) ve satışta üyeliğe kopyalanır; dondurma bugünden başlar, bitiş tarihi aynı gün kadar uzar, erken bitirilirse kullanılmayan günler düşülür · üyelik bitiş tarihi DAHİL · "sona erdi/dondurulmuş" saklanmaz, hesaplanır · geçmişe dönük satış yok · iade yalnız `isletme_admin`, bir ödemeye bağlı · muhasebe müşteri kişisel verisini görmez (yalnız `musteri_ozet`) · oturum: herkes e-posta+şifre; kayıt dışı public kayıt yok.
+- **Henüz YOK**: ders/PT takvimi ve grup kapasitesi · antrenman programı/ölçüm/kas haritası · tablet/kiosk · müşteri portalı/QR akışları · personel hakediş/puantaj · mesajlaşma · Paraşüt/kart ödemesi · otomatik yenileme (abonelik) · müşteri silme/anonimleştirme (KVKK m.11) · saklama süresi işi · audit log ekranı · PDF (sözleşme/form).
+- **Açık sorular**: turnike/giriş cihazı · kart ödemesi sağlayıcısı (iyzico/PayTR; Stripe doğrulanacak) · otomatik yenileme mi manuel mi · marka adı/paleti/fiyat kademeleri · saklama süreleri (avukat).
+- **Klinik kararları fitness'te bilinçli yok**: gece zorla oturum kapatma, tek oturum kilidi, telefonla personel girişi.
 
 Son güncelleme: 2026-09-30
