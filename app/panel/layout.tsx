@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PanelKabugu } from "@/components/panel/kabuk";
 import { gecerliKullanici } from "@/lib/auth/gecerli-kullanici";
-import { menuIcinRol, ROL_ETIKETLERI } from "@/lib/panel/roller";
+import { anaOgelerIcinRol, gruplarIcinRol } from "@/lib/panel/menu-gruplari";
+import { ROL_ETIKETLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { cikisYap } from "./actions";
 
@@ -19,7 +20,11 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const kullanici = oturum.kullanici;
   const gorunenAd = kullanici?.ad_soyad ?? oturum.authUser.email ?? "Kullanıcı";
   const rolEtiketi = kullanici?.rol ? ROL_ETIKETLERI[kullanici.rol] : null;
-  const menu = menuIcinRol(kullanici?.rol).map((m) => ({ href: m.href, etiket: m.etiket, ikon: m.ikon }));
+  // Kabuğa yalnız düz (serileştirilebilir) veri gider: üst linkler + ana başlıklar (alt sayfa yolları "aktif" vurgusu içindir).
+  const menu = [
+    ...anaOgelerIcinRol(kullanici?.rol).map((m) => ({ href: m.href, etiket: m.etiket, ikon: m.ikon, altYollar: [] as string[] })),
+    ...gruplarIcinRol(kullanici?.rol).map((g) => ({ href: `/panel/${g.anahtar}`, etiket: g.etiket, ikon: g.ikon, altYollar: g.ogeler.map((o) => o.href) })),
+  ];
 
   let isletmeAdi: string | null = null;
   if (kullanici?.isletme_id) {

@@ -2,26 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, LogOut, Menu, Package, ScanLine, UsersRound, Users, Wallet, type LucideIcon } from "lucide-react";
+import { LogOut, Menu, ScanLine } from "lucide-react";
 import { Logo, MarkaIsareti } from "@/components/marka/logo";
+import { MENU_IKONLARI, type MenuIkonu } from "@/components/panel/menu-ikonlari";
 import { TemaDugmesi } from "@/components/panel/tema-anahtari";
 import { Avatar } from "@/components/ui/avatar";
-import type { MenuIkonu } from "@/lib/panel/roller";
 import { cn } from "@/lib/utils";
 
-const IKONLAR: Record<MenuIkonu, LucideIcon> = {
-  panel: LayoutDashboard,
-  "check-in": ScanLine,
-  musteriler: Users,
-  paketler: Package,
-  kasa: Wallet,
-  personel: UsersRound,
-};
+type Oge = { href: string; etiket: string; ikon: MenuIkonu; altYollar: string[] };
 
-type Oge = { href: string; etiket: string; ikon: MenuIkonu };
-
-function aktifMi(yol: string, href: string): boolean {
+function yolEslesir(yol: string, href: string): boolean {
   return href === "/panel" ? yol === "/panel" : yol === href || yol.startsWith(`${href}/`);
+}
+
+/** Ana başlık, kendi sayfasında veya altındaki herhangi bir sayfada aktif görünür. */
+function aktifMi(yol: string, oge: Pick<Oge, "href" | "altYollar">): boolean {
+  return yolEslesir(yol, oge.href) || oge.altYollar.some((h) => yolEslesir(yol, h));
 }
 
 /**
@@ -47,10 +43,10 @@ export function PanelKabugu({
 }) {
   const yol = usePathname();
 
-  // Mobil alt dock: Panel · Müşteriler · [Check-in] · Kasa · Daha Fazla (yetkiye göre olanlar)
+  // Mobil alt dock: Ana Ekran · Müşteriler · [Check-in] · Finans · Daha Fazla (yetkiye göre olanlar)
   const bul = (h: string) => menu.find((m) => m.href === h);
   const solda = [bul("/panel"), bul("/panel/musteriler")].filter(Boolean) as Oge[];
-  const sagda = [bul("/panel/kasa")].filter(Boolean) as Oge[];
+  const sagda = [bul("/panel/finans")].filter(Boolean) as Oge[];
   const checkIn = bul("/panel/check-in");
 
   return (
@@ -74,8 +70,8 @@ export function PanelKabugu({
 
         <nav aria-label="Ana menü" className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {menu.map((o) => {
-            const Ikon = IKONLAR[o.ikon];
-            const aktif = aktifMi(yol, o.href);
+            const Ikon = MENU_IKONLARI[o.ikon];
+            const aktif = aktifMi(yol, o);
             return (
               <Link
                 key={o.href}
@@ -145,14 +141,14 @@ export function PanelKabugu({
       <nav aria-label="Hızlı menü" className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-surface pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="mx-auto grid max-w-md grid-cols-5 items-end px-2">
           {[...solda].map((o) => (
-            <DockOgesi key={o.href} oge={o} aktif={aktifMi(yol, o.href)} />
+            <DockOgesi key={o.href} oge={o} aktif={aktifMi(yol, o)} />
           ))}
           <div className="flex justify-center">
             {checkIn ? (
               <Link
                 href={checkIn.href}
                 aria-label="Check-in"
-                aria-current={aktifMi(yol, checkIn.href) ? "page" : undefined}
+                aria-current={aktifMi(yol, checkIn) ? "page" : undefined}
                 className="-mt-6 flex size-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-z2 transition-colors hover:bg-primary-hover"
               >
                 <ScanLine className="size-7" strokeWidth={1.75} aria-hidden />
@@ -162,7 +158,7 @@ export function PanelKabugu({
             )}
           </div>
           {sagda.map((o) => (
-            <DockOgesi key={o.href} oge={o} aktif={aktifMi(yol, o.href)} />
+            <DockOgesi key={o.href} oge={o} aktif={aktifMi(yol, o)} />
           ))}
           <Link
             href="/panel/daha-fazla"
@@ -179,7 +175,7 @@ export function PanelKabugu({
 }
 
 function DockOgesi({ oge, aktif }: { oge: Oge; aktif: boolean }) {
-  const Ikon = IKONLAR[oge.ikon];
+  const Ikon = MENU_IKONLARI[oge.ikon];
   return (
     <Link
       href={oge.href}
@@ -187,7 +183,7 @@ function DockOgesi({ oge, aktif }: { oge: Oge; aktif: boolean }) {
       className={cn("flex min-h-14 flex-col items-center justify-center gap-1 text-[11px] font-medium", aktif ? "text-primary" : "text-muted-foreground")}
     >
       <Ikon className="size-5" strokeWidth={1.5} aria-hidden />
-      {oge.etiket.length > 10 ? oge.etiket.split(" ")[0] : oge.etiket}
+      {oge.etiket}
     </Link>
   );
 }
