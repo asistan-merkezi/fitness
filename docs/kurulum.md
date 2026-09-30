@@ -18,6 +18,7 @@ Bu adımlar **sizin** Supabase projenizde yapılır; anahtarlar asla repoya yaz�
 | `20260930120000_cari.sql` | değişmez cari defter, bakiye, kasa özeti |
 | `20260930130000_uyelik.sql` | paket, üyelik, dondurma, satış/iptal fonksiyonları |
 | `20260930140000_check_in.sql` | giriş kaydı, check-in, iptal |
+| `20260930160000_ders_seansi.sql` | alan/stüdyo, ders seansı (çakışma kontrolü), ders hakkı/borç, paket kapsamı |
 
 Supabase CLI ile: `supabase link --project-ref <ref>` → `supabase db push`. SQL Editor ile: her dosyayı sırayla yapıştırın.
 Hepsi idempotent yazılmıştır; yine de **önce test projesinde** deneyin.

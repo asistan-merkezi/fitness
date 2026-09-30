@@ -25,6 +25,7 @@ export async function paketKaydet(_onceki: Onceki, formData: FormData): Promise<
   const satir = {
     ad: v.ad,
     tur: v.tur,
+    kapsam: v.kapsam,
     sure_gun: v.tur === "sure" ? v.sure_gun : null,
     seans_sayisi: v.tur === "seans" ? v.seans_sayisi : null,
     gecerlilik_gun: v.tur === "seans" ? v.gecerlilik_gun : null,

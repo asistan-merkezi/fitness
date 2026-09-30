@@ -43,10 +43,10 @@ export function PanelKabugu({
 }) {
   const yol = usePathname();
 
-  // Mobil alt dock: Ana Ekran · Müşteriler · [Check-in] · Finans · Daha Fazla (yetkiye göre olanlar)
+  // Mobil alt dock: Ana Ekran · Müşteriler · [Check-in] · Dersler · Daha Fazla (yetkiye göre olanlar)
   const bul = (h: string) => menu.find((m) => m.href === h);
   const solda = [bul("/panel"), bul("/panel/musteriler")].filter(Boolean) as Oge[];
-  const sagda = [bul("/panel/finans")].filter(Boolean) as Oge[];
+  const sagda = [bul("/panel/dersler")].filter(Boolean) as Oge[];
   const checkIn = bul("/panel/check-in");
 
   return (

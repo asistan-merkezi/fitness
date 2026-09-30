@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { bugunIstanbulTarihi } from "@/lib/datetime";
+import { bugunIstanbulTarihi, toUTC } from "@/lib/datetime";
 import { tlYaziKurusa } from "@/lib/para";
 import { tcKimlikGecerli } from "@/lib/tc-kimlik";
 import { isimNormalle, resitDegilMi, telefonE164 } from "@/lib/utils";
@@ -219,6 +219,7 @@ export const paketSemasi = z
   .object({
     ad: isimAlani,
     tur: z.enum(["sure", "seans"], { error: "Paket türü seçin." }),
+    kapsam: z.enum(["giris", "ders"]).default("giris"),
     sure_gun: tamSayiOpsiyonel(1, 3650, "Süre 1-3650 gün olmalı."),
     seans_sayisi: tamSayiOpsiyonel(1, 1000, "Seans sayısı 1-1000 olmalı."),
     gecerlilik_gun: tamSayiOpsiyonel(1, 3650, "Geçerlilik 1-3650 gün olmalı."),
@@ -235,6 +236,7 @@ export const paketSemasi = z
     if (v.tur === "sure" && (v.seans_sayisi || v.gecerlilik_gun)) {
       ctx.addIssue({ code: "custom", path: ["seans_sayisi"], message: "Süre bazlı pakette seans sayısı ve geçerlilik girilmez." });
     }
+    if (v.kapsam === "ders" && v.tur !== "seans") ctx.addIssue({ code: "custom", path: ["kapsam"], message: "PT dersi kapsamı yalnız seans bazlı pakette olur." });
     if (v.tur === "seans" && !v.seans_sayisi) ctx.addIssue({ code: "custom", path: ["seans_sayisi"], message: "Seans bazlı pakette seans sayısı zorunlu." });
     if (v.tur === "seans" && v.sure_gun) ctx.addIssue({ code: "custom", path: ["sure_gun"], message: "Seans bazlı pakette süre girilmez (geçerlilik kullanın)." });
     if (!v.dondurma_izni && ((v.azami_dondurma_gun ?? 0) > 0 || v.dondurma_ucret > 0)) {
@@ -290,6 +292,53 @@ export const uyelikIslemSemasi = z.object({
 });
 
 export const girisSemasi = z.object({ musteri_id: z.uuid() });
+
+// ---------------------------------------------------------------------------------------------------------
+/** <input type="datetime-local"> değeri ("YYYY-MM-DDTHH:mm"), İstanbul saati kabul edilip UTC ISO'ya çevrilir. */
+const dersZamani = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Geçerli bir tarih ve saat girin.")
+  .refine((v) => !Number.isNaN(Date.parse(`${v}:00Z`)), "Geçerli bir tarih ve saat girin.")
+  .transform((v) => toUTC(v));
+const uuidOpsiyonel = z
+  .string()
+  .optional()
+  .transform((v) => (v ? v : undefined))
+  .pipe(z.uuid().optional());
+
+export const DERS_HEDEFLERI = ["planlandi", "geldi", "gecikmeli_geldi", "derste", "tamamlandi", "gelmedi", "iptal"] as const;
+
+export const dersOlusturSemasi = z.object({
+  musteri_id: z.uuid({ error: "Müşteri seçin." }),
+  antrenor_id: z.uuid({ error: "Antrenör seçin." }),
+  alan_id: z.uuid({ error: "Alan/stüdyo seçin." }),
+  baslangic: dersZamani,
+  sure: tamSayi(15, 480, "Süre 15-480 dakika olmalı."),
+  ucret: tlOpsiyonel("Geçerli bir ücret girin."),
+  not: metinOpsiyonel(300),
+  anahtar: z.uuid(),
+});
+
+export const dersDurumSemasi = z.object({
+  ders_id: z.uuid(),
+  hedef: z.enum(DERS_HEDEFLERI, { error: "Geçersiz durum." }),
+  gecikme_dk: tamSayiOpsiyonel(1, 600, "Gecikme 1-600 dakika olmalı."),
+});
+
+export const dersTasiSemasi = z.object({
+  ders_id: z.uuid(),
+  baslangic: dersZamani,
+  sure: tamSayiOpsiyonel(15, 480, "Süre 15-480 dakika olmalı."),
+  antrenor_id: uuidOpsiyonel,
+  alan_id: uuidOpsiyonel,
+});
+
+export const alanSemasi = z.object({
+  alan_id: uuidOpsiyonel,
+  ad: isimAlani,
+  aktif: onay,
+});
 
 /** İlk hata mesajını döndürür (form üstünde tek satır gösterim için). */
 export function ilkHata(hata: z.ZodError): string {

@@ -45,6 +45,7 @@ export default async function PaketlerSayfasi() {
                 <CardTitle className="flex flex-wrap items-center gap-2">
                   {p.ad}
                   <StatusBadge tone={p.aktif ? "emerald" : "slate"}>{p.aktif ? "Satışta" : "Kapalı"}</StatusBadge>
+                  {p.kapsam === "ders" && <StatusBadge tone="primary">PT dersi</StatusBadge>}
                   {p.dondurma_izni && <StatusBadge tone="sky">Dondurulabilir</StatusBadge>}
                 </CardTitle>
                 <CardDescription>
