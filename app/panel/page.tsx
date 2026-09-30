@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, Banknote, BellRing, CalendarClock, CalendarDays, CalendarOff, CalendarPlus, LayoutDashboard, Link2Off, List, Phone, RefreshCw, ScanLine, TriangleAlert, UserPlus, Users, Wallet } from "lucide-react";
+import { Activity, Banknote, BellRing, CalendarClock, CalendarDays, CalendarOff, CalendarPlus, Inbox, LayoutDashboard, Link2Off, List, Phone, RefreshCw, ScanLine, TriangleAlert, UserPlus, Users, Wallet } from "lucide-react";
 import { CanliSaat } from "@/components/panel/canli-saat";
 import { type CizelgeDersi, GunCizelgesi } from "@/components/panel/gun-cizelgesi";
 import { Avatar } from "@/components/ui/avatar";
@@ -17,6 +17,7 @@ import { ANTRENOR_DURUMU, antrenorDurumu } from "@/lib/panel/antrenor-durumu";
 import { FINANS_ROLLERI, MUSTERI_ROLLERI } from "@/lib/panel/roller";
 import { kalanGun } from "@/lib/panel/uyelik-ozeti";
 import { createClient } from "@/lib/supabase/server";
+import { telefonGoster } from "@/lib/utils";
 import type { DersDurumu, UyelikGorunumSatiri } from "@/types/veritabani";
 
 type YaklasanSatiri = Pick<UyelikGorunumSatiri, "id" | "musteri_id" | "paket_adi" | "tur" | "bitis_tarihi" | "kalan_hak" | "baslangic_tarihi" | "toplam_hak" | "gecerli_durum">;
@@ -61,7 +62,7 @@ export default async function PanelAnaSayfa() {
   const donem = gunDonemi(bugun);
   const simdiIso = new Date().toISOString();
 
-  const [girisSonuc, aktifSonuc, yaklasanSonuc, kasaSonuc, alacakSonuc, dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, bekleyenIzinSonuc, isletmeSonuc] = await Promise.all([
+  const [girisSonuc, aktifSonuc, yaklasanSonuc, kasaSonuc, alacakSonuc, dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, bekleyenIzinSonuc, isletmeSonuc, onKayitSonuc] = await Promise.all([
     musteriYetkisi
       ? supabase.from("giris_kaydi").select("id", { count: "exact", head: true }).eq("giris_tarihi", bugun).eq("sonuc", "kabul").eq("iptal", false)
       : Promise.resolve(null),
@@ -86,7 +87,10 @@ export default async function PanelAnaSayfa() {
     yonetici ? supabase.from("izin_talebi").select("kullanici_id").eq("durum", "onaylandi").lte("baslangic_tarihi", bugun).gte("bitis_tarihi", bugun) : Promise.resolve(null),
     yonetici ? supabase.from("izin_talebi").select("id", { count: "exact", head: true }).eq("durum", "beklemede") : Promise.resolve(null),
     supabase.from("isletme").select("ad").eq("id", kullanici.isletme_id).maybeSingle<{ ad: string }>(),
+    musteriYetkisi ? supabase.from("musteri_on_kayit").select("id, ad_soyad, telefon, created_at", { count: "exact" }).eq("durum", "beklemede").order("created_at").limit(5) : Promise.resolve(null),
   ]);
+  const onKayitlar = (onKayitSonuc?.data ?? []) as { id: string; ad_soyad: string; telefon: string; created_at: string }[];
+  const onKayitSayisi = onKayitSonuc?.count ?? 0;
 
   const yaklasan = (yaklasanSonuc?.data ?? []) as YaklasanSatiri[];
   const dersler = (dersSonuc?.data ?? []) as DersSatiri[];
@@ -180,6 +184,7 @@ export default async function PanelAnaSayfa() {
             icon={Users}
           />
         )}
+        {musteriYetkisi && <KpiCard label="Bekleyen ön kayıtlar" value={onKayitSayisi} icon={Inbox} iconTone={onKayitSayisi > 0 ? "amber" : "neutral"} />}
         {yonetici && <KpiCard label="Bekleyen izin talepleri" value={bekleyenIzin} icon={CalendarOff} iconTone={bekleyenIzin > 0 ? "amber" : "neutral"} />}
         {finansYetkisi && <KpiCard label="Bugün net tahsilat" value={kurusTLyazi(netTahsilat)} icon={Wallet} />}
         {finansYetkisi && <KpiCard label="Açık alacak" value={kurusTLyazi(toplamAlacak)} icon={TriangleAlert} iconTone="amber" />}
@@ -206,6 +211,7 @@ export default async function PanelAnaSayfa() {
           </Card>
 
           {musteriYetkisi && (
+            <div className="flex flex-col gap-6">
             <Card className="content-start gap-3 p-5">
               <h2 className="text-lg font-semibold tracking-tight">Antrenör Durumları</h2>
               {antrenorler.length === 0 ? (
@@ -228,6 +234,30 @@ export default async function PanelAnaSayfa() {
               )}
               {!yonetici && <p className="text-xs text-muted-foreground">İzin bilgisi yalnız işletme yöneticisine görünür.</p>}
             </Card>
+
+            {onKayitlar.length > 0 && (
+              <Card className="content-start gap-3 p-5">
+                <div className="flex items-center justify-between gap-2">
+                  <h2 className="text-lg font-semibold tracking-tight">Bekleyen Ön Kayıtlar</h2>
+                  <StatusBadge tone="amber">{onKayitSayisi}</StatusBadge>
+                </div>
+                <ul className="flex flex-col gap-2">
+                  {onKayitlar.map((k) => (
+                    <li key={k.id} className="flex items-center gap-3 rounded-lg bg-surface px-3 py-2">
+                      <Avatar name={k.ad_soyad} size="sm" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-medium">{k.ad_soyad}</span>
+                        <span className="block text-xs text-muted-foreground tabular-nums">{telefonGoster(k.telefon)}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/panel/musteriler/on-kayitlar" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                  Ön kayıtları incele
+                </Link>
+              </Card>
+            )}
+            </div>
           )}
         </section>
       )}
