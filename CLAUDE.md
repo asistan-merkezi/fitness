@@ -40,7 +40,8 @@ Fitness'e özgü, klinikte OLMAYAN (tasarlanacak): zaman bazlı üyelik (aylık/
 - Tasarım: skill `brand-ui`; marka/palet kararı bekliyor.
 
 ## Yol Haritası / Durum
-- **Şu an**: proje iskeleti; klinik kodundan temiz çıkarım planlanıyor (`docs/klinikten-cikarim-plani.md`). Henüz uygulama kodu yok.
+- **Şu an**: F1 tamamlandı (Next 16 iskeleti, `proxy.ts`, e-posta+şifre girişi, `/panel` kabuğu, UI bileşenleri, `lib/datetime`+`lib/utils` testli). Sıradaki: F2 taban şema (yeni Supabase test projesi gerekli). Plan: `docs/klinikten-cikarim-plani.md`.
+- **F1'de bilinçli dışarıda bırakılanlar (klinik kararları, fitness'te yeniden karar verilecek)**: gece zorla oturum kapatma (`ScheduledLogout`), tek oturum kilidi, telefon ile personel girişi (yönetici e-posta/personel telefon ayrımı). F1 girişi herkes için e-posta + şifre; rol girişten sonra `kullanici.rol`'den okunur.
 - **MVP-1 — Üyelik + giriş + cari**: müşteri kaydı (+hassas/KVKK), üyelik paketi/satışı (dondurma dahil), resepsiyon check-in, cari ve kasa.
 - **Sonra**: ders/PT takvimi + grup dersi kapasitesi; antrenman programı + ölçüm + kas haritası; tablet/kiosk; personel hakediş; müşteri portalı; QR akışları; Paraşüt; mesajlaşma.
 - **Açık sorular**: turnike/giriş cihazı markası ve entegrasyon yöntemi · kart ödemesi sağlayıcısı (iyzico/PayTR; Stripe doğrulanacak) · dondurma kuralları (gün limiti, ücret) · otomatik yenileme tahsilatı (abonelik) · marka adı/paleti · fiyat kademeleri.
