@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { PanelKabugu } from "@/components/panel/kabuk";
 import { gecerliKullanici } from "@/lib/auth/gecerli-kullanici";
 import { anaOgelerIcinRol, gruplarIcinRol } from "@/lib/panel/menu-gruplari";
-import { ROL_ETIKETLERI } from "@/lib/panel/roller";
+import { MUSTERI_ROLLERI, ROL_ETIKETLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { cikisYap } from "./actions";
 
@@ -33,8 +33,24 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     isletmeAdi = data?.ad ?? null;
   }
 
+  // Üst çubuk: yalnız yönetici/resepsiyon müşteri arar ve ders açar; bekleyen izin rozeti yalnız yöneticide.
+  const musteriYetkisi = !!kullanici?.rol && (MUSTERI_ROLLERI as readonly string[]).includes(kullanici.rol);
+  let bekleyenIzin: number | null = null;
+  if (kullanici?.rol === "isletme_admin") {
+    const supabase = await createClient();
+    const { count } = await supabase.from("izin_talebi").select("id", { count: "exact", head: true }).eq("durum", "beklemede");
+    bekleyenIzin = count ?? 0;
+  }
+
   return (
-    <PanelKabugu menu={menu} kullaniciAdi={gorunenAd} rolEtiketi={rolEtiketi} isletmeAdi={isletmeAdi} cikisEylemi={cikisYap}>
+    <PanelKabugu
+      menu={menu}
+      kullaniciAdi={gorunenAd}
+      rolEtiketi={rolEtiketi}
+      isletmeAdi={isletmeAdi}
+      cikisEylemi={cikisYap}
+      ust={{ yeniDers: musteriYetkisi, bekleyenIzin, aramaVar: musteriYetkisi }}
+    >
       {children}
     </PanelKabugu>
   );

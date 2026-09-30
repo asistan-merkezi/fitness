@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, CalendarPlus, CheckCircle2, ChevronLeft, ChevronRight, LayoutGrid, List } from "lucide-react";
+import { CanliSaat } from "@/components/panel/canli-saat";
+import { GunCizelgesi } from "@/components/panel/gun-cizelgesi";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -27,9 +29,11 @@ const GUN = /^\d{4}-\d{2}-\d{2}$/;
 const BEKLEYEN = ["planlandi", "ertelendi"];
 const KAPANAN = ["iptal", "gelmedi"];
 
-export default async function DerslerSayfasi({ searchParams }: { searchParams: Promise<{ gun?: string; antrenor?: string; ok?: string }> }) {
+export default async function DerslerSayfasi({ searchParams }: { searchParams: Promise<{ gun?: string; antrenor?: string; ok?: string; gorunum?: string }> }) {
   const { kullanici, authUser } = await sayfaYetkisiIste([...MUSTERI_ROLLERI, "antrenor"]);
-  const { gun, antrenor, ok } = await searchParams;
+  const { gun, antrenor, ok, gorunum } = await searchParams;
+  // Varsayılan görünüm çizelge (alan sütunlu saat ızgarası); "liste" eylem düğmeli ders kartlarını gösterir.
+  const liste = gorunum === "liste";
   const yonetim = (MUSTERI_ROLLERI as readonly string[]).includes(kullanici.rol);
 
   const bugun = bugunIstanbulTarihi();
@@ -49,7 +53,7 @@ export default async function DerslerSayfasi({ searchParams }: { searchParams: P
   const [{ data: dersVeri }, { data: antrenorVeri }, { data: alanVeri }] = await Promise.all([
     sorgu,
     supabase.from("kullanici").select("id, ad_soyad").eq("rol", "antrenor").eq("aktif", true).order("ad_soyad"),
-    supabase.from("alan_studyo").select("id, ad"),
+    supabase.from("alan_studyo").select("id, ad, aktif").order("ad"),
   ]);
   const dersler = (dersVeri ?? []) as DersSeansiSatiri[];
   const antrenorler = (antrenorVeri ?? []) as { id: string; ad_soyad: string }[];
@@ -67,13 +71,16 @@ export default async function DerslerSayfasi({ searchParams }: { searchParams: P
     const { data } = await supabase.from("kullanici").select("id, ad_soyad").in("id", eksikAntrenor);
     for (const a of (data ?? []) as { id: string; ad_soyad: string }[]) antrenorAdi.set(a.id, a.ad_soyad);
   }
-  const alanAdi = new Map(((alanVeri ?? []) as { id: string; ad: string }[]).map((a) => [a.id, a.ad]));
+  const tumAlanlar = (alanVeri ?? []) as { id: string; ad: string; aktif: boolean }[];
+  const alanAdi = new Map(tumAlanlar.map((a) => [a.id, a.ad]));
+  const kullanilanAlanlar = new Set(dersler.map((d) => d.alan_id));
+  const cizelgeAlanlari = tumAlanlar.filter((a) => a.aktif || kullanilanAlanlar.has(a.id));
 
   const bekleyen = dersler.filter((d) => BEKLEYEN.includes(d.durum)).length;
   const kapanan = dersler.filter((d) => KAPANAN.includes(d.durum)).length;
   const tamamlanan = dersler.filter((d) => d.durum === "tamamlandi").length;
 
-  const baglanti = (g: string) => `/panel/dersler?gun=${g}${antrenorFiltre ? `&antrenor=${antrenorFiltre}` : ""}`;
+  const baglanti = (g: string, gorunumu: "cizelge" | "liste" = liste ? "liste" : "cizelge") => `/panel/dersler?gun=${g}${antrenorFiltre ? `&antrenor=${antrenorFiltre}` : ""}${gorunumu === "liste" ? "&gorunum=liste" : ""}`;
   const bugunMu = gunParam === bugun;
 
   return (
@@ -111,6 +118,7 @@ export default async function DerslerSayfasi({ searchParams }: { searchParams: P
         <form action="/panel/dersler" method="get" className="flex items-center gap-2">
           <Input name="gun" type="date" defaultValue={gunParam} aria-label="Tarihe git" className="w-auto" />
           {antrenorFiltre && <input type="hidden" name="antrenor" value={antrenorFiltre} />}
+          {liste && <input type="hidden" name="gorunum" value="liste" />}
           <Button type="submit" variant="outline">
             Git
           </Button>
@@ -118,6 +126,7 @@ export default async function DerslerSayfasi({ searchParams }: { searchParams: P
         {yonetim && antrenorler.length > 0 && (
           <form action="/panel/dersler" method="get" className="flex items-center gap-2 sm:ml-auto">
             <input type="hidden" name="gun" value={gunParam} />
+            {liste && <input type="hidden" name="gorunum" value="liste" />}
             <select name="antrenor" defaultValue={antrenorFiltre ?? ""} aria-label="Antrenör süz" className="h-10 rounded-lg border border-input bg-input-bg px-3 text-sm">
               <option value="">Tüm antrenörler</option>
               {antrenorler.map((a) => (
@@ -133,6 +142,18 @@ export default async function DerslerSayfasi({ searchParams }: { searchParams: P
         )}
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Görünüm">
+          <Link href={baglanti(gunParam, "cizelge")} aria-current={!liste ? "true" : undefined} className={cn(buttonVariants({ variant: !liste ? "default" : "outline", size: "sm" }), liste && "text-muted-foreground")}>
+            <LayoutGrid aria-hidden /> Çizelge
+          </Link>
+          <Link href={baglanti(gunParam, "liste")} aria-current={liste ? "true" : undefined} className={cn(buttonVariants({ variant: liste ? "default" : "outline", size: "sm" }), !liste && "text-muted-foreground")}>
+            <List aria-hidden /> Liste
+          </Link>
+        </div>
+        {bugunMu && <CanliSaat />}
+      </div>
+
       <div className="flex flex-wrap gap-2 text-sm">
         <StatusBadge tone="sky">{bekleyen} bekleyen</StatusBadge>
         <StatusBadge tone="primary">{tamamlanan} tamamlanan</StatusBadge>
@@ -145,6 +166,22 @@ export default async function DerslerSayfasi({ searchParams }: { searchParams: P
           title="Bu gün için ders yok"
           description={yonetim ? "Yeni Ders ile bu güne ders planlayabilirsiniz." : "Size atanmış ders bulunmuyor."}
         />
+      ) : !liste ? (
+        <GunCizelgesi
+          dersler={dersler.map((d) => ({
+            id: d.id,
+            musteri_adi: musteriAdi.get(d.musteri_id) ?? "Müşteri",
+            antrenor_adi: antrenorAdi.get(d.antrenor_id) ?? "Antrenör",
+            alan_id: d.alan_id,
+            baslangic: d.baslangic,
+            bitis: d.bitis,
+            durum: d.durum,
+          }))}
+          alanlar={cizelgeAlanlari}
+          bugunMu={bugunMu}
+          ayrintiHref={(id) => `${baglanti(gunParam, "liste")}#ders-${id}`}
+          maxYukseklik={720}
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {dersler.map((d) => {
@@ -153,7 +190,7 @@ export default async function DerslerSayfasi({ searchParams }: { searchParams: P
             const eylemler = dersEylemleri(d.durum, kullanici.rol, d.antrenor_id === authUser.id);
             const islendi = d.hak_dusuldu || d.borc_hareket_id !== null;
             return (
-              <li key={d.id}>
+              <li key={d.id} id={`ders-${d.id}`} className="scroll-mt-24">
                 <Card className={cn("gap-3 p-4", KAPANAN.includes(d.durum) && "opacity-70")}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">

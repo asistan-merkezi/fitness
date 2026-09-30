@@ -6,6 +6,7 @@ import { LogOut, Menu, ScanLine } from "lucide-react";
 import { Logo, MarkaIsareti } from "@/components/marka/logo";
 import { MENU_IKONLARI, type MenuIkonu } from "@/components/panel/menu-ikonlari";
 import { TemaDugmesi } from "@/components/panel/tema-anahtari";
+import { UstCubuk } from "@/components/panel/ust-cubuk";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +33,7 @@ export function PanelKabugu({
   rolEtiketi,
   isletmeAdi,
   cikisEylemi,
+  ust,
   children,
 }: {
   menu: Oge[];
@@ -39,6 +41,8 @@ export function PanelKabugu({
   rolEtiketi: string | null;
   isletmeAdi: string | null;
   cikisEylemi: () => Promise<void>;
+  /** Masaüstü üst çubuğu ayarları: Yeni Ders düğmesi, bekleyen izin rozeti (yalnız yönetici), müşteri arama. */
+  ust: { yeniDers: boolean; bekleyenIzin: number | null; aramaVar: boolean };
   children: React.ReactNode;
 }) {
   const yol = usePathname();
@@ -134,7 +138,8 @@ export function PanelKabugu({
       </header>
 
       <div className="md:pl-16 xl:pl-[260px]">
-        <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 pb-28 md:p-6 md:pb-8 xl:p-8">{children}</main>
+        <UstCubuk kullaniciAdi={kullaniciAdi} rolEtiketi={rolEtiketi} yeniDers={ust.yeniDers} bekleyenIzin={ust.bekleyenIzin} aramaVar={ust.aramaVar} />
+        <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 p-4 pb-28 md:p-6 md:pb-8 xl:p-8">{children}</main>
       </div>
 
       {/* Mobil alt dock */}
