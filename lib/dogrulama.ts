@@ -367,6 +367,34 @@ export const personelHareketSemasi = z.object({
   anahtar: z.uuid(),
 });
 
+// ---------------------------------------------------------------------------------------------------------
+const gunZorunlu = z
+  .string()
+  .trim()
+  .refine((v) => GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v)), "Geçerli bir tarih girin.");
+export const IZIN_TIPLERI = ["yillik", "mazeret", "rapor"] as const;
+
+export const izinTalepSemasi = z
+  .object({
+    tip: z.enum(IZIN_TIPLERI, { error: "İzin türü seçin." }),
+    baslangic: gunZorunlu,
+    bitis: gunZorunlu,
+    gerekce: metinOpsiyonel(300),
+  })
+  .superRefine((v, ctx) => {
+    if (v.bitis < v.baslangic) ctx.addIssue({ code: "custom", path: ["bitis"], message: "Bitiş tarihi başlangıçtan önce olamaz." });
+  });
+
+export const izinManuelSemasi = izinTalepSemasi.safeExtend({ kullanici_id: z.uuid({ error: "Personel seçin." }) });
+
+export const izinDegerlendirSemasi = z.object({
+  izin_id: z.uuid(),
+  karar: z.enum(["onayla", "reddet"], { error: "Geçersiz karar." }),
+  red_gerekce: metinOpsiyonel(300),
+});
+
+export const izinIptalSemasi = z.object({ izin_id: z.uuid() });
+
 /** İlk hata mesajını döndürür (form üstünde tek satır gösterim için). */
 export function ilkHata(hata: z.ZodError): string {
   return hata.issues[0]?.message ?? "Girdi hatalı.";

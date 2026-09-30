@@ -6,6 +6,8 @@ import {
   Boxes,
   Building2,
   CalendarDays,
+  CalendarOff,
+  Coins,
   ClipboardList,
   CreditCard,
   DoorOpen,
@@ -65,6 +67,8 @@ export const MENU_IKONLARI = {
   kilavuz: BookOpen,
   sohbet: Bot,
   talep: MessageSquareWarning,
+  izin: CalendarOff,
+  hakedis: Coins,
 } as const satisfies Record<string, LucideIcon>;
 
 export type MenuIkonu = keyof typeof MENU_IKONLARI;

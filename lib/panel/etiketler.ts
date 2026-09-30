@@ -65,3 +65,12 @@ export const PERSONEL_HAREKET_TURLERI = {
   odeme: { etiket: "Ödeme", ton: "emerald" as StatusTone },
   avans: { etiket: "Avans", ton: "amber" as StatusTone },
 };
+
+export const IZIN_TIPLERI = { yillik: "Yıllık izin", mazeret: "Mazeret izni", rapor: "Rapor" } as const;
+
+export const IZIN_DURUMU = {
+  beklemede: { etiket: "Beklemede", ton: "amber" as StatusTone },
+  onaylandi: { etiket: "Onaylandı", ton: "emerald" as StatusTone },
+  reddedildi: { etiket: "Reddedildi", ton: "rose" as StatusTone },
+  iptal: { etiket: "İptal", ton: "slate" as StatusTone },
+};
