@@ -13,3 +13,5 @@ export const ROL_ETIKETLERI: Record<KullaniciRolu, string> = {
   antrenor: "Antrenör",
   muhasebe: "Muhasebe",
 };
+/** Personel maaş/hakediş: yönetim + muhasebe (resepsiyon göremez). */
+export const FINANS_YONETIM_ROLLERI = ["isletme_admin", "muhasebe"] as const satisfies readonly KullaniciRolu[];

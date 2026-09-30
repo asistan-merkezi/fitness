@@ -43,6 +43,10 @@ const KOD_MESAJLARI: Record<string, string> = {
   ders_tasinamaz: "Yalnızca planlanmış veya ertelenmiş dersler taşınabilir.",
   gecersiz_durum: "Geçersiz ders durumu.",
   gecikme_gerekli: "Gecikme süresini (dakika) girin.",
+  donem_bitmedi: "Dönem henüz bitmedi; yalnızca biten aylar kapatılabilir.",
+  hareket_turu_gecersiz: "Yalnızca ödeme veya avans kaydı girilebilir.",
+  tutar_gecersiz: "Tutar sıfırdan büyük olmalı.",
+  personel_bulunamadi: "Personel bulunamadı.",
   borc_islendi: "Bu ders için cariye borç yazıldı; durumu geri alınamaz. Düzeltme gerekiyorsa cari üzerinden yapın.",
 };
 
@@ -51,6 +55,7 @@ const IPUCLARI: Array<[RegExp, string]> = [
   [/row-level security|permission denied/i, "Bu işlem için yetkiniz yok."],
   [/musteri_telefon_check|telefon.*check/i, "Telefon numarası geçerli değil."],
   [/tc_kimlik/i, "T.C. kimlik numarası geçerli değil."],
+  [/profil_tarih_kurali/i, "İşten çıkış tarihi işe girişten önce olamaz."],
   [/paket_tur_kurali|paket_dondurma_kurali/i, "Paket bilgileri tutarsız: tür, süre/seans ve dondurma alanlarını kontrol edin."],
   [/hareket_yontem_kurali/i, "Ödeme yöntemi eksik veya hatalı."],
   [/hareket_iskonto_kurali/i, "İskonto tutardan büyük olamaz."],

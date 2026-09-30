@@ -340,6 +340,33 @@ export const alanSemasi = z.object({
   aktif: onay,
 });
 
+// ---------------------------------------------------------------------------------------------------------
+export const personelProfilSemasi = z
+  .object({
+    kullanici_id: z.uuid(),
+    maas: tlOpsiyonel("Geçerli bir maaş girin (ör. 30.000,00)."),
+    ders_prim: tlOpsiyonel("Geçerli bir ders primi girin."),
+    ise_giris_tarihi: gunOpsiyonel,
+    isten_cikis_tarihi: gunOpsiyonel,
+  })
+  .superRefine((v, ctx) => {
+    if (v.ise_giris_tarihi && v.isten_cikis_tarihi && v.isten_cikis_tarihi < v.ise_giris_tarihi) {
+      ctx.addIssue({ code: "custom", path: ["isten_cikis_tarihi"], message: "İşten çıkış tarihi işe girişten önce olamaz." });
+    }
+  });
+
+/** Dönem: "YYYY-MM". */
+export const personelDonemSemasi = z.object({ ay: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Geçerli bir dönem seçin.") });
+
+export const personelHareketSemasi = z.object({
+  kullanici_id: z.uuid(),
+  tur: z.enum(["odeme", "avans"], { error: "Ödeme veya avans seçin." }),
+  tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
+  yontem: z.enum(["nakit", "havale"], { error: "Ödeme yöntemi seçin." }),
+  aciklama: metinOpsiyonel(300),
+  anahtar: z.uuid(),
+});
+
 /** İlk hata mesajını döndürür (form üstünde tek satır gösterim için). */
 export function ilkHata(hata: z.ZodError): string {
   return hata.issues[0]?.message ?? "Girdi hatalı.";

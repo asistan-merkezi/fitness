@@ -58,3 +58,10 @@ export const DERS_DURUMU: Record<DersDurumu, { etiket: string; ton: StatusTone }
 };
 
 export const PAKET_KAPSAMI: Record<"giris" | "ders", string> = { giris: "Salon girişi", ders: "PT dersi" };
+
+export const PERSONEL_HAREKET_TURLERI = {
+  hakedis: { etiket: "Hakediş", ton: "sky" as StatusTone },
+  prim: { etiket: "Ders primi", ton: "primary" as StatusTone },
+  odeme: { etiket: "Ödeme", ton: "emerald" as StatusTone },
+  avans: { etiket: "Avans", ton: "amber" as StatusTone },
+};

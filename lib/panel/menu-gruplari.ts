@@ -1,6 +1,6 @@
 import type { MenuIkonu } from "@/components/panel/menu-ikonlari";
 import type { KullaniciRolu } from "@/lib/auth/gecerli-kullanici";
-import { FINANS_ROLLERI, MUSTERI_ROLLERI, PAKET_GORUNTULEME_ROLLERI, YONETICI_ROLLERI } from "@/lib/panel/roller";
+import { FINANS_ROLLERI, FINANS_YONETIM_ROLLERI, MUSTERI_ROLLERI, PAKET_GORUNTULEME_ROLLERI, YONETICI_ROLLERI } from "@/lib/panel/roller";
 
 /**
  * Menü yapısı (klinikteki düzenle aynı): üstte tekil linkler, altta ana başlıklar (Finans, Yönetim, Ayarlar, Destek).
@@ -26,6 +26,7 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
     etiket: "Finans",
     ikon: "finans",
     ogeler: [
+      { href: "/panel/finans/personel", etiket: "Personel ve Hakediş", ikon: "personel", roller: FINANS_YONETIM_ROLLERI },
       { href: "/panel/kasa", etiket: "Kasa ve Cari", ikon: "kasa", roller: FINANS_ROLLERI },
       { href: "/panel/kasa/hizli-tahsilat", etiket: "Hızlı Tahsilat", ikon: "tahsilat", roller: MUSTERI_ROLLERI },
       { href: "/panel/finans/giderler", etiket: "Giderler", ikon: "gider", roller: FINANS_ROLLERI, yakinda: true },
