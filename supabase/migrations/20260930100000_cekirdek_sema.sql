@@ -347,8 +347,12 @@ CREATE POLICY "audit_log_select" ON public.audit_log
   );
 -- INSERT/UPDATE/DELETE: policy yok; yalnız audit_kaydet() (SECURITY DEFINER) yazar.
 
-SELECT public.audit_log_bolum_olustur(public.bugun_istanbul());
-SELECT public.audit_log_bolum_olustur((public.bugun_istanbul() + interval '1 month')::date);
+-- Bu ay ve gelecek ayın bölümleri (PERFORM: sonuç tablosu döndürmez, editörde "Success" görünür).
+DO $$
+BEGIN
+  PERFORM public.audit_log_bolum_olustur(public.bugun_istanbul());
+  PERFORM public.audit_log_bolum_olustur((public.bugun_istanbul() + interval '1 month')::date);
+END $$;
 
 DROP TRIGGER IF EXISTS trg_audit_kullanici ON public.kullanici;
 CREATE TRIGGER trg_audit_kullanici
