@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Banknote, CreditCard, Dumbbell, HeartPulse, Phone, ShieldCheck, Ticket } from "lucide-react";
+import { ArrowLeft, Banknote, CalendarDays, CreditCard, Dumbbell, HeartPulse, Phone, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { IconTile } from "@/components/ui/icon-tile";
 import { ProgressBar, SeansBloklari } from "@/components/ui/progress-bar";
+import { OzetModulKarti } from "@/components/panel/ozet-modul-karti";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
 import { bugunIstanbulTarihi, formatDate, formatDateTime, gunYazi } from "@/lib/datetime";
 import { kurusTLyazi } from "@/lib/para";
-import { HAREKET_TURLERI, KATEGORI_ETIKETLERI, RED_NEDENLERI, UYELIK_DURUMU, YONTEM_ETIKETLERI } from "@/lib/panel/etiketler";
+import { DERS_DURUMU, HAREKET_TURLERI, KATEGORI_ETIKETLERI, RED_NEDENLERI, UYELIK_DURUMU, YONTEM_ETIKETLERI } from "@/lib/panel/etiketler";
 import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
 import { bitiyorUyarisi, gecenSureYuzdesi, kalanGun } from "@/lib/panel/uyelik-ozeti";
 import { createClient } from "@/lib/supabase/server";
@@ -25,10 +26,10 @@ export const metadata: Metadata = { title: "Müşteri" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SEKMELER = [
+  { kod: "bilgiler", etiket: "Kişisel Bilgiler" },
   { kod: "uyelikler", etiket: "Üyelikler" },
-  { kod: "cari", etiket: "Cari Hareketler" },
-  { kod: "giris", etiket: "Giriş Geçmişi" },
-  { kod: "bilgiler", etiket: "Bilgiler" },
+  { kod: "giris", etiket: "Ders & Giriş" },
+  { kod: "cari", etiket: "Cari & Ödeme" },
 ] as const;
 type Sekme = (typeof SEKMELER)[number]["kod"];
 
@@ -37,13 +38,14 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
   const { id } = await params;
   if (!UUID.test(id)) notFound();
   const { sekme: sekmeParam } = await searchParams;
-  const sekme: Sekme = SEKMELER.some((s) => s.kod === sekmeParam) ? (sekmeParam as Sekme) : "uyelikler";
+  // Sekme yoksa müşteri kartı (bölüm kartları) gösterilir; klinikteki hasta dosyası gibi.
+  const sekme: Sekme | null = SEKMELER.some((s) => s.kod === sekmeParam) ? (sekmeParam as Sekme) : null;
 
   const supabase = await createClient();
   const { data: musteri } = await supabase.from("musteri").select("*").eq("id", id).maybeSingle<MusteriSatiri>();
   if (!musteri) notFound();
 
-  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc, hesapSonuc, iskontoSonuc] = await Promise.all([
+  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc, hesapSonuc, iskontoSonuc, dersSonuc] = await Promise.all([
     supabase.from("musteri_hassas").select("*").eq("musteri_id", id).maybeSingle<MusteriHassasSatiri>(),
     supabase.from("musteri_veli").select("ad_soyad, telefon, yakinlik").eq("musteri_id", id).maybeSingle<MusteriVeliSatiri>(),
     supabase.from("uyelik_gorunum").select("*").eq("musteri_id", id).order("baslangic_tarihi", { ascending: false }),
@@ -54,7 +56,9 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
     supabase.from("musteri_bakiye").select("bakiye_kurus").eq("musteri_id", id).maybeSingle<{ bakiye_kurus: number }>(),
     supabase.rpc("banka_hesap_secenekleri"),
     supabase.from("kategori_iskonto_orani").select("yuzde").eq("kategori", musteri.kategori).maybeSingle<{ yuzde: number }>(),
+    supabase.from("ders_seansi").select("id, baslangic, durum").eq("musteri_id", id).order("baslangic", { ascending: false }).limit(15),
   ]);
+  const dersler = (dersSonuc.data ?? []) as { id: string; baslangic: string; durum: keyof typeof DERS_DURUMU }[];
   const hesaplar = (hesapSonuc.data ?? []) as { id: string; ad: string }[];
   const kategoriYuzdesi = Number(iskontoSonuc.data?.yuzde ?? 0);
 
@@ -86,6 +90,8 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
   for (const o of onamlar) if (!sonOnam.has(o.tur)) sonOnam.set(o.tur, o);
   const kvkkOnayli = sonOnam.get("kvkk_aydinlatma")?.verildi === true;
 
+  const aktifUyelik = uyelikler.find((u) => u.gecerli_durum === "aktif" || u.gecerli_durum === "dondurulmus");
+  const sonGiris = girisler.find((g) => g.sonuc === "kabul" && !g.iptal);
   const bakiyeDurumu = bakiyeKurus < 0 ? { etiket: "Borçlu", ton: "rose" as const } : bakiyeKurus > 0 ? { etiket: "Alacaklı", ton: "emerald" as const } : { etiket: "Dengede", ton: "slate" as const };
 
   return (
@@ -143,22 +149,22 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
         </div>
       </Card>
 
-      <nav aria-label="Müşteri bölümleri" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-        {SEKMELER.map((s) => (
-          <Link
-            key={s.kod}
-            href={`/panel/musteriler/${id}?sekme=${s.kod}`}
-            aria-current={sekme === s.kod ? "page" : undefined}
-            className={cn(
-              "inline-flex h-9 shrink-0 items-center rounded-lg px-4 text-sm font-semibold transition-colors",
-              sekme === s.kod ? "bg-primary text-primary-foreground" : "border border-border bg-surface-2 text-muted-foreground hover:text-foreground"
-            )}
-          >
-            {s.etiket}
-            {s.kod === "uyelikler" && ` (${uyelikler.length})`}
+      {sekme === null ? (
+        <section aria-label="Müşteri bölümleri" className="grid grid-cols-2 items-stretch gap-3 sm:grid-cols-4">
+          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=bilgiler`} etiket="Kişisel Bilgiler" ozet="Kişisel bilgiler & iletişim" ikon={User} ton="blue" uyari={!kvkkOnayli} />
+          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=uyelikler`} etiket="Üyelikler" ozet={aktifUyelik ? `${aktifUyelik.paket_adi}${aktifUyelik.tur === "seans" ? ` · ${aktifUyelik.kalan_hak} hak` : ""}` : `${uyelikler.length} kayıt · aktif yok`} ikon={Ticket} ton="emerald" uyari={!aktifUyelik} />
+          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=giris`} etiket="Ders & Giriş" ozet={sonGiris ? `Son giriş: ${formatDate(sonGiris.zaman)}` : dersler.length > 0 ? `${dersler.length} ders kaydı` : "Kayıt yok"} ikon={CalendarDays} ton="cyan" />
+          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=cari`} etiket="Cari & Ödeme" ozet={bakiyeKurus < 0 ? `Borç · ${kurusTLyazi(-bakiyeKurus)}` : `Alacak · ${kurusTLyazi(bakiyeKurus)}`} ozetTonu={bakiyeKurus < 0 ? "rose" : "emerald"} ikon={Wallet} ton="amber" />
+          <OzetModulKarti href="#" etiket="Antrenman & Ölçüm" ikon={Dumbbell} ton="violet" yakinda className="col-span-2 mx-auto w-1/2 sm:col-span-1 sm:w-auto" />
+        </section>
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <Link href={`/panel/musteriler/${id}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline">
+            <ArrowLeft className="size-4" aria-hidden /> Müşteri kartı
           </Link>
-        ))}
-      </nav>
+          <h2 className="text-base font-semibold">{SEKMELER.find((x) => x.kod === sekme)?.etiket}</h2>
+        </div>
+      )}
 
       {sekme === "uyelikler" && (
         <>
@@ -308,6 +314,24 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
       )}
 
       {sekme === "giris" && (
+        <>
+        <section className="flex flex-col gap-3" aria-label="Ders geçmişi">
+          <h2 className="text-lg font-semibold tracking-tight">Son dersler</h2>
+          {dersler.length === 0 ? (
+            <EmptyState compact title="Henüz ders kaydı yok." />
+          ) : (
+            <Card className="gap-0 py-0">
+              <CardContent className="flex flex-col divide-y divide-border p-0">
+                {dersler.map((d) => (
+                  <div key={d.id} className="flex min-h-[52px] items-center justify-between gap-2 px-4 py-2.5 text-sm">
+                    <span className="tabular-nums">{formatDateTime(d.baslangic)}</span>
+                    <StatusBadge tone={DERS_DURUMU[d.durum]?.ton ?? "slate"}>{DERS_DURUMU[d.durum]?.etiket ?? d.durum}</StatusBadge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </section>
         <section className="flex flex-col gap-3" aria-label="Giriş geçmişi">
           <h2 className="text-lg font-semibold tracking-tight">Son girişler</h2>
           {girisler.length === 0 ? (
@@ -329,6 +353,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
             </Card>
           )}
         </section>
+        </>
       )}
 
       {sekme === "bilgiler" && (
