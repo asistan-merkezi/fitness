@@ -1,0 +1,61 @@
+export type QrKodTipi = "musteri_on_kayit" | "anket" | "puantaj_giris" | "puantaj_cikis";
+
+export type QrKodTanimi = {
+  tip: QrKodTipi;
+  baslik: string;
+  aciklama: string;
+  /** İşletme kısa kodundan herkese açık yol. */
+  yol: (kisaKod: string) => string;
+  dosyaAdi: string;
+  goruntuleHref?: string;
+  goruntuleEtiket?: string;
+  /** false: katalogda var ama ilgili modül (puantaj) henüz yok; kart görünür, QR üretilmez. */
+  hazir: boolean;
+  hazirDegilNotu?: string;
+};
+
+/**
+ * QR Kodları listesindeki STATİK (kapı/afiş) kodlar. Derse özel dinamik kodlar (ör. ders sonrası anket) buraya dahil değildir.
+ * Yollar kısa koda bağlıdır (UUID değil): daha kısa veri, daha seyrek desen, küçük baskıda daha kolay okunur.
+ */
+export const QR_KOD_TANIMLARI: QrKodTanimi[] = [
+  {
+    tip: "musteri_on_kayit",
+    baslik: "Müşteri Ön Kayıt",
+    aciklama:
+      "Müşteri kendi adı, telefonu ve doğum tarihiyle ön kayıt bırakır. Kayıtlar doğrudan müşteri olmaz: Müşteriler > Ön Kayıtlar listesinde resepsiyon onayını bekler. Yalnız 18 yaş ve üzeri başvurabilir.",
+    yol: (kisaKod) => `/kayit/musteri/${kisaKod}`,
+    dosyaAdi: "musteri-on-kayit-qr",
+    goruntuleHref: "/panel/musteriler/on-kayitlar",
+    goruntuleEtiket: "Ön kayıtları görüntüle",
+    hazir: true,
+  },
+  {
+    tip: "anket",
+    baslik: "Anket ve Öneriler",
+    aciklama: "Üye memnuniyet puanı ve öneri bırakır; ad ve telefon isteğe bağlıdır (anonim yanıt mümkündür).",
+    yol: (kisaKod) => `/anket/${kisaKod}`,
+    dosyaAdi: "anket-oneri-qr",
+    goruntuleHref: "/panel/ayarlar/qr-kodlari/anket-yanitlari",
+    goruntuleEtiket: "Anket yanıtlarını görüntüle",
+    hazir: true,
+  },
+  {
+    tip: "puantaj_giris",
+    baslik: "Personel Puantaj — Giriş",
+    aciklama: "Personel kapıdaki kodu kendi telefonuyla okutur ve kişisel PIN'ini girerek mesaiye giriş yapar.",
+    yol: (kisaKod) => `/puantaj/${kisaKod}/giris`,
+    dosyaAdi: "personel-puantaj-giris-qr",
+    hazir: false,
+    hazirDegilNotu: "Puantaj modülüyle birlikte açılacak.",
+  },
+  {
+    tip: "puantaj_cikis",
+    baslik: "Personel Puantaj — Çıkış",
+    aciklama: "Personel kapıdaki kodu kendi telefonuyla okutur ve kişisel PIN'ini girerek mesaiden çıkış yapar.",
+    yol: (kisaKod) => `/puantaj/${kisaKod}/cikis`,
+    dosyaAdi: "personel-puantaj-cikis-qr",
+    hazir: false,
+    hazirDegilNotu: "Puantaj modülüyle birlikte açılacak.",
+  },
+];

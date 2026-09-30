@@ -484,6 +484,36 @@ export const mesajTestSemasi = z.object({
   adres: z.string().trim().min(3, "Alıcı adresi girin.").max(254),
 });
 
+// ---------------------------------------------------------------------------------------------------------
+/** Herkese açık müşteri ön kayıt formu. 18 yaş altı başvuramaz (veli akışı panelde resepsiyonda yürür). `website`: bot tuzağı (boş olmalı). */
+export const onKayitSemasi = z.object({
+  ad_soyad: isimAlani,
+  telefon: telefonAlani,
+  eposta: epostaOpsiyonel,
+  dogum_tarihi: z
+    .string()
+    .trim()
+    .refine((v) => GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v)), "Geçerli bir doğum tarihi girin.")
+    .refine((v) => !resitDegilMi(v), "18 yaşından küçükler için kayıt resepsiyonda veli ile birlikte yapılır."),
+  kvkk: onay.refine((v) => v, "Devam etmek için aydınlatma metnini okuduğunuzu onaylayın."),
+  ticari: onay,
+  website: z.string().optional(),
+});
+
+/** Herkese açık anket formu: ad ve telefon isteğe bağlıdır. */
+export const anketSemasi = z.object({
+  puan: tamSayi(1, 5, "Puan 1 ile 5 arasında olmalı."),
+  oneri: metinOpsiyonel(1000),
+  ad_soyad: isimOpsiyonel,
+  telefon: telefonOpsiyonel,
+  website: z.string().optional(),
+});
+
+export const qrAyarSemasi = z.object({
+  tip: z.enum(["musteri_on_kayit", "anket", "puantaj_giris", "puantaj_cikis"]),
+  aktif: onay,
+});
+
 /** İlk hata mesajını döndürür (form üstünde tek satır gösterim için). */
 export function ilkHata(hata: z.ZodError): string {
   return hata.issues[0]?.message ?? "Girdi hatalı.";

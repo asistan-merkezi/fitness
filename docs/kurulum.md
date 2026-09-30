@@ -23,6 +23,7 @@ Bu adımlar **sizin** Supabase projenizde yapılır; anahtarlar asla repoya yaz�
 | `20260930180000_personel_izin.sql` | izin talep-onay akışı, yıllık izin bakiyesi, resmi tatiller, izinli antrenöre ders atanamaması |
 | `20260930190000_sirket_bilgileri.sql` | şirket bilgileri (adres, vergi, yetkili, çalışma saatleri, logo), banka hesapları, IBAN doğrulama, logo depolama kovası |
 | `20260930200000_mesajlasma.sql` | SMS/WhatsApp/Mail kuralları, kuyruk, merkez kredi aynası, zamanlanmış tarama yardımcıları |
+| `20260930210000_qr_kodlari.sql` | QR kısa kodu, QR aç/kapa, hız sınırı, müşteri ön kayıt kuyruğu, anket yanıtları |
 
 Supabase CLI ile: `supabase link --project-ref <ref>` → `supabase db push`. SQL Editor ile: her dosyayı sırayla yapıştırın.
 Hepsi idempotent yazılmıştır; yine de **önce test projesinde** deneyin.

@@ -37,5 +37,11 @@ export async function GET(istek: Request) {
     }
     olusanlar.push(String(data));
   }
-  return NextResponse.json({ ok: true, bolumler: olusanlar });
+
+  // Günlük bakım: KVKK saklama süresi dolan (30 gün) onaylanmamış/reddedilmiş QR ön kayıtlarını siler. Bakım hatası bölüm
+  // oluşturmayı başarısız saymaz (migration henüz uygulanmamış olabilir); yalnız loglanır.
+  const { data: silinen, error: temizlikHatasi } = await admin.rpc("on_kayit_temizle", { p_gun: 30 });
+  if (temizlikHatasi) console.error("[cron/audit-log-bolum-olustur] on_kayit_temizle", temizlikHatasi.code);
+
+  return NextResponse.json({ ok: true, bolumler: olusanlar, silinenOnKayit: temizlikHatasi ? null : Number(silinen ?? 0) });
 }

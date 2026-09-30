@@ -67,7 +67,7 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
       { href: "/panel/ayarlar/kapi-tablet", etiket: "Kapı Tablet Ayarları", ikon: "tablet", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/ayarlar/yetkilendirme", etiket: "Yetkilendirme", ikon: "yetki", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/ayarlar/arsiv", etiket: "Arşiv Yükleme ve Yedekleme", ikon: "arsiv", roller: YONETICI_ROLLERI, yakinda: true },
-      { href: "/panel/ayarlar/qr-kodlari", etiket: "QR Kodları", ikon: "qr", roller: YONETICI_ROLLERI, yakinda: true },
+      { href: "/panel/ayarlar/qr-kodlari", etiket: "QR Kodları", ikon: "qr", roller: YONETICI_ROLLERI },
     ],
   },
   {

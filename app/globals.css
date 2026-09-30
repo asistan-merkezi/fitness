@@ -282,3 +282,25 @@
   font-weight: 600;
   letter-spacing: -0.01em;
 }
+
+/* Yazdırma: panel kabuğu (menü, üst çubuk, alt dock) ve .yazdirma-gizle işaretli öğeler kağıda basılmaz. */
+@media print {
+  aside,
+  header,
+  nav,
+  .yazdirma-gizle {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+  main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .md\:pl-16,
+  .xl\:pl-\[260px\] {
+    padding-left: 0 !important;
+  }
+}
