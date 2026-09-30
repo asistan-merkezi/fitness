@@ -63,7 +63,7 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
       { href: "/panel/ayarlar/sirket-bilgileri", etiket: "Şirket Bilgileri", ikon: "isletme", roller: FINANS_YONETIM_ROLLERI },
       { href: "/panel/ayarlar/personel", etiket: "Personel Tanımlama", ikon: "personel", roller: YONETICI_ROLLERI },
       { href: "/panel/ayarlar/muhasebe-sync", etiket: "Muhasebe Sync", ikon: "senkron", roller: YONETICI_ROLLERI, yakinda: true },
-      { href: "/panel/ayarlar/mesajlasma", etiket: "SMS/Whatsapp/Mail Ayarları", ikon: "mesaj", roller: YONETICI_ROLLERI, yakinda: true },
+      { href: "/panel/ayarlar/mesajlasma", etiket: "SMS/Whatsapp/Mail Ayarları", ikon: "mesaj", roller: YONETICI_ROLLERI },
       { href: "/panel/ayarlar/kapi-tablet", etiket: "Kapı Tablet Ayarları", ikon: "tablet", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/ayarlar/yetkilendirme", etiket: "Yetkilendirme", ikon: "yetki", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/ayarlar/arsiv", etiket: "Arşiv Yükleme ve Yedekleme", ikon: "arsiv", roller: YONETICI_ROLLERI, yakinda: true },

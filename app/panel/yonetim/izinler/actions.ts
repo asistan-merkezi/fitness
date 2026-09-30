@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { formVerisi, ilkHata, izinDegerlendirSemasi, izinManuelSemasi } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
+import { izinSonucMesaji } from "@/lib/mesaj/olaylar";
 import { YONETICI_ROLLERI } from "@/lib/panel/roller";
 
 type Onceki = EylemSonucu | null;
@@ -27,6 +28,7 @@ export async function izinDegerlendir(_onceki: Onceki, formData: FormData): Prom
     return hata(hataMesajiCoz(error));
   }
 
+  await izinSonucMesaji(oturum.kullanici.isletme_id, v.izin_id, v.karar === "onayla");
   revalidatePath("/panel/yonetim/izinler");
   revalidatePath("/panel/izinlerim");
   revalidatePath("/panel/dersler");

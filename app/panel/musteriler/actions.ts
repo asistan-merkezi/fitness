@@ -9,6 +9,7 @@ import { hataMesajiCoz } from "@/lib/hata-mesajlari";
 import { ONAM_METIN_SURUMU } from "@/lib/onam-metinleri";
 import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
 import { tcKimlikGecerli } from "@/lib/tc-kimlik";
+import { musteriKayitMesaji } from "@/lib/mesaj/olaylar";
 import { isimNormalle, telefonE164 } from "@/lib/utils";
 
 type Onceki = EylemSonucu | null;
@@ -26,6 +27,7 @@ export async function musteriOlustur(_onceki: Onceki, formData: FormData): Promi
     return hata(hataMesajiCoz(error));
   }
 
+  await musteriKayitMesaji(oturum.kullanici.isletme_id, String(data));
   revalidatePath("/panel/musteriler");
   redirect(`/panel/musteriler/${data}`);
 }

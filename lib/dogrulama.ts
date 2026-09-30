@@ -463,6 +463,27 @@ export const bankaHesabiSemasi = z.object({
   aktif: onay,
 });
 
+// ---------------------------------------------------------------------------------------------------------
+export const MESAJ_KANALLARI = ["sms", "whatsapp", "mail"] as const;
+
+/** Mesaj kuralı formu. Açıklama niteliğindeki metinlere (mesaj metni) isim biçimi UYGULANMAZ. */
+export const mesajKuraliSemasi = z.object({
+  tetikleyici_kodu: z.string().trim().min(1, "Tetikleyici bulunamadı.").max(80),
+  aktif: onay,
+  sms_aktif: onay,
+  whatsapp_aktif: onay,
+  mail_aktif: onay,
+  mesaj_metni: z.string().trim().max(1000, "Mesaj metni en fazla 1000 karakter olabilir."),
+  offset_deger: tamSayiOpsiyonel(0, 1000, "Zamanlama 0-1000 olmalı."),
+  offset_birim: z.enum(["dakika", "saat", "gun"]).default("saat"),
+});
+
+export const mesajTestSemasi = z.object({
+  tetikleyici_kodu: z.string().trim().min(1).max(80),
+  kanal: z.enum(MESAJ_KANALLARI, { error: "Kanal seçin." }),
+  adres: z.string().trim().min(3, "Alıcı adresi girin.").max(254),
+});
+
 /** İlk hata mesajını döndürür (form üstünde tek satır gösterim için). */
 export function ilkHata(hata: z.ZodError): string {
   return hata.issues[0]?.message ?? "Girdi hatalı.";

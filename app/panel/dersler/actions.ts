@@ -6,6 +6,7 @@ import { dersDurumSemasi, dersOlusturSemasi, dersTasiSemasi, formVerisi, ilkHata
 import { formatDateForInput } from "@/lib/datetime";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
+import { dersHakMesaji, dersMesaji } from "@/lib/mesaj/olaylar";
 import { kurusTLyazi } from "@/lib/para";
 import { dersSonucMesaji } from "@/lib/panel/ders";
 import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
@@ -23,7 +24,7 @@ export async function dersOlustur(_onceki: Onceki, formData: FormData): Promise<
   if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
   const v = ayristirma.data;
 
-  const { error } = await oturum.supabase.rpc("ders_seansi_olustur", {
+  const { data: dersId, error } = await oturum.supabase.rpc("ders_seansi_olustur", {
     p_musteri_id: v.musteri_id,
     p_antrenor_id: v.antrenor_id,
     p_alan_id: v.alan_id,
@@ -38,6 +39,7 @@ export async function dersOlustur(_onceki: Onceki, formData: FormData): Promise<
     return hata(hataMesajiCoz(error));
   }
 
+  if (dersId) await dersMesaji("olusturuldu", oturum.kullanici.isletme_id, String(dersId));
   revalidatePath("/panel/dersler");
   redirect(`/panel/dersler?gun=${formatDateForInput(v.baslangic)}&ok=olustu`);
 }
@@ -61,6 +63,9 @@ export async function dersDurumuDegistir(_onceki: Onceki, formData: FormData): P
     return hata(hataMesajiCoz(error));
   }
 
+  const sonuc = data as { yontem?: string | null; kalan_hak?: number | null; tutar_kurus?: number | null } | null;
+  if (v.hedef === "iptal") await dersMesaji("iptal", oturum.kullanici.isletme_id, v.ders_id);
+  if (sonuc?.yontem === "hak") await dersHakMesaji(oturum.kullanici.isletme_id, v.ders_id, sonuc.kalan_hak);
   revalidatePath("/panel/dersler");
   revalidatePath("/panel");
   return basari(dersSonucMesaji(data as { yontem?: string | null; kalan_hak?: number | null; tutar_kurus?: number | null } | null, kurusTLyazi));
@@ -87,6 +92,7 @@ export async function dersTasi(_onceki: Onceki, formData: FormData): Promise<Onc
     return hata(hataMesajiCoz(error));
   }
 
+  await dersMesaji("ertelendi", oturum.kullanici.isletme_id, v.ders_id);
   revalidatePath("/panel/dersler");
   return basari("Ders yeni zamana taşındı.");
 }

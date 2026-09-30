@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/audit-log-bolum-olustur",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/mesaj-gunluk",
+      "schedule": "0 5 * * *"
     }
   ]
 }

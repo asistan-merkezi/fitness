@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { formVerisi, ilkHata, izinIptalSemasi, izinTalepSemasi } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
+import { izinTalepMesaji } from "@/lib/mesaj/olaylar";
 
 type Onceki = EylemSonucu | null;
 
@@ -18,7 +19,7 @@ export async function izinTalepOlustur(_onceki: Onceki, formData: FormData): Pro
   if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
   const v = ayristirma.data;
 
-  const { error } = await oturum.supabase.rpc("izin_talep_olustur", {
+  const { data: izinId, error } = await oturum.supabase.rpc("izin_talep_olustur", {
     p_tip: v.tip,
     p_baslangic: v.baslangic,
     p_bitis: v.bitis,
@@ -29,6 +30,7 @@ export async function izinTalepOlustur(_onceki: Onceki, formData: FormData): Pro
     return hata(hataMesajiCoz(error));
   }
 
+  if (izinId) await izinTalepMesaji(oturum.kullanici.isletme_id, String(izinId));
   revalidatePath("/panel/izinlerim");
   revalidatePath("/panel/yonetim/izinler");
   return basari("İzin talebiniz yöneticiye iletildi.");

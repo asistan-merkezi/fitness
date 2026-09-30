@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { dondurSemasi, formVerisi, iadeSemasi, ilkHata, odemeSemasi, satisSemasi, uyelikIslemSemasi } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
+import { odemeMesaji, uyelikSatisMesaji } from "@/lib/mesaj/olaylar";
 import { FINANS_ROLLERI, MUSTERI_ROLLERI, YONETICI_ROLLERI } from "@/lib/panel/roller";
 
 type Onceki = EylemSonucu | null;
@@ -23,7 +24,7 @@ export async function satisYap(_onceki: Onceki, formData: FormData): Promise<Onc
   if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
   const v = ayristirma.data;
 
-  const { error } = await oturum.supabase.rpc("uyelik_sat", {
+  const { data: uyelikId, error } = await oturum.supabase.rpc("uyelik_sat", {
     p_musteri_id: v.musteri_id,
     p_paket_id: v.paket_id,
     p_baslangic: v.baslangic,
@@ -36,6 +37,7 @@ export async function satisYap(_onceki: Onceki, formData: FormData): Promise<Onc
     console.error("[satisYap]", error.code);
     return hata(hataMesajiCoz(error));
   }
+  if (uyelikId) await uyelikSatisMesaji(oturum.kullanici.isletme_id, String(uyelikId));
   yenile(v.musteri_id);
   return basari("Üyelik satışı kaydedildi.");
 }
@@ -61,6 +63,7 @@ export async function odemeAl(_onceki: Onceki, formData: FormData): Promise<Once
     console.error("[odemeAl]", error.code);
     return hata(hataMesajiCoz(error));
   }
+  await odemeMesaji(oturum.kullanici.isletme_id, v.musteri_id, v.tutar, v.yontem, v.anahtar);
   yenile(v.musteri_id);
   return basari("Ödeme kaydedildi.");
 }

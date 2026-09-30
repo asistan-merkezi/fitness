@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { formVerisi, ilkHata, odemeSemasi } from "@/lib/dogrulama";
 import { type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
+import { odemeMesaji } from "@/lib/mesaj/olaylar";
 import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
 
 /**
@@ -32,6 +33,7 @@ export async function hizliTahsilatKaydet(_onceki: EylemSonucu | null, formData:
     return hata(hataMesajiCoz(error));
   }
 
+  await odemeMesaji(oturum.kullanici.isletme_id, v.musteri_id, v.tutar, v.yontem, v.anahtar);
   revalidatePath("/panel");
   revalidatePath("/panel/kasa");
   revalidatePath(`/panel/musteriler/${v.musteri_id}`);

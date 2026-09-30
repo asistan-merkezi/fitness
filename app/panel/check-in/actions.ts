@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { formVerisi, girisSemasi, ilkHata } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
+import { hakAzaldiMesaji } from "@/lib/mesaj/olaylar";
 import { RED_NEDENLERI } from "@/lib/panel/etiketler";
 import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
 import type { CheckInSonucu } from "@/types/veritabani";
@@ -31,6 +32,7 @@ export async function checkInYap(_onceki: Onceki, formData: FormData): Promise<O
   if (sonuc.sonuc === "red") {
     return hata(`Giriş reddedildi: ${RED_NEDENLERI[sonuc.red_nedeni ?? ""] ?? "üyelik geçerli değil"}.`);
   }
+  if (!sonuc.zaten_giris) await hakAzaldiMesaji(oturum.kullanici.isletme_id, sonuc.uyelik_id, sonuc.kalan_hak);
   const hak = sonuc.kalan_hak !== null && sonuc.kalan_hak !== undefined ? ` Kalan hak: ${sonuc.kalan_hak}.` : "";
   const uyari = sonuc.uyari ? " ⚠ Paket bitmek üzere, yenileme hatırlatın." : "";
   const tekrar = sonuc.zaten_giris ? " (bugün zaten giriş yapılmıştı)" : "";
