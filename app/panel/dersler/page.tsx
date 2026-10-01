@@ -21,6 +21,8 @@ import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { DersSeansiSatiri } from "@/types/veritabani";
 import { DersEylemleri } from "./ders-eylemleri";
+import type { MusteriSecenegi } from "./ders-sorgulari";
+import { YeniDersDialog } from "./yeni-ders-dialog";
 
 export const metadata: Metadata = { title: "Dersler" };
 
@@ -29,9 +31,15 @@ const GUN = /^\d{4}-\d{2}-\d{2}$/;
 const BEKLEYEN = ["planlandi", "ertelendi"];
 const KAPANAN = ["iptal", "gelmedi"];
 
-export default async function DerslerSayfasi({ searchParams }: { searchParams: Promise<{ gun?: string; antrenor?: string; ok?: string; gorunum?: string }> }) {
+const SAAT = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export default async function DerslerSayfasi({
+  searchParams,
+}: {
+  searchParams: Promise<{ gun?: string; antrenor?: string; ok?: string; gorunum?: string; yeni?: string; uye?: string; saat?: string }>;
+}) {
   const { kullanici, authUser } = await sayfaYetkisiIste([...MUSTERI_ROLLERI, "antrenor"]);
-  const { gun, antrenor, ok, gorunum } = await searchParams;
+  const { gun, antrenor, ok, gorunum, yeni, uye, saat } = await searchParams;
   // Varsayılan görünüm çizelge (alan sütunlu saat ızgarası); "liste" eylem düğmeli ders kartlarını gösterir.
   const liste = gorunum === "liste";
   const yonetim = (MUSTERI_ROLLERI as readonly string[]).includes(kullanici.rol);
@@ -76,6 +84,14 @@ export default async function DerslerSayfasi({ searchParams }: { searchParams: P
   const kullanilanAlanlar = new Set(dersler.map((d) => d.alan_id));
   const cizelgeAlanlari = tumAlanlar.filter((a) => a.aktif || kullanilanAlanlar.has(a.id));
 
+  // Yeni Ders penceresi (`?yeni=1`): müşteri kartından gelinirse (`uye`) müşteri sabit gelir.
+  const yeniAcik = yonetim && yeni === "1";
+  let sabitMusteri: MusteriSecenegi | undefined;
+  if (yeniAcik && uye && UUID.test(uye)) {
+    const { data } = await supabase.from("musteri").select("id, uye_no, ad_soyad, telefon").eq("id", uye).eq("aktif", true).maybeSingle<MusteriSecenegi>();
+    sabitMusteri = data ?? undefined;
+  }
+
   const bekleyen = dersler.filter((d) => BEKLEYEN.includes(d.durum)).length;
   const kapanan = dersler.filter((d) => KAPANAN.includes(d.durum)).length;
   const tamamlanan = dersler.filter((d) => d.durum === "tamamlandi").length;
@@ -91,12 +107,23 @@ export default async function DerslerSayfasi({ searchParams }: { searchParams: P
         icon={CalendarDays}
         actions={
           yonetim ? (
-            <Link href={`/panel/dersler/yeni?gun=${gunParam}`} className={buttonVariants()}>
+            <Link href={`${baglanti(gunParam)}&yeni=1`} scroll={false} className={buttonVariants()}>
               <CalendarPlus aria-hidden /> Yeni Ders
             </Link>
           ) : undefined
         }
       />
+
+      {yeniAcik && (
+        <YeniDersDialog
+          kapatHref={baglanti(gunParam)}
+          antrenorler={antrenorler}
+          alanlar={tumAlanlar.filter((a) => a.aktif)}
+          varsayilanTarih={gunParam}
+          varsayilanSaat={saat && SAAT.test(saat) ? saat : undefined}
+          sabitMusteri={sabitMusteri}
+        />
+      )}
 
       {ok === "olustu" && (
         <p role="status" className="flex items-center gap-2 rounded-lg border border-success-border bg-success-soft px-4 py-3 text-sm font-semibold text-success">

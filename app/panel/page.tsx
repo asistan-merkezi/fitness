@@ -173,7 +173,7 @@ export default async function PanelAnaSayfa() {
       {dersYetkisi && (
         <section aria-label="Günün çizelgesi ve antrenör durumları" className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className={musteriYetkisi ? "lg:col-span-2" : "lg:col-span-3"}>
-            <CanliCizelge dersler={cizelgeDersleri} alanlar={alanlar} bugun={bugun} yeniDersHref={musteriYetkisi ? "/panel/dersler/yeni" : undefined} />
+            <CanliCizelge dersler={cizelgeDersleri} alanlar={alanlar} bugun={bugun} yeniDersHref={musteriYetkisi ? "/panel/dersler?yeni=1" : undefined} />
           </div>
 
           {musteriYetkisi && (
@@ -258,7 +258,7 @@ export default async function PanelAnaSayfa() {
           <h2 className="text-etiket text-muted-foreground">Hızlı resepsiyon işlemleri</h2>
           <div className="grid grid-cols-2 gap-3 sm:max-w-2xl sm:grid-cols-4">
             {[
-              { href: "/panel/dersler/yeni", etiket: "Yeni Ders", ikon: CalendarPlus },
+              { href: "/panel/dersler?yeni=1", etiket: "Yeni Ders", ikon: CalendarPlus },
               { href: "/panel/kasa/hizli-tahsilat", etiket: "Hızlı Tahsilat", ikon: Banknote },
               { href: "/panel/musteriler/yeni", etiket: "Yeni Kayıt", ikon: UserPlus },
               { href: "/panel/check-in", etiket: "Check-in", ikon: ScanLine },

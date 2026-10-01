@@ -43,7 +43,7 @@ export function UstCubuk({
       )}
 
       {yeniDers && (
-        <Link href="/panel/dersler/yeni" className={buttonVariants()}>
+        <Link href="/panel/dersler?yeni=1" className={buttonVariants()}>
           <Plus aria-hidden /> Yeni Ders
         </Link>
       )}

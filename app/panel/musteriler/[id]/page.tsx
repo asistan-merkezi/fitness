@@ -220,7 +220,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
             <CreditCard aria-hidden /> Üyelik Sat
           </Link>
           {musteri.aktif && (
-            <Link href={`/panel/dersler/yeni?uye=${id}`} className={buttonVariants({ variant: "outline", size: "lg" })}>
+            <Link href={`/panel/dersler?yeni=1&uye=${id}`} className={buttonVariants({ variant: "outline", size: "lg" })}>
               <CalendarPlus aria-hidden /> Ders Ekle
             </Link>
           )}
@@ -404,7 +404,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold tracking-tight">Dersler</h2>
             {musteri.aktif && (
-              <Link href={`/panel/dersler/yeni?uye=${id}`} className={buttonVariants({ size: "sm" })}>
+              <Link href={`/panel/dersler?yeni=1&uye=${id}`} className={buttonVariants({ size: "sm" })}>
                 <CalendarPlus aria-hidden /> Ders Ekle
               </Link>
             )}
@@ -488,7 +488,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
                       </div>
                       {t.durum === "bekliyor" && (
                         <div className="flex flex-wrap items-start gap-2">
-                          <Link href={`/panel/dersler/yeni?uye=${id}&gun=${t.tercih_tarih}`} className={buttonVariants({ size: "sm" })}>
+                          <Link href={`/panel/dersler?yeni=1&uye=${id}&gun=${t.tercih_tarih}`} className={buttonVariants({ size: "sm" })}>
                             <CalendarPlus aria-hidden /> Ders Planla
                           </Link>
                           <TalepYanitDugmeleri musteriId={id} talepId={t.id} />
