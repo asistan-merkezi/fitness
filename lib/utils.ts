@@ -72,6 +72,16 @@ export function resitDegilMi(dogumTarihi: string): boolean {
   return yas < 18
 }
 
+/** "YYYY-MM-DD" doğum tarihinden İstanbul takvim günü itibarıyla yaş; geçersizse null. */
+export function yasHesapla(dogumTarihi: string | null | undefined): number | null {
+  if (!dogumTarihi || !/^\d{4}-\d{2}-\d{2}$/.test(dogumTarihi)) return null
+  const [dy, dm, dd] = dogumTarihi.split("-").map(Number)
+  const [by, bm, bd] = bugunIstanbulTarihi().split("-").map(Number)
+  let yas = by - dy
+  if (bm < dm || (bm === dm && bd < dd)) yas--
+  return yas >= 0 ? yas : null
+}
+
 /** Telefonu listelerde okunaklı göstermek için "532 2275512" biçimine çevirir (3+7 hane). */
 export function telefonGoster(telefon: string | null | undefined): string {
   const yerel = telefonYerelHaneleriCikar(telefon)
