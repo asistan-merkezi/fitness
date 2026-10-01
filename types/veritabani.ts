@@ -149,4 +149,5 @@ export type SirketBilgileri = {
   pazar_bitis: string | null;
 };
 
+export type AracSatiri = { id: string; marka: string; model: string; plaka: string; aktif: boolean };
 export type BankaHesabiSatiri = { id: string; banka_adi: string; sube: string | null; hesap_sahibi: string; iban: string; hesap_tipi: "isletme" | "sahis"; aktif: boolean };

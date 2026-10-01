@@ -6,7 +6,8 @@ import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
 import { FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { telefonGoster } from "@/lib/utils";
-import type { BankaHesabiSatiri, SirketBilgileri } from "@/types/veritabani";
+import type { AracSatiri, BankaHesabiSatiri, SirketBilgileri } from "@/types/veritabani";
+import { AracKarti } from "./arac-karti";
 import { BankaKarti } from "./banka-karti";
 import { SirketFormu } from "./sirket-formu";
 
@@ -29,12 +30,14 @@ export default async function SirketBilgileriSayfasi() {
   const duzenlenebilir = kullanici.rol === "isletme_admin";
 
   const supabase = await createClient();
-  const [{ data: bilgiVeri }, { data: hesapVeri }] = await Promise.all([
+  const [{ data: bilgiVeri }, { data: hesapVeri }, { data: aracVeri }] = await Promise.all([
     supabase.from("isletme").select(SUTUNLAR).eq("id", kullanici.isletme_id).maybeSingle<SirketBilgileri>(),
     supabase.from("isletme_banka_hesabi").select("id, banka_adi, sube, hesap_sahibi, iban, hesap_tipi, aktif").order("aktif", { ascending: false }).order("sira").order("banka_adi"),
+    supabase.from("isletme_arac").select("id, marka, model, plaka, aktif").order("aktif", { ascending: false }).order("marka").order("plaka"),
   ]);
   const bilgiler = bilgiVeri ?? null;
   const hesaplar = (hesapVeri ?? []) as BankaHesabiSatiri[];
+  const araclar = (aracVeri ?? []) as AracSatiri[];
   const saat = (bas: string | null, bit: string | null) => (bas && bit ? `${bas.slice(0, 5)} – ${bit.slice(0, 5)}` : "Kapalı");
 
   return (
@@ -62,6 +65,16 @@ export default async function SirketBilgileriSayfasi() {
               <Satir etiket="Pazar" deger={saat(bilgiler?.pazar_baslangic ?? null, bilgiler?.pazar_bitis ?? null)} />
             </dl>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Araçlar</CardTitle>
+          <CardDescription>İşletme envanterindeki araçlar. Bakım/onarım, motorlu taşıtlar vergisi ve trafik cezası giderlerinde araç seçilebilir. Araç silinmez, pasife alınır.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AracKarti araclar={araclar} duzenlenebilir={duzenlenebilir} />
         </CardContent>
       </Card>
 

@@ -167,3 +167,9 @@ export function ayAraligi(ayParam?: string) {
     sonrakiParam: `${sonrakiAy.getUTCFullYear()}-${String(sonrakiAy.getUTCMonth() + 1).padStart(2, "0")}`,
   };
 }
+
+/** "34ABC123" -> "34 ABC 123" (il kodu, harfler, rakamlar ayrılır); tanınmayan biçim olduğu gibi döner. */
+export function plakaBicimle(plaka: string): string {
+  const m = /^(\d{2})([A-Z]{1,3})(\d{2,4})$/.exec(plaka.replace(/\s+/g, "").toUpperCase());
+  return m ? `${m[1]} ${m[2]} ${m[3]}` : plaka;
+}

@@ -6,9 +6,10 @@ import type { HesapSecenegi } from "@/components/panel/yontem-hesap-secimi";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { GiderFormu } from "./gider-formu";
+import type { AracSecenegi } from "./sorgular";
 
 /** "Yeni Gider" / "Yeni Kamu Ödemesi" düğmesi: formu pencerede açar, kayıt başarılı olunca kapatıp formu sıfırlar. */
-export function YeniGiderButonu({ tur, hesaplar, bugun }: { tur: "gider" | "kamusal"; hesaplar: HesapSecenegi[]; bugun: string }) {
+export function YeniGiderButonu({ tur, hesaplar, araclar, bugun }: { tur: "gider" | "kamusal"; hesaplar: HesapSecenegi[]; araclar: AracSecenegi[]; bugun: string }) {
   const [acik, setAcik] = useState(false);
   const [formAnahtari, setFormAnahtari] = useState(0);
   const baslik = tur === "kamusal" ? "Yeni Kamu Ödemesi" : "Yeni Gider";
@@ -27,6 +28,7 @@ export function YeniGiderButonu({ tur, hesaplar, bugun }: { tur: "gider" | "kamu
             key={formAnahtari}
             tur={tur}
             hesaplar={hesaplar}
+            araclar={araclar}
             bugun={bugun}
             basariliOlunca={() => {
               setAcik(false);

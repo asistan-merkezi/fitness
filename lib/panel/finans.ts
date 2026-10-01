@@ -1,6 +1,7 @@
 /** Finans ekranlarının ortak etiketleri ve saf yardımcıları. */
 
-export const GIDER_KATEGORI_ETIKETLERI: Record<string, string> = {
+/** Genel Giderler'in kategorileri ('gider' türü). */
+export const GENEL_GIDER_KATEGORILERI: Record<string, string> = {
   kira: "Kira",
   elektrik: "Elektrik",
   su: "Su",
@@ -12,10 +13,34 @@ export const GIDER_KATEGORI_ETIKETLERI: Record<string, string> = {
   ekipman: "Ekipman",
   reklam: "Reklam / Tanıtım",
   sigorta: "Sigorta",
-  vergi_sgk: "Vergi / SGK",
   yazilim: "Yazılım / Abonelik",
   diger: "Diğer",
 };
+
+/** Kamusal Giderler'in ödeme tipleri ('kamusal' türü; klinikteki kamu ödemesi tipleriyle aynı). `vergi_sgk` eski kayıtlar için durur. */
+export const KAMU_ODEME_TIPLERI: Record<string, string> = {
+  kdv: "KDV",
+  stopaj: "Stopaj (Muhtasar)",
+  sgk_primleri: "SGK Primleri",
+  damga_vergisi: "Damga Vergisi",
+  emlak_vergisi: "Emlak Vergisi",
+  arac_vergisi: "Motorlu Taşıtlar Vergisi",
+  bagkur_primleri: "Bağkur Primleri",
+  muhasebe_ucreti: "Muhasebe Ücreti",
+  trafik_cezasi: "Trafik Cezası",
+  gec_odeme_faizi: "Geç Ödeme Faizi",
+  gecici_vergi: "Geçici Vergi",
+  kurumlar_vergisi: "Kurumlar Vergisi",
+  vergi_sgk: "Vergi / SGK (eski)",
+};
+
+/** Tüm kategori etiketleri (liste/rapor gösterimi için). */
+export const GIDER_KATEGORI_ETIKETLERI: Record<string, string> = { ...GENEL_GIDER_KATEGORILERI, ...KAMU_ODEME_TIPLERI };
+
+/** Bu kategorilerde ilişkili araç seçilebilir (Şirket Bilgileri > Araçlar). */
+export const ARAC_GEREKTIREN_KATEGORILER = ["bakim_onarim", "arac_vergisi", "trafik_cezasi"] as const;
+
+export const AY_ADLARI = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"] as const;
 
 export const GIDER_YONTEMLERI: Record<string, string> = { nakit: "Nakit", havale: "Havale / EFT", kredi_karti: "Kredi Kartı" };
 

@@ -7,20 +7,26 @@ import { YontemHesapSecimi, type HesapSecenegi } from "@/components/panel/yontem
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { GIDER_KATEGORI_ETIKETLERI, GIDER_YONTEMLERI } from "@/lib/panel/finans";
+import { ARAC_GEREKTIREN_KATEGORILER, AY_ADLARI, GENEL_GIDER_KATEGORILERI, GIDER_YONTEMLERI, KAMU_ODEME_TIPLERI } from "@/lib/panel/finans";
 import { cn } from "@/lib/utils";
 import { giderEkle } from "./actions";
+import type { AracSecenegi } from "./sorgular";
 
 /**
  * Yeni gider formu (Yeni Gider penceresinde). `tur`: Genel Giderler "gider", Kamusal Giderler "kamusal" — sekmeye göre sabittir.
  * Ödendi → yöntem (+hesap) zorunlu, kasa/bankayı hemen etkiler; Ödenecek → vade zorunlu, ödenene kadar hesaplara yansımaz.
  */
-export function GiderFormu({ tur, hesaplar, bugun, basariliOlunca }: { tur: "gider" | "kamusal"; hesaplar: HesapSecenegi[]; bugun: string; basariliOlunca?: () => void }) {
+export function GiderFormu({ tur, hesaplar, araclar, bugun, basariliOlunca }: { tur: "gider" | "kamusal"; hesaplar: HesapSecenegi[]; araclar: AracSecenegi[]; bugun: string; basariliOlunca?: () => void }) {
   const [sonuc, formAction, bekliyor] = useActionState(giderEkle, null);
   const [gorulenSonuc, setGorulenSonuc] = useState(sonuc);
   const [ilkAnahtar] = useState(() => crypto.randomUUID());
   const [durum, setDurum] = useState<"odendi" | "bekliyor">("odendi");
   const kamusal = tur === "kamusal";
+  const [kategori, setKategori] = useState("");
+  const kategoriler = kamusal ? KAMU_ODEME_TIPLERI : GENEL_GIDER_KATEGORILERI;
+  const aracGoster = (ARAC_GEREKTIREN_KATEGORILER as readonly string[]).includes(kategori);
+  const yil = Number(bugun.slice(0, 4));
+  const ay = Number(bugun.slice(5, 7));
 
   if (sonuc !== gorulenSonuc) {
     setGorulenSonuc(sonuc);
@@ -32,21 +38,57 @@ export function GiderFormu({ tur, hesaplar, bugun, basariliOlunca }: { tur: "gid
       <input type="hidden" name="anahtar" value={sonuc?.anahtar ?? ilkAnahtar} suppressHydrationWarning />
       <input type="hidden" name="tur" value={tur} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Alan etiket="Gider tarihi" htmlFor="g_tarih" ipucu="Boşsa bugün.">
+        <Alan etiket={kamusal ? "Kayıt tarihi" : "Gider tarihi"} htmlFor="g_tarih" ipucu="Boşsa bugün.">
           <Input id="g_tarih" name="tarih" type="date" max={bugun} disabled={bekliyor} />
         </Alan>
-        <Alan etiket="Kategori" htmlFor="g_kategori">
-          <SecimKutusu id="g_kategori" name="kategori" required defaultValue={kamusal ? "vergi_sgk" : ""} disabled={bekliyor}>
+        <Alan etiket={kamusal ? "Ödeme tipi" : "Kategori"} htmlFor="g_kategori">
+          <SecimKutusu id="g_kategori" name="kategori" required value={kategori} onChange={(e) => setKategori(e.target.value)} disabled={bekliyor}>
             <option value="" disabled>
               Seçin
             </option>
-            {Object.entries(GIDER_KATEGORI_ETIKETLERI).map(([k, e]) => (
-              <option key={k} value={k}>
-                {e}
-              </option>
-            ))}
+            {Object.entries(kategoriler)
+              .filter(([k]) => k !== "vergi_sgk")
+              .map(([k, e]) => (
+                <option key={k} value={k}>
+                  {e}
+                </option>
+              ))}
           </SecimKutusu>
         </Alan>
+        {aracGoster && (
+          <Alan etiket="Araç (isteğe bağlı)" htmlFor="g_arac" ipucu={araclar.length === 0 ? "Kayıtlı araç yok — Ayarlar > Şirket Bilgileri > Araçlar'dan ekleyin." : undefined}>
+            <SecimKutusu id="g_arac" name="arac_id" defaultValue="" disabled={bekliyor || araclar.length === 0}>
+              <option value="">İlişkilendirilmedi</option>
+              {araclar
+                .filter((a) => a.aktif)
+                .map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.plaka} — {a.ad}
+                  </option>
+                ))}
+            </SecimKutusu>
+          </Alan>
+        )}
+        {kamusal && (
+          <Alan etiket="Ait olduğu dönem" htmlFor="g_donem_ay" ipucu="Ör. Eylül KDV'si Ekim'de ödenir: dönem Eylül.">
+            <div className="grid grid-cols-2 gap-2">
+              <SecimKutusu id="g_donem_ay" name="donem_ay" required defaultValue={String(ay)} aria-label="Dönem ayı" disabled={bekliyor}>
+                {AY_ADLARI.map((adi, i) => (
+                  <option key={adi} value={i + 1}>
+                    {adi}
+                  </option>
+                ))}
+              </SecimKutusu>
+              <SecimKutusu name="donem_yil" required defaultValue={String(yil)} aria-label="Dönem yılı" disabled={bekliyor}>
+                {[yil - 2, yil - 1, yil, yil + 1].map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </SecimKutusu>
+            </div>
+          </Alan>
+        )}
         <Alan etiket={kamusal ? "Kurum" : "Tedarikçi"} htmlFor="g_tedarikci">
           <IsimGirdisi id="g_tedarikci" name="tedarikci" placeholder={kamusal ? "Vergi dairesi, SGK, belediye…" : "Tedarikçi / satıcı adı"} disabled={bekliyor} />
         </Alan>

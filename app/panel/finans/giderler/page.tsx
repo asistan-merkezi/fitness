@@ -13,7 +13,7 @@ import { createClient } from "@/lib/supabase/server";
 import { DonemSecici } from "./donem-secici";
 import { BekleyenGiderler, GiderTablosu } from "./gider-tablosu";
 import { GiderlerSekmeCubugu } from "./giderler-sekme-cubugu";
-import { bekleyenGiderleriGetir, GIDER_SECIM, type Gider } from "./sorgular";
+import { araclariGetir, bekleyenGiderleriGetir, GIDER_SECIM, type Gider } from "./sorgular";
 import { YeniGiderButonu } from "./yeni-gider-butonu";
 
 export const metadata: Metadata = { title: "Giderler" };
@@ -27,10 +27,11 @@ export default async function GiderlerSayfasi({ searchParams }: { searchParams: 
   const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
-  const [{ data: donemVeri }, bekleyenler, { data: hesapVeri }] = await Promise.all([
+  const [{ data: donemVeri }, bekleyenler, { data: hesapVeri }, araclar] = await Promise.all([
     supabase.from("gider").select(GIDER_SECIM).eq("tur", "gider").gte("tarih", donem.baslangicTarih).lt("tarih", donem.bitisTarih).order("tarih", { ascending: false }).limit(500),
     bekleyenGiderleriGetir(supabase, "gider"),
     supabase.rpc("banka_hesap_secenekleri"),
+    araclariGetir(supabase),
   ]);
   const giderler = (donemVeri ?? []) as Gider[];
   const hesaplar = (hesapVeri ?? []) as { id: string; ad: string }[];
@@ -43,7 +44,7 @@ export default async function GiderlerSayfasi({ searchParams }: { searchParams: 
 
   return (
     <>
-      <PageHeader title="Giderler" description="Kira, sarf malzeme, fatura gibi genel işletme giderleri." icon={Wallet} actions={<YeniGiderButonu tur="gider" hesaplar={hesaplar} bugun={bugun} />} />
+      <PageHeader title="Giderler" description="Kira, sarf malzeme, fatura gibi genel işletme giderleri." icon={Wallet} actions={<YeniGiderButonu tur="gider" hesaplar={hesaplar} araclar={araclar} bugun={bugun} />} />
 
       <GiderlerSekmeCubugu aktif="/panel/finans/giderler" />
       <DonemSecici yol="/panel/finans/giderler" donem={donem} />
@@ -79,7 +80,7 @@ export default async function GiderlerSayfasi({ searchParams }: { searchParams: 
         </Card>
       )}
 
-      <GiderTablosu baslik="Dönem giderleri" giderler={giderler} yonetici={yonetici} bugun={bugun} bosMetin="Bu dönemde gider kaydı yok." />
+      <GiderTablosu baslik="Dönem giderleri" giderler={giderler} yonetici={yonetici} bugun={bugun} bosMetin="Bu dönemde gider kaydı yok." araclar={araclar} />
     </>
   );
 }

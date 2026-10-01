@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { bankaHesabiSemasi, formVerisi, ilkHata, sirketSemasi } from "@/lib/dogrulama";
+import { aracSemasi, bankaHesabiSemasi, formVerisi, ilkHata, sirketSemasi } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
 import { ibanTemizle } from "@/lib/iban";
@@ -107,4 +107,35 @@ export async function bankaHesabiKaydet(_onceki: Onceki, formData: FormData): Pr
 
   revalidatePath("/panel/ayarlar/sirket-bilgileri");
   return basari(v.hesap_id ? "Hesap güncellendi." : "Hesap eklendi.");
+}
+
+/** Araç ekle/güncelle (yalnız işletme yöneticisi). Araç silinmez, pasife alınır (gider kayıtları araca bağlı kalabilir). */
+export async function aracKaydet(_onceki: Onceki, formData: FormData): Promise<Onceki> {
+  const oturum = await yetkiliOturum(YONETICI_ROLLERI);
+  if (!oturum) return YETKISIZ;
+
+  const ayristirma = aracSemasi.safeParse(formVerisi(formData));
+  if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
+  const v = ayristirma.data;
+
+  const satir = { marka: v.marka, model: v.model, plaka: v.plaka };
+
+  if (v.arac_id) {
+    const { data, error } = await oturum.supabase.from("isletme_arac").update({ ...satir, aktif: v.aktif }).eq("id", v.arac_id).select("id");
+    if (error) {
+      console.error("[aracKaydet:guncelle]", error.code);
+      return hata(error.code === "23505" ? "Bu plaka zaten kayıtlı." : hataMesajiCoz(error));
+    }
+    if (!data || data.length === 0) return hata("Araç bulunamadı.");
+  } else {
+    const { error } = await oturum.supabase.from("isletme_arac").insert({ ...satir, isletme_id: oturum.kullanici.isletme_id });
+    if (error) {
+      console.error("[aracKaydet:ekle]", error.code);
+      return hata(error.code === "23505" ? "Bu plaka zaten kayıtlı." : hataMesajiCoz(error));
+    }
+  }
+
+  revalidatePath("/panel/ayarlar/sirket-bilgileri");
+  revalidatePath("/panel/finans/giderler", "layout");
+  return basari(v.arac_id ? "Araç güncellendi." : "Araç eklendi.");
 }

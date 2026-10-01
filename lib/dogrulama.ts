@@ -533,7 +533,23 @@ const yuzdeAlani = z
   .transform((n) => Math.round(n * 100) / 100);
 
 // ---------------------------------------------------------------------------------------------------------
-export const GIDER_KATEGORILERI = ["kira", "elektrik", "su", "dogalgaz", "internet_telefon", "bakim_onarim", "temizlik", "malzeme", "ekipman", "reklam", "sigorta", "vergi_sgk", "yazilim", "diger"] as const;
+const aracAdi = (mesaj: string) => z.string().trim().min(1, mesaj).max(50, "En fazla 50 karakter.").transform(isimNormalle);
+
+export const aracSemasi = z.object({
+  arac_id: hesapIdOpsiyonel,
+  marka: aracAdi("Marka girin."),
+  model: aracAdi("Model girin."),
+  // Boşluksuz büyük harf: 34ABC123 (il kodu + 1-3 harf + 2-4 rakam).
+  plaka: z
+    .string()
+    .trim()
+    .transform((v) => v.replace(/s+/g, "").toUpperCase())
+    .refine((v) => /^d{2}[A-Z]{1,3}d{2,4}$/.test(v), "Geçerli bir plaka girin (ör. 34 ABC 123)."),
+  aktif: onay,
+});
+
+export const GIDER_KATEGORILERI = ["kira", "elektrik", "su", "dogalgaz", "internet_telefon", "bakim_onarim", "temizlik", "malzeme", "ekipman", "reklam", "sigorta", "vergi_sgk", "yazilim", "diger", "kdv", "stopaj", "sgk_primleri", "damga_vergisi", "emlak_vergisi", "arac_vergisi", "bagkur_primleri", "muhasebe_ucreti", "trafik_cezasi", "gec_odeme_faizi", "gecici_vergi", "kurumlar_vergisi"] as const;
+const ARAC_KATEGORILERI: readonly string[] = ["bakim_onarim", "arac_vergisi", "trafik_cezasi"];
 const GIDER_YONTEMLERI = ["nakit", "havale", "kredi_karti"] as const;
 
 export const giderSemasi = z
@@ -550,9 +566,14 @@ export const giderSemasi = z
     vade: gunOpsiyonel,
     yontem: z.enum(GIDER_YONTEMLERI).optional().or(z.literal("").transform(() => undefined)),
     banka_hesap_id: hesapIdOpsiyonel,
+    arac_id: hesapIdOpsiyonel,
+    donem_yil: tamSayiOpsiyonel(2000, 2100, "Dönem yılı geçerli olmalı."),
+    donem_ay: tamSayiOpsiyonel(1, 12, "Dönem ayı 1-12 olmalı."),
     anahtar: z.uuid(),
   })
   .superRefine((v, ctx) => {
+    if (v.tur === "kamusal" && (!v.donem_yil || !v.donem_ay)) ctx.addIssue({ code: "custom", path: ["donem_ay"], message: "Kamu ödemesi için ait olduğu dönemi (ay ve yıl) seçin." });
+    if (v.arac_id && !ARAC_KATEGORILERI.includes(v.kategori)) ctx.addIssue({ code: "custom", path: ["arac_id"], message: "Araç yalnız bakım/onarım, motorlu taşıtlar vergisi ve trafik cezasında seçilir." });
     if (v.durum === "odendi" && !v.yontem) ctx.addIssue({ code: "custom", path: ["yontem"], message: "Ödeme yöntemini seçin." });
     if (v.durum === "bekliyor" && !v.vade) ctx.addIssue({ code: "custom", path: ["vade"], message: "Bekleyen gider için vade tarihi girin." });
     if (v.banka_hesap_id && v.yontem !== "havale" && v.yontem !== "kredi_karti") ctx.addIssue({ code: "custom", path: ["banka_hesap_id"], message: "Banka hesabı yalnız havale veya kredi kartı ile seçilir." });

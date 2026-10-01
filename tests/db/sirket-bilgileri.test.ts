@@ -106,4 +106,28 @@ describe("şirket bilgileri ve banka hesapları", () => {
       expect(n).toBe(1);
     });
   });
+
+  describe("araçlar", () => {
+    const aracEkle = (k: string, isletme: string, plaka: string) =>
+      kimlikle(db, k, () => db.query("INSERT INTO public.isletme_arac (isletme_id, marka, model, plaka) VALUES ($1,'Fiat','Doblo',$2)", [isletme, plaka]));
+
+    it("yalnız yönetici ekler; plaka boşluksuz büyük harfle saklanır; aynı plaka ikinci kez eklenemez", async () => {
+      await aracEkle(adminA, isletmeA, "34 abc 123");
+      expect((await db.query<{ plaka: string }>("SELECT plaka FROM public.isletme_arac WHERE isletme_id = $1", [isletmeA])).rows[0].plaka).toBe("34ABC123");
+      expect(await hataMesaji(() => aracEkle(adminA, isletmeA, "34ABC123"))).toMatch(/duplicate|unique/i);
+      expect(await hataMesaji(() => aracEkle(muhasebeA, isletmeA, "06XYZ99"))).toMatch(/row-level security/i);
+      expect(await hataMesaji(() => aracEkle(resepsiyonA, isletmeA, "06XYZ99"))).toMatch(/row-level security/i);
+      expect(await hataMesaji(() => aracEkle(adminB, isletmeA, "06XYZ99"))).toMatch(/row-level security/i);
+    });
+
+    it("yönetici ve muhasebe görür; resepsiyon ve başka işletme görmez; silinemez, pasife alınır", async () => {
+      const say = (k: string) => kimlikle(db, k, async () => (await db.query("SELECT id FROM public.isletme_arac")).rows.length);
+      expect(await say(adminA)).toBe(1);
+      expect(await say(muhasebeA)).toBe(1);
+      expect(await say(resepsiyonA)).toBe(0);
+      expect(await say(adminB)).toBe(0);
+      expect(await hataMesaji(() => kimlikle(db, adminA, () => db.query("DELETE FROM public.isletme_arac")))).toMatch(/permission denied/i);
+      expect(await kimlikle(db, adminA, async () => (await db.query("UPDATE public.isletme_arac SET aktif = false WHERE isletme_id = $1 RETURNING id", [isletmeA])).rows.length)).toBe(1);
+    });
+  });
 });

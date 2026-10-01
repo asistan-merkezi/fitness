@@ -144,6 +144,42 @@ describe("finans: hesaplar, giderler, kasa-banka defteri, fatura, özet", () => 
     });
   });
 
+  describe("araçlı gider ve kamu ödemesi dönemi", () => {
+    const kamu = (k: string, o: { tur?: string; kat: string; arac?: string | null; yil?: number | null; ay?: number | null }) =>
+      kimlikle(db, k, async () =>
+        (
+          await db.query<{ id: string }>(
+            "SELECT public.gider_ekle(p_kategori => $1, p_tutar_kurus => 5000, p_tur => $2, p_odendi => false, p_vade => '2026-10-20', p_arac_id => $3, p_donem_yil => $4, p_donem_ay => $5) AS id",
+            [o.kat, o.tur ?? "kamusal", o.arac ?? null, o.yil ?? null, o.ay ?? null]
+          )
+        ).rows[0].id
+      );
+
+    it("kamu ödemesi dönem ister; araç yalnız araç kategorilerinde ve işletmenin aktif aracıyla seçilir; tür-kategori uyumu denetlenir", async () => {
+      const arac = await kimlikle(db, adminA, async () => (await db.query<{ id: string }>("INSERT INTO public.isletme_arac (isletme_id, marka, model, plaka) VALUES ($1,'Fiat','Doblo','34KMU01') RETURNING id", [isletmeA])).rows[0].id);
+      const pasif = await kimlikle(db, adminA, async () => (await db.query<{ id: string }>("INSERT INTO public.isletme_arac (isletme_id, marka, model, plaka, aktif) VALUES ($1,'Ford','Focus','34KMU02',false) RETURNING id", [isletmeA])).rows[0].id);
+      const baskasi = await kimlikle(db, adminB, async () => (await db.query<{ id: string }>("INSERT INTO public.isletme_arac (isletme_id, marka, model, plaka) VALUES ($1,'Opel','Astra','06KMU03') RETURNING id", [isletmeB])).rows[0].id);
+
+      const id = await kamu(muhasebeA, { kat: "arac_vergisi", arac, yil: 2026, ay: 9 });
+      const satir = (await db.query<{ arac_id: string; donem_yil: number; donem_ay: number; tur: string }>("SELECT arac_id, donem_yil, donem_ay, tur FROM public.gider WHERE id = $1", [id])).rows[0];
+      expect(satir).toMatchObject({ arac_id: arac, donem_yil: 2026, donem_ay: 9, tur: "kamusal" });
+
+      expect(await hataMesaji(() => kamu(adminA, { kat: "kdv" }))).toMatch(/donem_gerekli/);
+      expect(await hataMesaji(() => kamu(adminA, { kat: "kira", yil: 2026, ay: 9 }))).toMatch(/kategori_uygun_degil/);
+      expect(await hataMesaji(() => kamu(adminA, { tur: "gider", kat: "kdv" }))).toMatch(/kategori_uygun_degil/);
+      expect(await hataMesaji(() => kamu(adminA, { kat: "kdv", arac, yil: 2026, ay: 9 }))).toMatch(/gider_arac_kurali|check/i);
+      expect(await hataMesaji(() => kamu(adminA, { kat: "trafik_cezasi", arac: pasif, yil: 2026, ay: 9 }))).toMatch(/arac_bulunamadi/);
+      expect(await hataMesaji(() => kamu(adminA, { kat: "trafik_cezasi", arac: baskasi, yil: 2026, ay: 9 }))).toMatch(/arac_bulunamadi/);
+      expect(await hataMesaji(() => kamu(adminA, { kat: "kdv", yil: 2026, ay: 13 }))).toMatch(/gider_donem_kurali|check/i);
+      expect(await kamu(adminA, { tur: "gider", kat: "bakim_onarim", arac })).toBeTruthy();
+    });
+
+    it("araç ve dönem kaydedildikten sonra değiştirilemez", async () => {
+      const id = await kamu(adminA, { kat: "kdv", yil: 2026, ay: 8 });
+      expect(await hataMesaji(() => db.query("UPDATE public.gider SET donem_ay = 9 WHERE id = $1", [id]))).toMatch(/defter_degismez/);
+    });
+  });
+
   describe("personel ödemesi hesabı", () => {
     it("personel ödemesi hesap seçer; havale dışı yönteme hesap verilemez", async () => {
       const ode = (yontem: string, banka: string | null, tutar = 700) =>

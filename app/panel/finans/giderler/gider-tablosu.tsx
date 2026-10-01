@@ -6,10 +6,11 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { gunYazi } from "@/lib/datetime";
 import { kurusTLyazi } from "@/lib/para";
-import { GIDER_KATEGORI_ETIKETLERI, GIDER_YONTEMLERI, vadesiGecti } from "@/lib/panel/finans";
+import { AY_ADLARI, GIDER_KATEGORI_ETIKETLERI, GIDER_YONTEMLERI, vadesiGecti } from "@/lib/panel/finans";
+import { plakaBicimle } from "@/lib/utils";
 import { cn } from "@/lib/utils";
 import { GiderIptalFormu, GiderOdeFormu } from "./formlar";
-import type { Gider } from "./sorgular";
+import { type AracSecenegi, type Gider, giderDonemi } from "./sorgular";
 
 /** Ödenecek (bekleyen) giderler: dönemden bağımsız, vadesi en yakın önce; öde / iptal et eylemleriyle. */
 export function BekleyenGiderler({ bekleyenler, hesaplar, yonetici, bugun, baslik }: { bekleyenler: Gider[]; hesaplar: HesapSecenegi[]; yonetici: boolean; bugun: string; baslik: string }) {
@@ -46,7 +47,8 @@ export function BekleyenGiderler({ bekleyenler, hesaplar, yonetici, bugun, basli
 }
 
 /** Dönem kayıtları tablosu (Genel ve Kamusal sekmelerinde ortak). */
-export function GiderTablosu({ baslik, giderler, yonetici, bugun, bosMetin }: { baslik: string; giderler: Gider[]; yonetici: boolean; bugun: string; bosMetin: string }) {
+export function GiderTablosu({ baslik, giderler, yonetici, bugun, bosMetin, araclar, kamusal = false }: { baslik: string; giderler: Gider[]; yonetici: boolean; bugun: string; bosMetin: string; araclar: AracSecenegi[]; kamusal?: boolean }) {
+  const aracPlaka = new Map(araclar.map((a) => [a.id, plakaBicimle(a.plaka)]));
   return (
     <Card>
       <CardHeader>
@@ -59,8 +61,8 @@ export function GiderTablosu({ baslik, giderler, yonetici, bugun, bosMetin }: { 
           <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Tarih</TableHead>
-                <TableHead>Gider</TableHead>
+                <TableHead>{kamusal ? "Dönem" : "Tarih"}</TableHead>
+                <TableHead>{kamusal ? "Ödeme" : "Gider"}</TableHead>
                 <TableHead>Belge no</TableHead>
                 <TableHead>Yöntem</TableHead>
                 <TableHead className="text-right">Tutar</TableHead>
@@ -70,11 +72,21 @@ export function GiderTablosu({ baslik, giderler, yonetici, bugun, bosMetin }: { 
             <TableBody>
               {giderler.map((g) => (
                 <TableRow key={g.id} className={g.durum === "iptal" ? "opacity-60" : undefined}>
-                  <TableCell className="whitespace-nowrap tabular-nums">{gunYazi(g.tarih)}</TableCell>
+                  <TableCell className="whitespace-nowrap tabular-nums">
+                    {kamusal ? (
+                      <>
+                        {AY_ADLARI[giderDonemi(g).ay - 1]} {giderDonemi(g).yil}
+                        <span className="block text-xs text-muted-foreground">Kayıt: {gunYazi(g.tarih)}</span>
+                      </>
+                    ) : (
+                      gunYazi(g.tarih)
+                    )}
+                  </TableCell>
                   <TableCell>
                     <span className="font-medium">{g.tedarikci_adi ?? GIDER_KATEGORI_ETIKETLERI[g.kategori]}</span>
                     <span className="block text-xs text-muted-foreground">
                       {GIDER_KATEGORI_ETIKETLERI[g.kategori]}
+                      {g.arac_id && aracPlaka.get(g.arac_id) && ` · ${aracPlaka.get(g.arac_id)}`}
                       {g.aciklama && ` · ${g.aciklama}`}
                     </span>
                   </TableCell>

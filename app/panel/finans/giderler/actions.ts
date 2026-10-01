@@ -40,6 +40,9 @@ export async function giderEkle(_onceki: Onceki, formData: FormData): Promise<On
     p_yontem: v.durum === "odendi" ? v.yontem : undefined,
     p_banka_hesap_id: v.durum === "odendi" ? v.banka_hesap_id : undefined,
     p_anahtar: v.anahtar,
+    p_arac_id: v.arac_id,
+    p_donem_yil: v.donem_yil ?? undefined,
+    p_donem_ay: v.donem_ay ?? undefined,
   });
   if (error) {
     console.error("[giderEkle]", error.code);
