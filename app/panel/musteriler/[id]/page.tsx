@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Banknote, CalendarDays, CalendarPlus, CreditCard, Dumbbell, HeartPulse, Phone, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
+import { ArrowLeft, Banknote, CalendarDays, CalendarPlus, CreditCard, Dumbbell, HeartPulse, MessageSquareHeart, Phone, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import { bitiyorUyarisi, gecenSureYuzdesi, kalanGun } from "@/lib/panel/uyelik-o
 import { createClient } from "@/lib/supabase/server";
 import { cn, telefonGoster, yasHesapla } from "@/lib/utils";
 import type { GirisKaydiSatiri, HareketSatiri, MusteriHassasSatiri, MusteriSatiri, MusteriVeliSatiri, PaketSatiri, UyelikGorunumSatiri } from "@/types/veritabani";
+import { TalepFormu, TalepYanitDugmeleri } from "./talep-formu";
 import { HassasBilgiFormu, IadeFormu, MusteriBilgiFormu, OdemeFormu, SatisFormu, UyelikIslemleri } from "./islem-formlari";
 
 export const metadata: Metadata = { title: "Müşteri" };
@@ -30,8 +31,21 @@ const SEKMELER = [
   { kod: "uyelikler", etiket: "Üyelikler" },
   { kod: "giris", etiket: "Ders & Giriş" },
   { kod: "cari", etiket: "Cari & Ödeme" },
+  { kod: "talepler", etiket: "Talep & Öneriler" },
 ] as const;
 type Sekme = (typeof SEKMELER)[number]["kod"];
+
+const TALEP_DURUMU = {
+  bekliyor: { etiket: "Bekliyor", ton: "amber" },
+  planlandi: { etiket: "Planlandı", ton: "emerald" },
+  reddedildi: { etiket: "Reddedildi", ton: "rose" },
+} as const;
+const YORUM_TURU = { antrenor_yorumu: "Antrenör yorumu", ders_yorumu: "Ders yorumu" } as const;
+const PUAN_EMOJI = ["", "😟", "🙁", "😐", "🙂", "😊"];
+const KATILIM_DURUMLARI = ["geldi", "gecikmeli_geldi", "derste", "tamamlandi"];
+
+type TalepSatiri = { id: string; tercih_tarih: string; tercih_saat: string | null; antrenor_id: string | null; not_metni: string | null; durum: keyof typeof TALEP_DURUMU; created_at: string };
+type YorumSatiri = { id: string; ders_id: string; tur: keyof typeof YORUM_TURU; puan: number; yorum: string; created_at: string };
 
 type DersSatiri = { id: string; baslangic: string; durum: keyof typeof DERS_DURUMU; antrenor_id: string; alan_id: string; gecikme_dakika: number | null };
 
@@ -72,7 +86,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
   const { data: musteri } = await supabase.from("musteri").select("*").eq("id", id).maybeSingle<MusteriSatiri>();
   if (!musteri) notFound();
 
-  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc, hesapSonuc, iskontoSonuc, dersSonuc] = await Promise.all([
+  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc, hesapSonuc, iskontoSonuc, bekleyenTalepSonuc, dersSonuc] = await Promise.all([
     supabase.from("musteri_hassas").select("*").eq("musteri_id", id).maybeSingle<MusteriHassasSatiri>(),
     supabase.from("musteri_veli").select("ad_soyad, telefon, yakinlik").eq("musteri_id", id).maybeSingle<MusteriVeliSatiri>(),
     supabase.from("uyelik_gorunum").select("*").eq("musteri_id", id).order("baslangic_tarihi", { ascending: false }),
@@ -83,6 +97,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
     supabase.from("musteri_bakiye").select("bakiye_kurus").eq("musteri_id", id).maybeSingle<{ bakiye_kurus: number }>(),
     supabase.rpc("banka_hesap_secenekleri"),
     supabase.from("kategori_iskonto_orani").select("yuzde").eq("kategori", musteri.kategori).maybeSingle<{ yuzde: number }>(),
+    supabase.from("musteri_ders_talebi").select("id", { count: "exact", head: true }).eq("musteri_id", id).eq("durum", "bekliyor"),
     supabase.from("ders_seansi").select("id, baslangic, durum, antrenor_id, alan_id, gecikme_dakika").eq("musteri_id", id).order("baslangic", { ascending: false }).limit(30),
   ]);
   const dersler = (dersSonuc.data ?? []) as DersSatiri[];
@@ -99,6 +114,22 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
   const gecmisDersler = dersler.filter((d) => !yaklasanDersler.includes(d));
   const hesaplar = (hesapSonuc.data ?? []) as { id: string; ad: string }[];
   const kategoriYuzdesi = Number(iskontoSonuc.data?.yuzde ?? 0);
+
+  const bekleyenTalepSayisi = bekleyenTalepSonuc.count ?? 0;
+  const [talepSonuc, yorumSonuc, antrenorListeSonuc] =
+    sekme === "talepler"
+      ? await Promise.all([
+          supabase.from("musteri_ders_talebi").select("id, tercih_tarih, tercih_saat, antrenor_id, not_metni, durum, created_at").eq("musteri_id", id).order("created_at", { ascending: false }).limit(20),
+          supabase.from("musteri_yorum").select("id, ders_id, tur, puan, yorum, created_at").eq("musteri_id", id).order("created_at", { ascending: false }).limit(20),
+          supabase.from("kullanici").select("id, ad_soyad").eq("rol", "antrenor").eq("aktif", true).order("ad_soyad"),
+        ])
+      : [{ data: [] }, { data: [] }, { data: [] }];
+  const talepler = (talepSonuc.data ?? []) as TalepSatiri[];
+  const yorumlar = (yorumSonuc.data ?? []) as YorumSatiri[];
+  const antrenorSecenekleri = ((antrenorListeSonuc.data ?? []) as { id: string; ad_soyad: string }[]).map((a) => ({ id: a.id, ad: a.ad_soyad }));
+  const dersEtiketi = (d: DersSatiri) => `${formatDateTime(d.baslangic)} · ${antrenorAdi.get(d.antrenor_id) ?? "Antrenör atanmamış"}`;
+  const planliDersSecenekleri = dersler.filter((d) => d.durum === "planlandi" || d.durum === "ertelendi").reverse().map((d) => ({ id: d.id, etiket: dersEtiketi(d) }));
+  const katildiDersSecenekleri = dersler.filter((d) => KATILIM_DURUMLARI.includes(d.durum)).map((d) => ({ id: d.id, etiket: dersEtiketi(d) }));
 
   const hassas = hassasSonuc.data;
   const veli = veliSonuc.data;
@@ -193,6 +224,9 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
               <CalendarPlus aria-hidden /> Ders Ekle
             </Link>
           )}
+          <Link href={`/panel/musteriler/${id}?sekme=talepler`} className={buttonVariants({ variant: "outline", size: "lg" })}>
+            <MessageSquareHeart aria-hidden /> Talep ve Öneriler
+          </Link>
           <a href={`tel:${musteri.telefon}`} className={buttonVariants({ variant: "outline", size: "lg" })}>
             <Phone aria-hidden /> Ara
           </a>
@@ -205,7 +239,8 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
           <OzetModulKarti href={`/panel/musteriler/${id}?sekme=uyelikler`} etiket="Üyelikler" ozet={aktifUyelik ? `${aktifUyelik.paket_adi}${aktifUyelik.tur === "seans" ? ` · ${aktifUyelik.kalan_hak} hak` : ""}` : `${uyelikler.length} kayıt · aktif yok`} ikon={Ticket} ton="emerald" uyari={!aktifUyelik} />
           <OzetModulKarti href={`/panel/musteriler/${id}?sekme=giris`} etiket="Ders & Giriş" ozet={yaklasanDersler[0] ? `Sonraki: ${formatDateTime(yaklasanDersler[0].baslangic)}` : sonGiris ? `Son giriş: ${formatDate(sonGiris.zaman)}` : dersler.length > 0 ? `${dersler.length} ders kaydı` : "Ders yok"} ikon={CalendarDays} ton="cyan" />
           <OzetModulKarti href={`/panel/musteriler/${id}?sekme=cari`} etiket="Cari & Ödeme" ozet={bakiyeKurus < 0 ? `Borç · ${kurusTLyazi(-bakiyeKurus)}` : `Alacak · ${kurusTLyazi(bakiyeKurus)}`} ozetTonu={bakiyeKurus < 0 ? "rose" : "emerald"} ikon={Wallet} ton="amber" />
-          <OzetModulKarti href="#" etiket="Antrenman & Ölçüm" ikon={Dumbbell} ton="violet" yakinda className="col-span-2 mx-auto w-1/2 sm:col-span-1 sm:w-auto" />
+          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=talepler`} etiket="Talep & Öneriler" ozet={bekleyenTalepSayisi > 0 ? `${bekleyenTalepSayisi} bekleyen talep` : "Talep ve yorum girişi"} ikon={MessageSquareHeart} ton="rose" uyari={bekleyenTalepSayisi > 0} />
+          <OzetModulKarti href="#" etiket="Antrenman & Ölçüm" ikon={Dumbbell} ton="violet" yakinda />
         </section>
       ) : (
         <div className="flex items-center justify-between gap-3">
@@ -414,6 +449,84 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
             </Card>
           )}
         </section>
+        </>
+      )}
+
+      {sekme === "talepler" && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle>Talep ve öneri gir</CardTitle>
+              <CardDescription>Müşterinin telefonla veya yüz yüze ilettiği talebi onun adına kaydedin. İptal ve erteleme doğrudan derse uygulanır.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TalepFormu musteriId={id} bugun={bugun} antrenorler={antrenorSecenekleri} planliDersler={planliDersSecenekleri} katildiDersler={katildiDersSecenekleri} />
+            </CardContent>
+          </Card>
+
+          <section className="flex flex-col gap-3" aria-label="Ders talepleri">
+            <h2 className="text-lg font-semibold tracking-tight">Ders talepleri</h2>
+            {talepler.length === 0 ? (
+              <EmptyState compact title="Henüz ders talebi yok." />
+            ) : (
+              <Card className="gap-0 py-0">
+                <CardContent className="flex flex-col divide-y divide-border p-0">
+                  {talepler.map((t) => (
+                    <div key={t.id} className="flex flex-col gap-2 px-4 py-3 text-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-medium tabular-nums">
+                            Tercih: {gunYazi(t.tercih_tarih)}
+                            {t.tercih_saat ? ` · ${t.tercih_saat.slice(0, 5)}` : ""}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {t.antrenor_id ? (antrenorSecenekleri.find((a) => a.id === t.antrenor_id)?.ad ?? "Antrenör") : "Antrenör fark etmez"} · {formatDateTime(t.created_at)}
+                          </p>
+                          {t.not_metni && <p className="mt-1 text-xs text-muted-foreground">Not: {t.not_metni}</p>}
+                        </div>
+                        <StatusBadge tone={TALEP_DURUMU[t.durum].ton}>{TALEP_DURUMU[t.durum].etiket}</StatusBadge>
+                      </div>
+                      {t.durum === "bekliyor" && (
+                        <div className="flex flex-wrap items-start gap-2">
+                          <Link href={`/panel/dersler/yeni?uye=${id}&gun=${t.tercih_tarih}`} className={buttonVariants({ size: "sm" })}>
+                            <CalendarPlus aria-hidden /> Ders Planla
+                          </Link>
+                          <TalepYanitDugmeleri musteriId={id} talepId={t.id} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+          </section>
+
+          <section className="flex flex-col gap-3" aria-label="Yorumlar">
+            <h2 className="text-lg font-semibold tracking-tight">Yorumlar</h2>
+            {yorumlar.length === 0 ? (
+              <EmptyState compact title="Henüz yorum yok." />
+            ) : (
+              <Card className="gap-0 py-0">
+                <CardContent className="flex flex-col divide-y divide-border p-0">
+                  {yorumlar.map((y) => {
+                    const ders = dersler.find((d) => d.id === y.ders_id);
+                    return (
+                      <div key={y.id} className="flex flex-col gap-1 px-4 py-3 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium">
+                            <span aria-hidden>{PUAN_EMOJI[y.puan]}</span> {y.puan}/5 · {YORUM_TURU[y.tur]}
+                          </span>
+                          <span className="text-xs text-muted-foreground tabular-nums">{formatDate(y.created_at)}</span>
+                        </div>
+                        <p>{y.yorum}</p>
+                        {ders && <p className="text-xs text-muted-foreground">{dersEtiketi(ders)}</p>}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+          </section>
         </>
       )}
 

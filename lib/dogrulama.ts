@@ -614,3 +614,41 @@ export const faturaIptalSemasi = z.object({ fatura_id: z.uuid(), neden: z.string
 export function ilkHata(hata: z.ZodError): string {
   return hata.issues[0]?.message ?? "Girdi hatalı.";
 }
+
+// ---------------------------------------------------------------------------------------------------------
+// Müşteri kartı > Talep ve Öneriler
+export const TALEP_TURLERI = ["ders_talebi", "ders_iptali", "ders_ertele", "antrenor_yorumu", "ders_yorumu"] as const;
+
+export const talepTuruSemasi = z.enum(TALEP_TURLERI, { error: "Bir talep türü seçin." });
+
+export const dersTalebiSemasi = z.object({
+  musteri_id: z.uuid(),
+  tarih: z
+    .string()
+    .trim()
+    .refine((v) => GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v)), "Geçerli bir tercih tarihi girin."),
+  saat: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^([01]\d|2[0-3]):[0-5]\d$/.test(v), "Geçerli bir saat girin.")
+    .transform((v) => (v ? v : null)),
+  antrenor_id: uuidOpsiyonel,
+  not: metinOpsiyonel(500),
+});
+
+export const talepDersSemasi = z.object({ musteri_id: z.uuid(), ders_id: z.uuid({ error: "Ders seçin." }) });
+
+export const yorumSemasi = z.object({
+  musteri_id: z.uuid(),
+  tur: z.enum(["antrenor_yorumu", "ders_yorumu"]),
+  ders_id: z.uuid({ error: "Ders seçin." }),
+  puan: z.coerce.number({ error: "Bir puan seçin." }).int("Bir puan seçin.").min(1, "Bir puan seçin.").max(5, "Bir puan seçin."),
+  yorum: z.string().trim().min(1, "Yorum metnini yazın.").max(1000, "Yorum en fazla 1000 karakter olabilir."),
+});
+
+export const talepYanitSemasi = z.object({
+  musteri_id: z.uuid(),
+  talep_id: z.uuid(),
+  durum: z.enum(["planlandi", "reddedildi"], { error: "Geçersiz durum." }),
+});
