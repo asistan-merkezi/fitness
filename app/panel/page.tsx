@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Activity, Banknote, BellRing, CalendarClock, CalendarDays, CalendarOff, CalendarPlus, Inbox, LayoutDashboard, Link2Off, List, Phone, RefreshCw, ScanLine, TriangleAlert, UserPlus, Users, Wallet } from "lucide-react";
-import { CanliSaat } from "@/components/panel/canli-saat";
-import { type CizelgeDersi, GunCizelgesi } from "@/components/panel/gun-cizelgesi";
+import { Banknote, BellRing, CalendarClock, CalendarDays, CalendarOff, CalendarPlus, Inbox, LayoutDashboard, Link2Off, MessageSquareHeart, Phone, RefreshCw, ScanLine, TriangleAlert, UserPlus, Users, Wallet } from "lucide-react";
+import { CanliCizelge } from "@/components/panel/canli-cizelge";
+import type { CizelgeDersi } from "@/components/panel/gun-cizelgesi";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { gecerliKullanici } from "@/lib/auth/gecerli-kullanici";
 import { bugunIstanbulTarihi, gunYazi } from "@/lib/datetime";
 import { gunDonemi, gunEkle } from "@/lib/donem";
@@ -62,7 +63,7 @@ export default async function PanelAnaSayfa() {
   const donem = gunDonemi(bugun);
   const simdiIso = new Date().toISOString();
 
-  const [girisSonuc, aktifSonuc, yaklasanSonuc, kasaSonuc, alacakSonuc, dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, bekleyenIzinSonuc, isletmeSonuc, onKayitSonuc] = await Promise.all([
+  const [girisSonuc, aktifSonuc, yaklasanSonuc, kasaSonuc, alacakSonuc, dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, bekleyenIzinSonuc, isletmeSonuc, onKayitSonuc, dersTalebiSonuc] = await Promise.all([
     musteriYetkisi
       ? supabase.from("giris_kaydi").select("id", { count: "exact", head: true }).eq("giris_tarihi", bugun).eq("sonuc", "kabul").eq("iptal", false)
       : Promise.resolve(null),
@@ -88,13 +89,18 @@ export default async function PanelAnaSayfa() {
     yonetici ? supabase.from("izin_talebi").select("id", { count: "exact", head: true }).eq("durum", "beklemede") : Promise.resolve(null),
     supabase.from("isletme").select("ad").eq("id", kullanici.isletme_id).maybeSingle<{ ad: string }>(),
     musteriYetkisi ? supabase.from("musteri_on_kayit").select("id, ad_soyad, telefon, created_at", { count: "exact" }).eq("durum", "beklemede").order("created_at").limit(5) : Promise.resolve(null),
+    musteriYetkisi
+      ? supabase.from("musteri_ders_talebi").select("id, musteri_id, tercih_tarih, tercih_saat, created_at", { count: "exact" }).eq("durum", "bekliyor").order("created_at").limit(5)
+      : Promise.resolve(null),
   ]);
+  const dersTalepleri = (dersTalebiSonuc?.data ?? []) as { id: string; musteri_id: string; tercih_tarih: string; tercih_saat: string | null; created_at: string }[];
+  const dersTalebiSayisi = dersTalebiSonuc?.count ?? 0;
   const onKayitlar = (onKayitSonuc?.data ?? []) as { id: string; ad_soyad: string; telefon: string; created_at: string }[];
   const onKayitSayisi = onKayitSonuc?.count ?? 0;
 
   const yaklasan = (yaklasanSonuc?.data ?? []) as YaklasanSatiri[];
   const dersler = (dersSonuc?.data ?? []) as DersSatiri[];
-  const musteriIdleri = [...new Set([...yaklasan.map((u) => u.musteri_id), ...dersler.map((d) => d.musteri_id)])];
+  const musteriIdleri = [...new Set([...yaklasan.map((u) => u.musteri_id), ...dersler.map((d) => d.musteri_id), ...dersTalepleri.map((t) => t.musteri_id)])];
 
   const adHaritasi = new Map<string, string>();
   const telefonHaritasi = new Map<string, string>();
@@ -140,16 +146,12 @@ export default async function PanelAnaSayfa() {
 
   return (
     <>
-      <header className="flex flex-col gap-1">
-        <h1 className="text-baslik-lg">İyi çalışmalar, {gorunenAd}</h1>
-        <p className="text-muted-foreground">
-          {donem.etiket}
-          {isletmeAdi && <> · {isletmeAdi}</>}
-          {dersYetkisi && <> · Bugün {planliToplam} ders planlandı.</>}
-        </p>
-      </header>
+      <PageHeader
+        title={`İyi çalışmalar, ${gorunenAd}`}
+        description={`${donem.etiket}${isletmeAdi ? ` · ${isletmeAdi}` : ""}${dersYetkisi ? ` · Bugün ${planliToplam} ders planlandı.` : ""}`}
+      />
 
-      <section aria-label="Operasyonel metrikler" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <section aria-label="Operasyonel metrikler" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {dersYetkisi && (
           <KpiCard
             vurgu
@@ -185,78 +187,90 @@ export default async function PanelAnaSayfa() {
           />
         )}
         {musteriYetkisi && <KpiCard label="Bekleyen ön kayıtlar" value={onKayitSayisi} icon={Inbox} iconTone={onKayitSayisi > 0 ? "amber" : "neutral"} />}
+        {musteriYetkisi && <KpiCard label="Bekleyen ders talepleri" value={dersTalebiSayisi} icon={MessageSquareHeart} iconTone={dersTalebiSayisi > 0 ? "amber" : "neutral"} />}
         {yonetici && <KpiCard label="Bekleyen izin talepleri" value={bekleyenIzin} icon={CalendarOff} iconTone={bekleyenIzin > 0 ? "amber" : "neutral"} />}
         {finansYetkisi && <KpiCard label="Bugün net tahsilat" value={kurusTLyazi(netTahsilat)} icon={Wallet} />}
         {finansYetkisi && <KpiCard label="Açık alacak" value={kurusTLyazi(toplamAlacak)} icon={TriangleAlert} iconTone="amber" />}
       </section>
 
       {dersYetkisi && (
-        <section aria-label="Günün çizelgesi ve antrenör durumları" className={musteriYetkisi ? "grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]" : "grid gap-6"}>
-          <Card className="gap-0 overflow-hidden p-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-3">
-              <div className="flex items-center gap-3">
-                <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-                  <Activity className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
-                  Günün Çizelgesi
-                </h2>
-                <Link href={`/panel/dersler?gun=${bugun}&gorunum=liste`} className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface-2 px-3 text-sm font-medium transition-colors hover:bg-surface-3">
-                  <List className="size-4" strokeWidth={1.5} aria-hidden /> Liste
-                </Link>
-              </div>
-              <CanliSaat />
-            </div>
-            <div className="p-4">
-              <GunCizelgesi dersler={cizelgeDersleri} alanlar={alanlar} bugunMu ayrintiHref={(id) => `/panel/dersler?gun=${bugun}&gorunum=liste#ders-${id}`} />
-            </div>
-          </Card>
+        <section aria-label="Günün çizelgesi ve antrenör durumları" className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className={musteriYetkisi ? "lg:col-span-2" : "lg:col-span-3"}>
+            <CanliCizelge dersler={cizelgeDersleri} alanlar={alanlar} bugun={bugun} yeniDersHref={musteriYetkisi ? "/panel/dersler/yeni" : undefined} />
+          </div>
 
           {musteriYetkisi && (
             <div className="flex flex-col gap-6">
-            <Card className="content-start gap-3 p-5">
-              <h2 className="text-lg font-semibold tracking-tight">Antrenör Durumları</h2>
-              {antrenorler.length === 0 ? (
-                <EmptyState compact icon={Users} title="Henüz antrenör yok." />
-              ) : (
-                <ul className="flex flex-col gap-2">
-                  {antrenorler.map((a) => {
-                    const d = ANTRENOR_DURUMU[antrenorDurumu(a.id, dersler, izinliler, simdiIso)];
-                    return (
-                      <li key={a.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2">
-                        <span className="flex min-w-0 items-center gap-3">
-                          <Avatar name={a.ad_soyad} size="sm" />
-                          <span className="truncate text-sm font-medium">{a.ad_soyad}</span>
-                        </span>
-                        <StatusBadge tone={d.ton}>{d.etiket}</StatusBadge>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-              {!yonetici && <p className="text-xs text-muted-foreground">İzin bilgisi yalnız işletme yöneticisine görünür.</p>}
-            </Card>
-
-            {onKayitlar.length > 0 && (
               <Card className="content-start gap-3 p-5">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-lg font-semibold tracking-tight">Bekleyen Ön Kayıtlar</h2>
-                  <StatusBadge tone="amber">{onKayitSayisi}</StatusBadge>
-                </div>
-                <ul className="flex flex-col gap-2">
-                  {onKayitlar.map((k) => (
-                    <li key={k.id} className="flex items-center gap-3 rounded-lg bg-surface px-3 py-2">
-                      <Avatar name={k.ad_soyad} size="sm" />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-medium">{k.ad_soyad}</span>
-                        <span className="block text-xs text-muted-foreground tabular-nums">{telefonGoster(k.telefon)}</span>
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <Link href="/panel/musteriler/on-kayitlar" className={buttonVariants({ variant: "outline", size: "sm" })}>
-                  Ön kayıtları incele
-                </Link>
+                <h2 className="text-lg font-semibold tracking-tight">Antrenör Durumları</h2>
+                {antrenorler.length === 0 ? (
+                  <EmptyState compact icon={Users} title="Henüz antrenör yok." />
+                ) : (
+                  <ul className="flex flex-col gap-2">
+                    {antrenorler.map((a) => {
+                      const d = ANTRENOR_DURUMU[antrenorDurumu(a.id, dersler, izinliler, simdiIso)];
+                      return (
+                        <li key={a.id} className="flex items-center justify-between gap-3 rounded-lg bg-surface px-3 py-2">
+                          <span className="flex min-w-0 items-center gap-3">
+                            <Avatar name={a.ad_soyad} size="sm" />
+                            <span className="truncate text-sm font-medium">{a.ad_soyad}</span>
+                          </span>
+                          <StatusBadge tone={d.ton}>{d.etiket}</StatusBadge>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+                {!yonetici && <p className="text-xs text-muted-foreground">İzin bilgisi yalnız işletme yöneticisine görünür.</p>}
               </Card>
-            )}
+
+              {dersTalepleri.length > 0 && (
+                <Card className="content-start gap-3 p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-lg font-semibold tracking-tight">Bekleyen Ders Talepleri</h2>
+                    <StatusBadge tone="amber">{dersTalebiSayisi}</StatusBadge>
+                  </div>
+                  <ul className="flex flex-col gap-2">
+                    {dersTalepleri.map((t) => (
+                      <li key={t.id}>
+                        <Link href={`/panel/musteriler/${t.musteri_id}?sekme=talepler`} className="flex items-center gap-3 rounded-lg bg-surface px-3 py-2 transition-colors hover:bg-surface-2">
+                          <Avatar name={adHaritasi.get(t.musteri_id) ?? "Müşteri"} size="sm" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">{adHaritasi.get(t.musteri_id) ?? "Müşteri"}</span>
+                            <span className="block text-xs text-muted-foreground tabular-nums">
+                              Tercih: {gunYazi(t.tercih_tarih)}
+                              {t.tercih_saat ? ` · ${t.tercih_saat.slice(0, 5)}` : ""}
+                            </span>
+                          </span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </Card>
+              )}
+
+              {onKayitlar.length > 0 && (
+                <Card className="content-start gap-3 p-5">
+                  <div className="flex items-center justify-between gap-2">
+                    <h2 className="text-lg font-semibold tracking-tight">Bekleyen Ön Kayıtlar</h2>
+                    <StatusBadge tone="amber">{onKayitSayisi}</StatusBadge>
+                  </div>
+                  <ul className="flex flex-col gap-2">
+                    {onKayitlar.map((k) => (
+                      <li key={k.id} className="flex items-center gap-3 rounded-lg bg-surface px-3 py-2">
+                        <Avatar name={k.ad_soyad} size="sm" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm font-medium">{k.ad_soyad}</span>
+                          <span className="block text-xs text-muted-foreground tabular-nums">{telefonGoster(k.telefon)}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href="/panel/musteriler/on-kayitlar" className={buttonVariants({ variant: "outline", size: "sm" })}>
+                    Ön kayıtları incele
+                  </Link>
+                </Card>
+              )}
             </div>
           )}
         </section>
@@ -288,69 +302,72 @@ export default async function PanelAnaSayfa() {
       )}
 
       {finansYetkisi && (
-        <section aria-label="Yenileme bekleyenler" className="flex flex-col gap-3">
+        <Card className="gap-4 p-5">
           <div className="flex items-center justify-between gap-2">
             <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
               <BellRing className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
-              Yenileme bekleyenler
+              Yenileme Bekleyen Üyelikler
             </h2>
             {yaklasan.length > 0 && <StatusBadge tone="amber">{yaklasan.length} üyelik</StatusBadge>}
           </div>
-          <p className="text-sm text-muted-foreground">Kalan hakkı 2 veya daha az, ya da 7 gün içinde bitecek aktif üyelikler.</p>
-
           {yaklasan.length === 0 ? (
-            <EmptyState compact icon={CalendarClock} title="Yenileme bekleyen üyelik yok." />
+            <EmptyState compact icon={CalendarClock} title="Yenileme bekleyen üyelik yok." description="Kalan hakkı 2 veya daha az, ya da 7 gün içinde bitecek aktif üyelikler burada listelenir." />
           ) : (
-            <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-              {yaklasan.map((u) => {
-                const musteriAdi = adHaritasi.get(u.musteri_id) ?? "Müşteri";
-                const telefon = telefonHaritasi.get(u.musteri_id);
-                const bakiye = bakiyeHaritasi.get(u.musteri_id) ?? 0;
-                const gun = kalanGun(u, bugun);
-                const hakUyari = u.kalan_hak !== null && u.kalan_hak <= 2;
-                return (
-                  <Card key={u.id} className="gap-4">
-                    <div className="flex items-start justify-between gap-3 px-(--card-spacing)">
-                      <div className="flex min-w-0 items-center gap-3">
-                        <Avatar name={musteriAdi} />
-                        <div className="min-w-0">
-                          <p className="truncate font-bold tracking-tight">{musteriAdi}</p>
-                          <p className="truncate text-sm text-muted-foreground">{u.paket_adi}</p>
-                        </div>
-                      </div>
-                      {hakUyari ? <StatusBadge tone="amber">{u.kalan_hak} hak kaldı</StatusBadge> : <StatusBadge tone="amber">{gun === 0 ? "Bugün bitiyor" : `${gun} gün kaldı`}</StatusBadge>}
-                    </div>
-                    <div className="mx-(--card-spacing) flex items-center justify-between gap-3 rounded-lg bg-surface p-3 text-sm">
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <CalendarClock className="size-4" strokeWidth={1.5} aria-hidden />
-                        Bitiş: <span className="font-semibold text-foreground tabular-nums">{u.bitis_tarihi ? gunYazi(u.bitis_tarihi) : "Süresiz"}</span>
-                      </span>
-                      {bakiye < 0 ? (
-                        <span className="font-semibold text-destructive tabular-nums">{kurusTLyazi(-bakiye)} borç</span>
-                      ) : (
-                        <span className="text-muted-foreground tabular-nums">Bakiye {kurusTLyazi(bakiye)}</span>
-                      )}
-                    </div>
-                    {musteriYetkisi && (
-                      <div className="grid grid-cols-2 gap-2 px-(--card-spacing)">
-                        {telefon ? (
-                          <a href={`tel:${telefon}`} className={buttonVariants({ variant: "outline" })}>
-                            <Phone aria-hidden /> Ara
-                          </a>
-                        ) : (
-                          <span />
-                        )}
-                        <Link href={`/panel/musteriler/${u.musteri_id}?sekme=uyelikler#uyelik-sat`} className={buttonVariants()}>
-                          <RefreshCw aria-hidden /> Yenile
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Müşteri</TableHead>
+                  <TableHead className="hidden md:table-cell">Paket</TableHead>
+                  <TableHead className="hidden sm:table-cell">Bitiş</TableHead>
+                  <TableHead className="hidden md:table-cell">Bakiye</TableHead>
+                  <TableHead className="text-right">Kalan</TableHead>
+                  {musteriYetkisi && <TableHead className="text-right">İşlem</TableHead>}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {yaklasan.map((u) => {
+                  const musteriAdi = adHaritasi.get(u.musteri_id) ?? "Müşteri";
+                  const telefon = telefonHaritasi.get(u.musteri_id);
+                  const bakiye = bakiyeHaritasi.get(u.musteri_id) ?? 0;
+                  const gun = kalanGun(u, bugun);
+                  const hakUyari = u.kalan_hak !== null && u.kalan_hak <= 2;
+                  return (
+                    <TableRow key={u.id}>
+                      <TableCell>
+                        <Link href={`/panel/musteriler/${u.musteri_id}?sekme=uyelikler`} className="flex items-center gap-2 hover:underline">
+                          <Avatar name={musteriAdi} size="sm" />
+                          <span className="font-medium">{musteriAdi}</span>
                         </Link>
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-            </div>
+                      </TableCell>
+                      <TableCell className="hidden text-muted-foreground md:table-cell">{u.paket_adi}</TableCell>
+                      <TableCell className="hidden text-muted-foreground tabular-nums sm:table-cell">{u.bitis_tarihi ? gunYazi(u.bitis_tarihi) : "Süresiz"}</TableCell>
+                      <TableCell className={bakiye < 0 ? "hidden font-semibold text-destructive tabular-nums md:table-cell" : "hidden text-muted-foreground tabular-nums md:table-cell"}>
+                        {bakiye < 0 ? `${kurusTLyazi(-bakiye)} borç` : kurusTLyazi(bakiye)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <StatusBadge tone="amber">{hakUyari ? `${u.kalan_hak} hak` : gun === 0 ? "Bugün" : `${gun} gün`}</StatusBadge>
+                      </TableCell>
+                      {musteriYetkisi && (
+                        <TableCell className="text-right">
+                          <span className="inline-flex gap-2">
+                            {telefon && (
+                              <a href={`tel:${telefon}`} className={buttonVariants({ variant: "outline", size: "sm" })} aria-label={`${musteriAdi} ara`}>
+                                <Phone aria-hidden />
+                              </a>
+                            )}
+                            <Link href={`/panel/musteriler/${u.musteri_id}?sekme=uyelikler#uyelik-sat`} className={buttonVariants({ size: "sm" })}>
+                              <RefreshCw aria-hidden /> Yenile
+                            </Link>
+                          </span>
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           )}
-        </section>
+        </Card>
       )}
     </>
   );

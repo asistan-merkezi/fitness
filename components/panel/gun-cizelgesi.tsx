@@ -26,12 +26,15 @@ export function GunCizelgesi({
   dersler,
   alanlar,
   bugunMu,
+  simdiIso,
   ayrintiHref,
   maxYukseklik = 560,
 }: {
   dersler: CizelgeDersi[];
   alanlar: { id: string; ad: string }[];
   bugunMu: boolean;
+  /** Verilirse "şu an" çizgisi bu andan hesaplanır (canlı istemci bileşeni için; hidrasyon farkı olmasın diye). */
+  simdiIso?: string;
   ayrintiHref: (dersId: string) => string;
   maxYukseklik?: number;
 }) {
@@ -42,7 +45,7 @@ export function GunCizelgesi({
   const aralik = cizelgeSaatAraligi(dersler);
   const saatler = Array.from({ length: aralik.bit - aralik.bas }, (_, i) => aralik.bas + i);
   const yukseklik = saatler.length * SAAT_PX;
-  const suAn = bugunMu ? suAnKonumu(new Date().toISOString(), aralik) : null;
+  const suAn = bugunMu ? suAnKonumu(simdiIso ?? new Date().toISOString(), aralik) : null;
   const sutunSablonu = `56px repeat(${alanlar.length}, minmax(150px, 1fr))`;
 
   return (
