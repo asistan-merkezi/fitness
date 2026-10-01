@@ -16,7 +16,7 @@ import type { AracSecenegi } from "./sorgular";
  * Yeni gider formu (Yeni Gider penceresinde). `tur`: Genel Giderler "gider", Kamusal Giderler "kamusal" — sekmeye göre sabittir.
  * Ödendi → yöntem (+hesap) zorunlu, kasa/bankayı hemen etkiler; Ödenecek → vade zorunlu, ödenene kadar hesaplara yansımaz.
  */
-export function GiderFormu({ tur, hesaplar, araclar, bugun, basariliOlunca }: { tur: "gider" | "kamusal"; hesaplar: HesapSecenegi[]; araclar: AracSecenegi[]; bugun: string; basariliOlunca?: () => void }) {
+export function GiderFormu({ tur, hesaplar, araclar, bugun, basariliOlunca, sabitYontem, sabitHesapId }: { tur: "gider" | "kamusal"; hesaplar: HesapSecenegi[]; araclar: AracSecenegi[]; bugun: string; basariliOlunca?: () => void; sabitYontem?: "nakit" | "havale"; sabitHesapId?: string }) {
   const [sonuc, formAction, bekliyor] = useActionState(giderEkle, null);
   const [gorulenSonuc, setGorulenSonuc] = useState(sonuc);
   const [ilkAnahtar] = useState(() => crypto.randomUUID());
@@ -102,6 +102,14 @@ export function GiderFormu({ tur, hesaplar, araclar, bugun, basariliOlunca }: { 
           <Input id="g_kdv" name="kdv_orani" inputMode="numeric" defaultValue="0" autoComplete="off" disabled={bekliyor} />
         </Alan>
 
+        {sabitYontem ? (
+          <>
+            {/* Kasa/Banka ekranından açıldığında gider hemen ödenmiş ve yöntem/hesap sabittir (hareket o hesaba düşer). */}
+            <input type="hidden" name="durum" value="odendi" />
+            <input type="hidden" name="yontem" value={sabitYontem} />
+            {sabitHesapId && <input type="hidden" name="banka_hesap_id" value={sabitHesapId} />}
+          </>
+        ) : (
         <div className="flex flex-col gap-1.5 sm:col-span-2">
           <span className="text-sm font-medium">Durum</span>
           <div className="grid grid-cols-2 gap-2" role="group" aria-label="Ödeme durumu">
@@ -127,8 +135,9 @@ export function GiderFormu({ tur, hesaplar, araclar, bugun, basariliOlunca }: { 
           </div>
           <input type="hidden" name="durum" value={durum} />
         </div>
+        )}
 
-        {durum === "bekliyor" ? (
+        {sabitYontem ? null : durum === "bekliyor" ? (
           <Alan etiket="Vade tarihi" htmlFor="g_vade">
             <Input id="g_vade" name="vade" type="date" required disabled={bekliyor} />
           </Alan>

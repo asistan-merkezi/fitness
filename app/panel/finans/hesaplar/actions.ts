@@ -11,6 +11,7 @@ type Onceki = EylemSonucu | null;
 function yenile() {
   revalidatePath("/panel/kasa");
   revalidatePath("/panel/finans/banka");
+  revalidatePath("/panel/finans/kredi-karti");
   revalidatePath("/panel/finans/raporlar");
 }
 
@@ -37,6 +38,8 @@ export async function manuelHareketEkle(_onceki: Onceki, formData: FormData): Pr
     p_aciklama: v.aciklama ?? undefined,
     p_tarih: v.tarih ?? undefined,
     p_anahtar: v.anahtar,
+    p_karsi_banka: v.karsi_banka ?? undefined,
+    p_karsi_iban: v.karsi_iban ?? undefined,
   });
   if (error) {
     console.error("[manuelHareketEkle]", error.code);

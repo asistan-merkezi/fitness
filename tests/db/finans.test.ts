@@ -210,6 +210,16 @@ describe("finans: hesaplar, giderler, kasa-banka defteri, fatura, özet", () => 
       expect(await hataMesaji(() => ekle(adminA, { tip: "giren", tutar: 0, kasa: true }))).toMatch(/tutar_gecersiz/);
     });
 
+    it("bankaya girişte gönderen banka ve IBAN saklanır (IBAN boşluksuz büyük harf); geçersiz IBAN reddedilir", async () => {
+      const gonder = (k: string, banka: string, iban: string | null) =>
+        rpc(k, "SELECT public.kasa_banka_hareket_ekle('giren', 700, false, $1, false, NULL, 'Ahmet Yılmaz', NULL, NULL, NULL, 'Garanti BBVA', $2) AS id", [banka, iban]);
+      expect(await hataMesaji(() => gonder(adminB, bankaB, "TR330006100519786457841327"))).toMatch(/iban_gecersiz/);
+      // B işletmesine yazılır: A işletmesinin bakiye beklentilerini etkilemez.
+      const id = ((await gonder(adminB, bankaB, "tr33 0006 1005 1978 6457 8413 26")) as { id: string }[])[0].id;
+      const satir = (await db.query<{ karsi_taraf_banka: string; karsi_taraf_iban: string }>("SELECT karsi_taraf_banka, karsi_taraf_iban FROM public.kasa_banka_hareket WHERE id = $1", [id])).rows[0];
+      expect(satir).toEqual({ karsi_taraf_banka: "Garanti BBVA", karsi_taraf_iban: "TR330006100519786457841326" });
+    });
+
     it("idempotent; değişmez; doğrudan yazılamaz", async () => {
       const anahtar = "55555555-5555-4555-8555-555555555555";
       const a = await ekle(adminA, { tip: "giren", tutar: 1, kasa: true, anahtar });
@@ -242,8 +252,10 @@ describe("finans: hesaplar, giderler, kasa-banka defteri, fatura, özet", () => 
       // (Ödenip sonra iptal edilen 9.000'lik gider hesaplardan düşmüş olmalıdır.)
       expect(kasa.acilis_kurus).toBe(100_000);
       expect(kasa.kapanis_kurus).toBe(100_000 + 4000 - 1500 - 5 - 700 + 10_000 + 1 - 3000); // -5: anahtar testindeki 5 kuruşluk nakit gider
-      // Banka1: 500.000 + 3.000 + 2.000 (+100 anahtarlı tahsilat) − 2.500 gider − 300 personel − 1.000 çıkan + 3.000 transfer girişi
-      expect(b1.kapanis_kurus).toBe(500_000 + 3000 + 2000 + 100 - 2500 - 300 - 1000 + 3000);
+      // Banka1: 500.000 + 3.000 havale (+100 anahtarlı tahsilat) − 2.500 gider − 300 personel − 1.000 çıkan + 3.000 transfer girişi.
+      // 2.000'lik KREDİ KARTI tahsilatı banka1 seçilmiş olsa da bankaya değil 'kart' hesabına yazılır (klinik düzeni).
+      expect(b1.kapanis_kurus).toBe(500_000 + 3000 + 100 - 2500 - 300 - 1000 + 3000);
+      expect(r.find((x) => x.hesap === "kart")).toMatchObject({ banka_hesap_id: null, acilis_kurus: 0, giren_kurus: 2000, cikan_kurus: 0, kapanis_kurus: 2000 });
       expect(b2.kapanis_kurus).toBe(0);
       expect(atanmamis).toMatchObject({ giren_kurus: 1000, cikan_kurus: 0, kapanis_kurus: 1000 });
       for (const s of r) expect(s.kapanis_kurus).toBe(s.acilis_kurus + s.giren_kurus - s.cikan_kurus);

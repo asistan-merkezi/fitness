@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { bugunIstanbulTarihi, toUTC } from "@/lib/datetime";
-import { ibanGecerli } from "@/lib/iban";
+import { ibanGecerli, ibanTemizle } from "@/lib/iban";
 import { tlYaziKurusa } from "@/lib/para";
 import { tcKimlikGecerli } from "@/lib/tc-kimlik";
 import { isimNormalle, resitDegilMi, telefonE164 } from "@/lib/utils";
@@ -596,6 +596,13 @@ export const kasaBankaHareketSemasi = z
     hedef: z.string().trim().optional(),
     tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
     karsi_taraf: isimOpsiyonel,
+    karsi_banka: isimOpsiyonel,
+    karsi_iban: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || ibanGecerli(v), "Geçerli bir TR IBAN girin (TR ile başlayan 26 karakter).")
+      .transform((v) => (v ? ibanTemizle(v) : null)),
     aciklama: metinOpsiyonel(300),
     tarih: gunOpsiyonel,
     anahtar: z.uuid(),

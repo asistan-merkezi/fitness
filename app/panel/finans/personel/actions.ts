@@ -104,5 +104,7 @@ export async function personelHareketEkle(_onceki: Onceki, formData: FormData): 
 
   revalidatePath(`/panel/finans/personel/${v.kullanici_id}`);
   revalidatePath("/panel/finans/personel");
+  // Ödeme kasa/banka/kart deftere düşer.
+  for (const yol of ["/panel/kasa", "/panel/finans/banka", "/panel/finans/kredi-karti", "/panel/finans/raporlar"]) revalidatePath(yol);
   return basari(v.tur === "avans" ? "Avans kaydedildi." : "Ödeme kaydedildi.");
 }

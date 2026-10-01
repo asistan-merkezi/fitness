@@ -1,62 +1,58 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ChevronLeft, ChevronRight, CreditCard } from "lucide-react";
-import { HesapDefteri } from "@/components/panel/hesap-defteri";
-import { buttonVariants } from "@/components/ui/button";
+import { CreditCard } from "lucide-react";
+import { DonemCubugu } from "@/components/panel/donem-cubugu";
+import { GrupluDefter } from "@/components/panel/gruplu-defter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
-import { bugunIstanbulTarihi } from "@/lib/datetime";
 import { donemCoz } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
-import { girenCikan } from "@/lib/panel/finans";
+import { defterSatirlari } from "@/lib/panel/finans";
 import { hesapHareketleriGetir } from "@/lib/panel/hesap-hareketleri";
 import { FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Kredi Kartı" };
 
-export default async function KrediKartiSayfasi({ searchParams }: { searchParams: Promise<{ yil?: string }> }) {
+type OzetSatiri = { hesap: string; acilis_kurus: number; giren_kurus: number; cikan_kurus: number; kapanis_kurus: number };
+
+/**
+ * Kredi Kartı: POS ile alınan tahsilatlar ve kartla yapılan giderlerin mutabakatı (klinik düzeni). Üçüncü ödeme rayıdır
+ * (nakit → Kasa, havale → Banka); salt okunurdur: kart için "elden" bir kasa kavramı yok, manuel kayıt girilmez.
+ */
+export default async function KrediKartiSayfasi({ searchParams }: { searchParams: Promise<{ gorunum?: string; tarih?: string }> }) {
   await sayfaYetkisiIste(FINANS_YONETIM_ROLLERI);
-  const { yil } = await searchParams;
-  const donem = donemCoz({ gorunum: "yil", tarih: yil });
-  const buYil = bugunIstanbulTarihi().slice(0, 4);
+  const parametreler = await searchParams;
+  const donem = donemCoz(parametreler);
 
   const supabase = await createClient();
-  const satirlar = await hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "banka", yontem: "kredi_karti", limit: 500 });
-  const { giren, cikan } = girenCikan(satirlar);
-  const baglanti = (p: string) => `/panel/finans/kredi-karti?yil=${p}`;
+  const [{ data: ozetVeri }, satirlar] = await Promise.all([
+    supabase.rpc("hesap_ozet", { p_baslangic: donem.baslangicTarih, p_bitis: donem.bitisTarih }),
+    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "kart", limit: 5000 }),
+  ]);
+  const kart = ((ozetVeri ?? []) as OzetSatiri[]).map((o) => ({ ...o, acilis_kurus: Number(o.acilis_kurus), giren_kurus: Number(o.giren_kurus), cikan_kurus: Number(o.cikan_kurus), kapanis_kurus: Number(o.kapanis_kurus) })).find((o) => o.hesap === "kart");
 
   return (
     <>
-      <PageHeader title="Kredi Kartı" description={`${donem.etiket} · kartla yapılan tahsilat, iade ve ödemeler`} icon={CreditCard} />
+      <PageHeader title="Kredi Kartı" description={`${donem.etiket} · POS ile alınan tahsilatlar ve kartla yapılan giderlerin mutabakatı`} icon={CreditCard} />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href={baglanti(donem.oncekiParam)} aria-label="Önceki yıl" className={buttonVariants({ variant: "outline", size: "icon" })}>
-          <ChevronLeft aria-hidden />
-        </Link>
-        <Link href={baglanti(buYil)} aria-current={donem.param === buYil ? "date" : undefined} className={buttonVariants({ variant: donem.param === buYil ? "default" : "outline" })}>
-          Bu Yıl
-        </Link>
-        <Link href={baglanti(donem.sonrakiParam)} aria-label="Sonraki yıl" className={buttonVariants({ variant: "outline", size: "icon" })}>
-          <ChevronRight aria-hidden />
-        </Link>
-      </div>
+      <DonemCubugu yol="/panel/finans/kredi-karti" donem={donem} />
 
-      <section aria-label="Kart özeti" className="grid gap-4 sm:grid-cols-3">
-        <KpiCard label="Kart tahsilatı" value={kurusTLyazi(giren)} icon={CreditCard} iconTone="emerald" />
-        <KpiCard label="Kart iadesi / ödemesi" value={kurusTLyazi(cikan)} icon={CreditCard} iconTone="rose" />
-        <KpiCard vurgu label="Net" value={kurusTLyazi(giren - cikan)} icon={CreditCard} />
+      <section aria-label="Kart özeti" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiCard label="Dönem başı bakiye" value={kurusTLyazi(kart?.acilis_kurus ?? 0)} icon={CreditCard} />
+        <KpiCard label="Kart tahsilatı (gelen)" value={kurusTLyazi(kart?.giren_kurus ?? 0)} icon={CreditCard} iconTone="emerald" />
+        <KpiCard label="İade / kartla ödeme (giden)" value={kurusTLyazi(kart?.cikan_kurus ?? 0)} icon={CreditCard} iconTone="rose" />
+        <KpiCard vurgu label="Dönem sonu bakiye" value={kurusTLyazi(kart?.kapanis_kurus ?? 0)} icon={CreditCard} />
       </section>
 
       <Card>
         <CardHeader>
           <CardTitle>Kart hareketleri</CardTitle>
-          <CardDescription>Bu ekran salt okunurdur; kayıtlar müşteri ödemesi, iade ve gider ekranlarından oluşur.</CardDescription>
+          <CardDescription>Bu ekran salt okunurdur; kayıtlar müşteri ödemesi, iade ve gider ekranlarından oluşur. Satıra tıklayınca kalemler açılır.</CardDescription>
         </CardHeader>
         <CardContent>
-          <HesapDefteri satirlar={satirlar} bosMesaj="Bu yıl kredi kartı hareketi yok." />
+          <GrupluDefter satirlar={defterSatirlari(satirlar)} acilisKurus={kart?.acilis_kurus ?? 0} gruplama={donem.gorunum === "yil" ? "ay" : "gun"} acik={donem.gorunum === "gun"} bosMesaj="Bu dönemde kredi kartı hareketi yok." />
         </CardContent>
       </Card>
     </>

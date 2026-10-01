@@ -5,12 +5,12 @@ import type { HesapHareketi } from "@/lib/panel/finans";
 export type HesapHareketSatiri = HesapHareketi & { musteri_adi?: string };
 
 /**
- * Bir hesabın (kasa / belirli banka / atanmamış banka / yalnız kredi kartı) dönem hareketleri. Tek kaynak `hesap_hareket_gorunum`
+ * Bir hesabın (kasa / belirli banka / atanmamış banka / kredi kartı) dönem hareketleri. Tek kaynak `hesap_hareket_gorunum`
  * (security_invoker: yalnız rolün okuyabildiği kaynak satırları gelir). Müşteri tahsilat/iadelerine müşteri adı eklenir.
  */
 export async function hesapHareketleriGetir(
   supabase: SupabaseClient,
-  o: { baslangic: string; bitis: string; hesap?: "kasa" | "banka"; bankaHesapId?: string | "atanmamis"; yontem?: string; limit?: number }
+  o: { baslangic: string; bitis: string; hesap?: "kasa" | "banka" | "kart"; bankaHesapId?: string | "atanmamis"; yontem?: string; limit?: number }
 ): Promise<HesapHareketSatiri[]> {
   let sorgu = supabase
     .from("hesap_hareket_gorunum")
@@ -39,4 +39,37 @@ export async function hesapHareketleriGetir(
     }
   }
   return satirlar;
+}
+
+export type ManuelKayit = {
+  id: string;
+  tip: "giren" | "cikan" | "transfer";
+  kasa: boolean;
+  banka_hesap_id: string | null;
+  hedef_kasa: boolean;
+  hedef_banka_hesap_id: string | null;
+  karsi_taraf: string | null;
+  karsi_taraf_banka: string | null;
+  karsi_taraf_iban: string | null;
+  aciklama: string | null;
+  tutar_kurus: number;
+  tarih: string;
+};
+
+/**
+ * Dönemde kasa veya banka hesabını ilgilendiren MANUEL kayıtlar (giren / çıkan / transfer — kaynak ya da hedef bacak).
+ * `hesap`: "kasa" | banka hesap id'si | "banka" (herhangi bir banka hesabı).
+ */
+export async function manuelKayitlariGetir(supabase: SupabaseClient, o: { baslangic: string; bitis: string; hesap: string }): Promise<ManuelKayit[]> {
+  const kosul = o.hesap === "kasa" ? "kasa.eq.true,hedef_kasa.eq.true" : o.hesap === "banka" ? "banka_hesap_id.not.is.null,hedef_banka_hesap_id.not.is.null" : `banka_hesap_id.eq.${o.hesap},hedef_banka_hesap_id.eq.${o.hesap}`;
+  const { data } = await supabase
+    .from("kasa_banka_hareket")
+    .select("id, tip, kasa, banka_hesap_id, hedef_kasa, hedef_banka_hesap_id, karsi_taraf, karsi_taraf_banka, karsi_taraf_iban, aciklama, tutar_kurus, tarih")
+    .or(kosul)
+    .gte("tarih", o.baslangic)
+    .lt("tarih", o.bitis)
+    .order("tarih", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(200);
+  return ((data ?? []) as ManuelKayit[]).map((k) => ({ ...k, tutar_kurus: Number(k.tutar_kurus) }));
 }

@@ -55,7 +55,7 @@ export const KATEGORI_ETIKETLERI_FINANS: Record<string, string> = { standart: "S
 
 export type HesapHareketi = {
   tarih: string;
-  hesap: "kasa" | "banka";
+  hesap: "kasa" | "banka" | "kart";
   banka_hesap_id: string | null;
   yontem: string | null;
   tutar_kurus: number;
@@ -100,4 +100,18 @@ export function kategoriDagilimi(satirlar: { kategori: string; tutar_kurus: numb
 /** Vadesi geçmiş mi? (tarihler "YYYY-MM-DD", bugün dahil geçmiş sayılmaz) */
 export function vadesiGecti(vade: string | null, bugun: string): boolean {
   return vade !== null && vade < bugun;
+}
+
+/** Hesap defterinde gösterilen satır (sunucuda hazırlanır, istemci bileşenine düz veri olarak geçer). */
+export type DefterSatiri = { tarih: string; tutar_kurus: number; baslik: string; ayrinti: string | null; yontem: string | null };
+
+/** Hesap hareketlerini defter satırına çevirir: başlık (kaynak), ayrıntı (müşteri adı / gider kategorisi / açıklama), yöntem etiketi. */
+export function defterSatirlari(satirlar: (HesapHareketi & { musteri_adi?: string })[]): DefterSatiri[] {
+  return satirlar.map((s) => ({
+    tarih: s.tarih,
+    tutar_kurus: s.tutar_kurus,
+    baslik: hareketBasligi(s),
+    ayrinti: s.kaynak === "musteri" ? (s.musteri_adi ?? null) : s.kaynak === "gider" ? (GIDER_KATEGORI_ETIKETLERI[s.aciklama ?? ""] ?? s.aciklama) : s.aciklama,
+    yontem: s.yontem ? (GIDER_YONTEMLERI[s.yontem] ?? s.yontem) : null,
+  }));
 }

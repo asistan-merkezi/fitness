@@ -124,7 +124,7 @@ export default async function RaporlarSayfasi({ searchParams }: { searchParams: 
         <Card>
           <CardHeader>
             <CardTitle>Hesap özeti</CardTitle>
-            <CardDescription>Kasa ve banka hesaplarının dönem hareketi</CardDescription>
+            <CardDescription>Kasa, banka ve kredi kartı hesaplarının dönem hareketi</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>

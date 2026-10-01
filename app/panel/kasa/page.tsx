@@ -1,32 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Banknote, ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { HesapDefteri } from "@/components/panel/hesap-defteri";
+import { Banknote, Plus } from "lucide-react";
+import { DonemCubugu } from "@/components/panel/donem-cubugu";
+import { GrupluDefter } from "@/components/panel/gruplu-defter";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
 import { bugunIstanbulTarihi } from "@/lib/datetime";
-import { type Donem, donemCoz } from "@/lib/donem";
+import { donemCoz } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
-import { hesapHareketleriGetir } from "@/lib/panel/hesap-hareketleri";
+import { defterSatirlari } from "@/lib/panel/finans";
+import { hesapHareketleriGetir, manuelKayitlariGetir } from "@/lib/panel/hesap-hareketleri";
 import { FINANS_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
-import { cn } from "@/lib/utils";
-import { AcilisFormu, ManuelHareketFormu } from "../finans/hesaplar/manuel-formlar";
+import { CikanDiyalog, GirenDiyalog } from "../finans/hesaplar/hareket-diyaloglari";
+import { AcilisFormu } from "../finans/hesaplar/manuel-formlar";
+import { ManuelKayitlar } from "../finans/hesaplar/manuel-kayitlar";
+import { hareketPencereVerileri } from "../finans/hesaplar/veri";
 
 export const metadata: Metadata = { title: "Kasa" };
 
 type OzetSatiri = { hesap: string; banka_hesap_id: string | null; acilis_kurus: number; giren_kurus: number; cikan_kurus: number; kapanis_kurus: number };
-
-/** Görünüm değişince aynı dönemde kal: gün→ay→yıl geçişlerinde param kısaltılır/uzatılır. */
-function gorunumBaglantisi(d: Donem, yeni: Donem["gorunum"]): string {
-  const p = d.param;
-  const tarih = yeni === "gun" ? (d.gorunum === "gun" ? p : d.gorunum === "ay" ? `${p}-01` : `${p}-01-01`) : yeni === "ay" ? (d.gorunum === "yil" ? `${p}-01` : p.slice(0, 7)) : p.slice(0, 4);
-  return `/panel/kasa?gorunum=${yeni}&tarih=${tarih}`;
-}
 
 export default async function KasaSayfasi({ searchParams }: { searchParams: Promise<{ gorunum?: string; tarih?: string }> }) {
   const { kullanici } = await sayfaYetkisiIste(FINANS_ROLLERI);
@@ -38,18 +35,17 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
   const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
-  const [{ data: ozetVeri }, satirlar, { data: hesapVeri }] = await Promise.all([
+  const [{ data: ozetVeri }, satirlar, manuelKayitlar, pencere, { data: isletmeVeri }] = await Promise.all([
     supabase.rpc("hesap_ozet", { p_baslangic: donem.baslangicTarih, p_bitis: donem.bitisTarih }),
-    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "kasa" }),
-    supabase.rpc("banka_hesap_secenekleri"),
+    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "kasa", limit: 5000 }),
+    manuelKayitlariGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "kasa" }),
+    hareketPencereVerileri(supabase),
+    supabase.from("isletme").select("kasa_acilis_kurus").eq("id", kullanici.isletme_id).maybeSingle<{ kasa_acilis_kurus: number }>(),
   ]);
+  const baslangicTutari = Number(isletmeVeri?.kasa_acilis_kurus ?? 0);
   const kasa = ((ozetVeri ?? []) as OzetSatiri[]).map((o) => ({ ...o, acilis_kurus: Number(o.acilis_kurus), giren_kurus: Number(o.giren_kurus), cikan_kurus: Number(o.cikan_kurus), kapanis_kurus: Number(o.kapanis_kurus) })).find((o) => o.hesap === "kasa");
-  const hesaplar = [{ kod: "kasa", ad: "Kasa" }, ...((hesapVeri ?? []) as { id: string; ad: string }[]).map((h) => ({ kod: h.id, ad: h.ad }))];
-  const gorunumler: { g: Donem["gorunum"]; e: string }[] = [
-    { g: "gun", e: "Günlük" },
-    { g: "ay", e: "Aylık" },
-    { g: "yil", e: "Yıllık" },
-  ];
+  const hesaplar = [{ kod: "kasa", ad: "Kasa" }, ...pencere.hesapSecenekleri.map((h) => ({ kod: h.id, ad: h.ad }))];
+  const hesapAdlari = new Map(pencere.hesapSecenekleri.map((h) => [h.id, h.ad]));
 
   return (
     <>
@@ -71,24 +67,7 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 rounded-lg border border-border p-1" role="group" aria-label="Görünüm">
-          {gorunumler.map(({ g, e }) => (
-            <Link key={g} href={gorunumBaglantisi(donem, g)} aria-current={donem.gorunum === g ? "true" : undefined} className={cn("rounded-md px-3 py-1.5 text-sm font-medium", donem.gorunum === g ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-surface-3")}>
-              {e}
-            </Link>
-          ))}
-        </div>
-        <Link href={`/panel/kasa?gorunum=${donem.gorunum}&tarih=${donem.oncekiParam}`} aria-label="Önceki dönem" className={buttonVariants({ variant: "outline", size: "icon" })}>
-          <ChevronLeft aria-hidden />
-        </Link>
-        <Link href={`/panel/kasa?gorunum=${donem.gorunum}&tarih=${donem.sonrakiParam}`} aria-label="Sonraki dönem" className={buttonVariants({ variant: "outline", size: "icon" })}>
-          <ChevronRight aria-hidden />
-        </Link>
-        <Link href={`/panel/kasa?gorunum=${donem.gorunum}&tarih=${donem.gorunum === "gun" ? bugun : donem.gorunum === "ay" ? bugun.slice(0, 7) : bugun.slice(0, 4)}`} className="text-sm font-semibold text-primary hover:underline">
-          Bugüne dön
-        </Link>
-      </div>
+      <DonemCubugu yol="/panel/kasa" donem={donem} />
 
       <section aria-label="Kasa özeti" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard label="Açılış bakiyesi" value={kurusTLyazi(kasa?.acilis_kurus ?? 0)} icon={Banknote} />
@@ -98,36 +77,48 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
       </section>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Kasa hareketleri</CardTitle>
-          <CardDescription>Nakit tahsilat/iade, nakit gider ve personel ödemesi otomatik düşer; diğer girişleri aşağıdan manuel kaydedin.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <HesapDefteri satirlar={satirlar} bosMesaj="Bu dönemde kasa hareketi yok." />
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm text-muted-foreground">Kasa başlangıç tutarı</p>
+            <p className="text-xl font-semibold tabular-nums">{kurusTLyazi(baslangicTutari)}</p>
+          </div>
+          {yonetici && (
+            <details>
+              <summary className="cursor-pointer text-sm font-semibold text-primary select-none">Düzenle</summary>
+              <div className="mt-3">
+                <AcilisFormu hesapKodu="kasa" acilisKurus={baslangicTutari} />
+              </div>
+            </details>
+          )}
         </CardContent>
       </Card>
 
       {yonetici && (
-        <>
-          <Card>
-            <CardHeader>
-              <CardTitle>Manuel hareket</CardTitle>
-              <CardDescription>Kasaya giriş/çıkış veya hesaplar arası transfer. Kayıtlar değişmez; hata için ters kayıt girin.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ManuelHareketFormu hesaplar={hesaplar} />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Kasa açılış bakiyesi</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <AcilisFormu hesapKodu="kasa" acilisKurus={kasa?.acilis_kurus ?? 0} />
-            </CardContent>
-          </Card>
-        </>
+        <div className="flex flex-wrap gap-2">
+          <GirenDiyalog hesap="kasa" bankaMi={false} bugun={bugun} />
+          <CikanDiyalog hesap="kasa" bankaMi={false} hesaplar={hesaplar} hesapSecenekleri={pencere.hesapSecenekleri} personel={pencere.personel} araclar={pencere.araclar} bugun={bugun} />
+        </div>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Kasa hareketleri</CardTitle>
+          <CardDescription>Nakit tahsilat/iade, nakit gider ve personel ödemesi otomatik düşer; diğer girişleri ve çıkışları yukarıdaki düğmelerle kaydedin. Satıra tıklayınca kalemler açılır.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <GrupluDefter satirlar={defterSatirlari(satirlar)} acilisKurus={kasa?.acilis_kurus ?? 0} gruplama={donem.gorunum === "yil" ? "ay" : "gun"} acik={donem.gorunum === "gun"} bosMesaj="Bu dönemde kasa hareketi yok." />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Manuel kasa kayıtları</CardTitle>
+          <CardDescription>Elle girilen giriş, çıkış ve transferler. Kayıtlar değişmez; hata için ters kayıt girin.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ManuelKayitlar kayitlar={manuelKayitlar} hesap="kasa" hesapAdlari={hesapAdlari} bosMetin="Bu dönemde manuel kasa kaydı yok." />
+        </CardContent>
+      </Card>
     </>
   );
 }
