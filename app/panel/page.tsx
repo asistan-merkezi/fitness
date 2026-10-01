@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, BellRing, CalendarClock, CalendarDays, CalendarOff, CalendarPlus, Inbox, LayoutDashboard, Link2Off, MessageSquareHeart, Phone, RefreshCw, ScanLine, TriangleAlert, UserPlus, Users, Wallet } from "lucide-react";
+import { Banknote, BellRing, CalendarClock, CalendarDays, CalendarPlus, LayoutDashboard, Link2Off, Phone, RefreshCw, ScanLine, UserPlus, Users } from "lucide-react";
 import { CanliCizelge } from "@/components/panel/canli-cizelge";
 import type { CizelgeDersi } from "@/components/panel/gun-cizelgesi";
 import { Avatar } from "@/components/ui/avatar";
@@ -63,11 +63,10 @@ export default async function PanelAnaSayfa() {
   const donem = gunDonemi(bugun);
   const simdiIso = new Date().toISOString();
 
-  const [girisSonuc, aktifSonuc, yaklasanSonuc, kasaSonuc, alacakSonuc, dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, bekleyenIzinSonuc, isletmeSonuc, onKayitSonuc, dersTalebiSonuc] = await Promise.all([
+  const [girisSonuc, yaklasanSonuc, dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, isletmeSonuc, onKayitSonuc, dersTalebiSonuc] = await Promise.all([
     musteriYetkisi
       ? supabase.from("giris_kaydi").select("id", { count: "exact", head: true }).eq("giris_tarihi", bugun).eq("sonuc", "kabul").eq("iptal", false)
       : Promise.resolve(null),
-    finansYetkisi ? supabase.from("uyelik_gorunum").select("id", { count: "exact", head: true }).eq("gecerli_durum", "aktif") : Promise.resolve(null),
     finansYetkisi
       ? supabase
           .from("uyelik_gorunum")
@@ -77,8 +76,6 @@ export default async function PanelAnaSayfa() {
           .order("bitis_tarihi", { ascending: true, nullsFirst: false })
           .limit(10)
       : Promise.resolve(null),
-    finansYetkisi ? supabase.rpc("kasa_ozet", { p_baslangic: donem.baslangicTarih, p_bitis: donem.bitisTarih }) : Promise.resolve(null),
-    finansYetkisi ? supabase.from("cari_alacak").select("borc_kurus") : Promise.resolve(null),
     // Dersler RLS ile süzülür: yönetici/resepsiyon hepsini, antrenör yalnız kendi derslerini görür.
     dersYetkisi
       ? supabase.from("ders_seansi").select("id, musteri_id, antrenor_id, alan_id, baslangic, bitis, durum").gte("baslangic", donem.baslangic).lt("baslangic", donem.bitis).order("baslangic")
@@ -86,7 +83,6 @@ export default async function PanelAnaSayfa() {
     dersYetkisi ? supabase.from("alan_studyo").select("id, ad, aktif").order("ad") : Promise.resolve(null),
     musteriYetkisi ? supabase.from("kullanici").select("id, ad_soyad").eq("rol", "antrenor").eq("aktif", true).order("ad_soyad") : Promise.resolve(null),
     yonetici ? supabase.from("izin_talebi").select("kullanici_id").eq("durum", "onaylandi").lte("baslangic_tarihi", bugun).gte("bitis_tarihi", bugun) : Promise.resolve(null),
-    yonetici ? supabase.from("izin_talebi").select("id", { count: "exact", head: true }).eq("durum", "beklemede") : Promise.resolve(null),
     supabase.from("isletme").select("ad").eq("id", kullanici.isletme_id).maybeSingle<{ ad: string }>(),
     musteriYetkisi ? supabase.from("musteri_on_kayit").select("id, ad_soyad, telefon, created_at", { count: "exact" }).eq("durum", "beklemede").order("created_at").limit(5) : Promise.resolve(null),
     musteriYetkisi
@@ -138,10 +134,7 @@ export default async function PanelAnaSayfa() {
 
   const planliToplam = dersler.filter((d) => d.durum !== "iptal").length;
   const tamamlanan = dersler.filter((d) => d.durum === "tamamlandi").length;
-  const netTahsilat = ((kasaSonuc?.data ?? []) as { net_kurus: number }[]).reduce((t, k) => t + Number(k.net_kurus), 0);
-  const toplamAlacak = ((alacakSonuc?.data ?? []) as { borc_kurus: number }[]).reduce((t, a) => t + Number(a.borc_kurus), 0);
   const girisSayisi = girisSonuc?.count ?? 0;
-  const bekleyenIzin = bekleyenIzinSonuc?.count ?? 0;
   const isletmeAdi = isletmeSonuc?.data?.ad ?? null;
 
   return (
@@ -175,22 +168,6 @@ export default async function PanelAnaSayfa() {
             icon={Users}
           />
         )}
-        {finansYetkisi && (
-          <KpiCard
-            label="Aktif üyelik"
-            value={
-              <>
-                {aktifSonuc?.count ?? 0} <span className="text-base font-medium text-muted-foreground">üye</span>
-              </>
-            }
-            icon={Users}
-          />
-        )}
-        {musteriYetkisi && <KpiCard label="Bekleyen ön kayıtlar" value={onKayitSayisi} icon={Inbox} iconTone={onKayitSayisi > 0 ? "amber" : "neutral"} />}
-        {musteriYetkisi && <KpiCard label="Bekleyen ders talepleri" value={dersTalebiSayisi} icon={MessageSquareHeart} iconTone={dersTalebiSayisi > 0 ? "amber" : "neutral"} />}
-        {yonetici && <KpiCard label="Bekleyen izin talepleri" value={bekleyenIzin} icon={CalendarOff} iconTone={bekleyenIzin > 0 ? "amber" : "neutral"} />}
-        {finansYetkisi && <KpiCard label="Bugün net tahsilat" value={kurusTLyazi(netTahsilat)} icon={Wallet} />}
-        {finansYetkisi && <KpiCard label="Açık alacak" value={kurusTLyazi(toplamAlacak)} icon={TriangleAlert} iconTone="amber" />}
       </section>
 
       {dersYetkisi && (
