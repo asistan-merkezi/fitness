@@ -10,6 +10,7 @@ type Onceki = EylemSonucu | null;
 
 function yenile() {
   revalidatePath("/panel/finans/giderler");
+  revalidatePath("/panel/finans/giderler/kamusal-giderler");
   revalidatePath("/panel/kasa");
   revalidatePath("/panel/finans/banka");
   revalidatePath("/panel/finans/kredi-karti");
