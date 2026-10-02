@@ -72,6 +72,31 @@ export function useMusteriDersPaketleri(musteriId: string) {
   });
 }
 
+/** Birden çok (tarih, saat) aralığı için dolu kaynakların birleşimi (periyodik ders: her gün+saatin ilk yaklaşan tarihi). */
+export function useDoluKaynaklarCoklu(slotlar: { tarih: string; saat: string }[], sureDk: number) {
+  const anahtar = slotlar.length > 0 && sureDk > 0 ? `${slotlar.map((s) => `${s.tarih}T${s.saat}`).join(",")}|${sureDk}` : null;
+  return useSorgu<DoluKaynaklar>(anahtar, async () => {
+    const birlesim: DoluKaynaklar = { antrenorler: new Set(), alanlar: new Set(), musteriler: new Set() };
+    for (const s of slotlar) {
+      const baslangic = toUTC(`${s.tarih}T${s.saat}:00`);
+      const bitis = new Date(new Date(baslangic).getTime() + sureDk * 60_000).toISOString();
+      const { data, error } = await createClient()
+        .from("ders_seansi")
+        .select("antrenor_id, alan_id, musteri_id")
+        .lt("baslangic", bitis)
+        .gt("bitis", baslangic)
+        .not("durum", "in", "(iptal,gelmedi)");
+      if (error) throw error;
+      for (const r of (data ?? []) as { antrenor_id: string; alan_id: string; musteri_id: string }[]) {
+        birlesim.antrenorler.add(r.antrenor_id);
+        birlesim.alanlar.add(r.alan_id);
+        birlesim.musteriler.add(r.musteri_id);
+      }
+    }
+    return birlesim;
+  });
+}
+
 /**
  * Seçilen aralıkta dolu olan antrenör, alan ve müşteriler. Veritabanındaki çakışma kısıtlarıyla AYNI kural
  * (iptal/gelmedi hariç, yarı açık aralık); asıl güvence kısıttır, bu yalnız formda yanlış seçimi önler.

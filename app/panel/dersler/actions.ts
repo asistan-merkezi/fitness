@@ -2,8 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { dersDurumSemasi, dersOlusturSemasi, dersTasiSemasi, formVerisi, ilkHata } from "@/lib/dogrulama";
-import { formatDateForInput } from "@/lib/datetime";
+import { dersDurumSemasi, dersOlusturSemasi, dersTasiSemasi, formVerisi, ilkHata, periyodikDersSemasi } from "@/lib/dogrulama";
+import { bugunIstanbulTarihi, formatDateForInput, gunYazi, toUTC } from "@/lib/datetime";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
 import { dersHakMesaji, dersMesaji } from "@/lib/mesaj/olaylar";
@@ -42,6 +42,64 @@ export async function dersOlustur(_onceki: Onceki, formData: FormData): Promise<
   if (dersId) await dersMesaji("olusturuldu", oturum.kullanici.isletme_id, String(dersId));
   revalidatePath("/panel/dersler");
   redirect(`/panel/dersler?gun=${formatDateForInput(v.baslangic)}&ok=olustu`);
+}
+
+/** Periyodik ders serisi süresi (hafta, ≈ 5 ay). */
+const PERIYODIK_HAFTA = 22;
+
+/**
+ * Periyodik ders (yalnız yönetici/resepsiyon): seçilen gün+saat(ler)de bugünden itibaren haftalık dersler tek seferde açılır.
+ * Seri tablosu yok, her ders bağımsız bir `ders_seansi`; çakışan haftalar (antrenör/alan/müşteri dolu) atlanıp mesajda sayılır.
+ */
+export async function periyodikDersOlustur(_onceki: Onceki, formData: FormData): Promise<Onceki> {
+  const oturum = await yetkiliOturum(MUSTERI_ROLLERI);
+  if (!oturum) return YETKISIZ;
+
+  const ayristirma = periyodikDersSemasi.safeParse(formVerisi(formData));
+  if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
+  const v = ayristirma.data;
+
+  const simdi = Date.now();
+  const bugun = new Date(`${bugunIstanbulTarihi()}T00:00:00Z`);
+  let olusan = 0;
+  const atlanan: string[] = [];
+
+  for (const { gun, saat } of v.gunler) {
+    const ilk = new Date(bugun);
+    ilk.setUTCDate(ilk.getUTCDate() + ((Number(gun) - ilk.getUTCDay() + 7) % 7));
+    for (let hafta = 0; hafta < PERIYODIK_HAFTA; hafta++) {
+      const gunTarihi = new Date(ilk);
+      gunTarihi.setUTCDate(gunTarihi.getUTCDate() + hafta * 7);
+      const tarih = gunTarihi.toISOString().slice(0, 10);
+      const baslangic = toUTC(`${tarih}T${saat}:00`);
+      if (Date.parse(baslangic) <= simdi) continue; // bugünün geçmiş saati
+
+      const { error } = await oturum.supabase.rpc("ders_seansi_olustur", {
+        p_musteri_id: v.musteri_id,
+        p_antrenor_id: v.antrenor_id,
+        p_alan_id: v.alan_id,
+        p_baslangic: baslangic,
+        p_sure_dk: v.sure,
+        p_ucret_kurus: v.ucret,
+        p_not: v.not,
+        p_anahtar: crypto.randomUUID(),
+      });
+      if (!error) {
+        olusan++;
+      } else if (/antrenor_dolu|alan_dolu|musteri_dolu|cakisma/.test(error.message ?? "")) {
+        atlanan.push(gunYazi(tarih) + " " + saat);
+      } else {
+        console.error("[periyodikDersOlustur]", error.code);
+        if (olusan > 0) revalidatePath("/panel/dersler");
+        return hata(`${olusan > 0 ? `${olusan} ders açıldı, ardından hata: ` : ""}${hataMesajiCoz(error)}`);
+      }
+    }
+  }
+
+  revalidatePath("/panel/dersler");
+  if (olusan === 0) return hata("Hiçbir ders açılamadı: seçilen saatlerin tümü dolu.");
+  const ek = atlanan.length > 0 ? ` ${atlanan.length} hafta dolu olduğu için atlandı (${atlanan.slice(0, 5).join(", ")}${atlanan.length > 5 ? "…" : ""}).` : "";
+  return basari(`${olusan} ders planlandı.${ek}`);
 }
 
 /** Ders durumu değiştirir; hak düşümü / cari borç veritabanındaki fonksiyonda, ders başına tek sefer işlenir. */

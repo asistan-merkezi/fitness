@@ -329,6 +329,31 @@ export const dersOlusturSemasi = z.object({
   anahtar: z.uuid(),
 });
 
+/** Periyodik ders: haftanın gün(ler)i + saat(ler)i; gunler_json = [{ gun: "0-6" (0=Pazar), saat: "HH:mm" }]. */
+export const periyodikDersSemasi = z.object({
+  musteri_id: z.uuid({ error: "Müşteri seçin." }),
+  antrenor_id: z.uuid({ error: "Antrenör seçin." }),
+  alan_id: z.uuid({ error: "Alan/stüdyo seçin." }),
+  sure: tamSayi(15, 480, "Süre 15-480 dakika olmalı."),
+  ucret: tlOpsiyonel("Geçerli bir ücret girin."),
+  not: metinOpsiyonel(300),
+  gunler: z
+    .string()
+    .transform((v) => {
+      try {
+        return JSON.parse(v) as unknown;
+      } catch {
+        return null;
+      }
+    })
+    .pipe(
+      z
+        .array(z.object({ gun: z.string().regex(/^[0-6]$/), saat: z.string().regex(/^\d{2}:\d{2}$/) }))
+        .min(1, "En az bir gün ve saat seçin.")
+        .max(7, "En fazla 7 gün seçilebilir.")
+    ),
+});
+
 export const dersDurumSemasi = z.object({
   ders_id: z.uuid(),
   hedef: z.enum(DERS_HEDEFLERI, { error: "Geçersiz durum." }),

@@ -151,9 +151,15 @@ export default async function DerslerSayfasi({
         icon={CalendarDays}
         actions={
           yonetim ? (
-            <Link href={`${baglanti(gunParam)}&yeni=1`} scroll={false} className={buttonVariants()}>
-              <CalendarPlus aria-hidden /> Yeni Ders
-            </Link>
+            antrenorler.length === 0 || tumAlanlar.every((a) => !a.aktif) ? (
+              <Button type="button" disabled title="Önce antrenör ve alan (stüdyo) tanımı gerekli.">
+                <CalendarPlus aria-hidden /> Yeni Ders
+              </Button>
+            ) : (
+              <Link href={`${baglanti(gunParam)}&yeni=1`} scroll={false} className={buttonVariants({ className: "bg-emerald-500 text-white hover:bg-emerald-600" })}>
+                <CalendarPlus aria-hidden /> Yeni Ders
+              </Link>
+            )
           ) : undefined
         }
       />
