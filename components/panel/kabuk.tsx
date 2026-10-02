@@ -109,29 +109,23 @@ export function PanelKabugu({
           })}
         </nav>
 
-        <div className="flex flex-col gap-3 border-t border-sidebar-border p-3">
-          <div className="flex items-center justify-center gap-3 xl:justify-start">
-            <Avatar name={kullaniciAdi} size="sm" />
-            <div className="hidden min-w-0 xl:block">
-              <p className="truncate text-sm font-semibold">{kullaniciAdi}</p>
-              {rolEtiketi && <p className="truncate text-xs text-muted-foreground">{rolEtiketi}</p>}
-            </div>
+        {/* Kullanıcı satırı + çıkış (klinikteki gibi tek satır; tema anahtarı üst çubukta). Dar rayda dikey: avatar + çıkış ikonu. */}
+        <div className="flex flex-col items-center gap-2 border-t border-sidebar-border p-3 xl:flex-row">
+          <Avatar name={kullaniciAdi} size="sm" />
+          <div className="hidden min-w-0 flex-1 xl:block">
+            <p className="truncate text-sm font-medium text-sidebar-foreground">{kullaniciAdi}</p>
+            {rolEtiketi && <p className="truncate text-xs text-muted-foreground">{rolEtiketi}</p>}
           </div>
-          <div className="flex items-center justify-center gap-2 xl:justify-between">
-            <TemaDugmesi etiketGoster={false} className="xl:hidden" />
-            <TemaDugmesi className="hidden xl:inline-flex" />
-            <form action={cikisEylemi}>
-              <button
-                type="submit"
-                aria-label="Çıkış yap"
-                title="Çıkış yap"
-                className="inline-flex size-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-surface-3 hover:text-foreground xl:w-auto xl:gap-2 xl:px-3"
-              >
-                <LogOut className="size-4" strokeWidth={1.5} aria-hidden />
-                <span className="hidden text-xs font-medium xl:inline">Çıkış</span>
-              </button>
-            </form>
-          </div>
+          <form action={cikisEylemi}>
+            <button
+              type="submit"
+              aria-label="Çıkış yap"
+              title="Çıkış yap"
+              className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            >
+              <LogOut className="size-4 shrink-0" strokeWidth={1.5} aria-hidden />
+            </button>
+          </form>
         </div>
       </aside>
 
