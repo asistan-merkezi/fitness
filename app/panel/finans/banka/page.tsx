@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Landmark } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { KlinikDonemCubugu } from "@/components/panel/donem-cubugu";
 import { GrupluDefter } from "@/components/panel/gruplu-defter";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
@@ -68,12 +68,13 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
     <>
       <PageHeader title="Banka" breadcrumb="Finans › Banka" />
 
-      {bankaSatirlari.length === 0 ? (
-        <EmptyState icon={Landmark} title="Kayıtlı banka hesabı yok" description="Ayarlar > Şirket Bilgileri'nden banka hesabı (IBAN) ekleyin; tahsilatlar ve giderler hesaba göre izlenir." />
-      ) : (
-        <>
+      {/* Hesap yokken de tam düzen görünür (klinikteki gibi): hesap sekmesi yerine yönlendirme, hareket düğmeleri devre dışı. */}
+      <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap gap-2" role="group" aria-label="Hesap">
+              {bankaSatirlari.length === 0 && (
+                <p className="rounded-lg border border-dashed border-border bg-card px-4 py-2 text-sm text-muted-foreground">Kayıtlı banka hesabı yok — Ayarlar &gt; Şirket Bilgileri&apos;nden banka hesabı (IBAN) ekleyin.</p>
+              )}
               {bankaSatirlari.map((b) => {
                 const anahtar = hesapAnahtari(b.banka_hesap_id);
                 return (
@@ -83,6 +84,16 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
                 );
               })}
             </div>
+            {yonetici && bankaSatirlari.length === 0 && (
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="outline" disabled>
+                  <ArrowDownToLine aria-hidden /> Bankaya Giren
+                </Button>
+                <Button type="button" variant="outline" disabled>
+                  <ArrowUpFromLine aria-hidden /> Bankadan Çıkan
+                </Button>
+              </div>
+            )}
             {yonetici && seciliGercek && (
               <div className="flex flex-wrap gap-2">
                 <GirenDiyalog hesap={seciliGercek} bankaMi bugun={bugun} />
@@ -138,8 +149,7 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
               </CardContent>
             </Card>
           )}
-        </>
-      )}
+      </>
     </>
   );
 }
