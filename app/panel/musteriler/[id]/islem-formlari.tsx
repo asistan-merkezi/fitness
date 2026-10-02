@@ -99,9 +99,12 @@ export function HassasBilgiFormu({ musteriId, hassas }: { musteriId: string; has
   );
 }
 
-export function SatisFormu({ musteriId, paketler, bugun, kategoriYuzdesi = 0 }: { musteriId: string; paketler: PaketSatiri[]; bugun: string; /** Müşteri kategorisinin önerilen iskonto yüzdesi (Finans > Kategori / İskonto Oranları). */ kategoriYuzdesi?: number }) {
-  const [paketId, setPaketId] = useState("");
-  const [iskonto, setIskonto] = useState("");
+export function SatisFormu({ musteriId, paketler, bugun, kategoriYuzdesi = 0, varsayilanPaketId }: { musteriId: string; paketler: PaketSatiri[]; bugun: string; varsayilanPaketId?: string; /** Müşteri kategorisinin önerilen iskonto yüzdesi (Finans > Kategori / İskonto Oranları). */ kategoriYuzdesi?: number }) {
+  const [paketId, setPaketId] = useState(varsayilanPaketId ?? "");
+  const [iskonto, setIskonto] = useState(() => {
+    const paket = paketler.find((p) => p.id === varsayilanPaketId);
+    return paket && kategoriYuzdesi > 0 ? kurusGirdiYazi(Math.round((paket.fiyat_kurus * kategoriYuzdesi) / 100)) : "";
+  });
   const [dokunuldu, setDokunuldu] = useState(false);
 
   function paketSecildi(id: string) {

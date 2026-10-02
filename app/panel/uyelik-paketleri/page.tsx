@@ -1,73 +1,58 @@
-import { Package } from "lucide-react";
+import type { Metadata } from "next";
+import { Archive, Package } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatusBadge } from "@/components/ui/status-badge";
 import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
-import { gunYazi } from "@/lib/datetime";
-import { kurusTLyazi } from "@/lib/para";
-import { PAKET_GORUNTULEME_ROLLERI } from "@/lib/panel/roller";
+import { bugunIstanbulTarihi } from "@/lib/datetime";
+import { paketArsivdeMi } from "@/lib/panel/paket";
+import { MUSTERI_ROLLERI, PAKET_GORUNTULEME_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import type { PaketSatiri } from "@/types/veritabani";
-import { PaketFormu } from "./paket-formu";
+import { PaketSatiri as PaketSatiriBileseni } from "./paket-satiri";
+import { YeniPaketDialog } from "./yeni-paket-dialog";
 
+export const metadata: Metadata = { title: "Üyelik Paketleri" };
+
+/** Üyelik Paketleri (klinik düzeni): Güncel / Arşiv ayrımı, Yeni Paket penceresi, satır başına Paketi Sat · Üyeler · Düzenle · Satışa Kapat. */
 export default async function PaketlerSayfasi() {
   const { kullanici } = await sayfaYetkisiIste(PAKET_GORUNTULEME_ROLLERI);
   const yonetici = kullanici.rol === "isletme_admin";
+  const satisYapabilir = (MUSTERI_ROLLERI as readonly string[]).includes(kullanici.rol);
+  const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
-  const { data } = await supabase.from("uyelik_paketi").select("*").order("aktif", { ascending: false }).order("ad");
+  const [{ data }, { data: uyeVeri }] = await Promise.all([
+    supabase.from("uyelik_paketi").select("*").order("ad"),
+    supabase.from("uyelik_gorunum").select("paket_id").in("gecerli_durum", ["aktif", "dondurulmus"]).limit(5000),
+  ]);
   const paketler = (data ?? []) as PaketSatiri[];
+  const uyeSayisi = new Map<string, number>();
+  for (const u of (uyeVeri ?? []) as { paket_id: string }[]) uyeSayisi.set(u.paket_id, (uyeSayisi.get(u.paket_id) ?? 0) + 1);
+
+  const guncel = paketler.filter((p) => !paketArsivdeMi(p, bugun));
+  const arsiv = paketler.filter((p) => paketArsivdeMi(p, bugun));
+  const satir = (p: PaketSatiri) => <PaketSatiriBileseni key={p.id} paket={p} aktifUyeSayisi={uyeSayisi.get(p.id) ?? 0} yonetici={yonetici} satisYapabilir={satisYapabilir} bugun={bugun} />;
 
   return (
     <>
-      <PageHeader title="Üyelik Paketleri" description={yonetici ? "Paketleri oluşturun ve düzenleyin." : "Paketler yalnızca işletme yöneticisi tarafından düzenlenir."} icon={Package} />
+      <PageHeader title="Üyelik Paketleri" description={yonetici ? "Müşterilere satılabilecek paketleri yönetin; satış buradan da yapılabilir." : "Paketler yalnızca işletme yöneticisi tarafından düzenlenir."} icon={Package} actions={yonetici ? <YeniPaketDialog /> : undefined} />
 
-      {yonetici && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Yeni paket</CardTitle>
-            <CardDescription>Fiyat değişikliği mevcut üyelikleri etkilemez; satış anındaki koşullar üyelikte saklanır.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PaketFormu />
-          </CardContent>
-        </Card>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Güncel paketler</CardTitle>
+          <CardDescription>Şu an satışta olan paketler.</CardDescription>
+        </CardHeader>
+        <CardContent>{guncel.length === 0 ? <EmptyState compact icon={Package} title="Güncel paket yok" description={yonetici ? "“Yeni Paket” ile ilk paketi oluşturun." : undefined} /> : <ul className="flex flex-col gap-3">{guncel.map(satir)}</ul>}</CardContent>
+      </Card>
 
-      {paketler.length === 0 ? (
-        <EmptyState icon={Package} title="Henüz paket yok" description={yonetici ? "Yukarıdan ilk paketi oluşturun." : "İşletme yöneticisi paket oluşturduğunda burada görünür."} />
-      ) : (
-        <div className="flex flex-col gap-4">
-          {paketler.map((p) => (
-            <Card key={p.id}>
-              <CardHeader>
-                <CardTitle className="flex flex-wrap items-center gap-2">
-                  {p.ad}
-                  <StatusBadge tone={p.aktif ? "emerald" : "slate"}>{p.aktif ? "Satışta" : "Kapalı"}</StatusBadge>
-                  {p.kapsam === "ders" && <StatusBadge tone="primary">PT dersi</StatusBadge>}
-                  {p.dondurma_izni && <StatusBadge tone="sky">Dondurulabilir</StatusBadge>}
-                </CardTitle>
-                <CardDescription>
-                  {p.tur === "sure" ? `${p.sure_gun} gün` : `${p.seans_sayisi} seans${p.gecerlilik_gun ? ` · ${p.gecerlilik_gun} gün geçerli` : " · süresiz"}`} · {kurusTLyazi(p.fiyat_kurus)} (KDV %{p.kdv_orani})
-                  {p.satis_bitis_tarihi && ` · satış bitişi ${gunYazi(p.satis_bitis_tarihi)}`}
-                  {p.dondurma_izni && ` · en fazla ${p.azami_dondurma_gun} gün dondurma${p.dondurma_ucret_kurus > 0 ? `, ücret ${kurusTLyazi(p.dondurma_ucret_kurus)}` : ""}`}
-                </CardDescription>
-              </CardHeader>
-              {yonetici && (
-                <CardContent>
-                  <details>
-                    <summary className="cursor-pointer text-sm text-primary select-none">Düzenle</summary>
-                    <div className="mt-4">
-                      <PaketFormu paket={p} />
-                    </div>
-                  </details>
-                </CardContent>
-              )}
-            </Card>
-          ))}
-        </div>
-      )}
+      <Card>
+        <CardHeader>
+          <CardTitle>Arşiv paketler</CardTitle>
+          <CardDescription>Satışa kapatılmış veya satış süresi dolmuş paketler. Mevcut üyelikler etkilenmez; “Satışa Aç” ile geri alınabilir.</CardDescription>
+        </CardHeader>
+        <CardContent>{arsiv.length === 0 ? <EmptyState compact icon={Archive} title="Arşivde paket yok" /> : <ul className="flex flex-col gap-3">{arsiv.map(satir)}</ul>}</CardContent>
+      </Card>
     </>
   );
 }

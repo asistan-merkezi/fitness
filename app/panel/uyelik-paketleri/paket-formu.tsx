@@ -7,10 +7,10 @@ import { kurusGirdiYazi } from "@/lib/para";
 import type { PaketSatiri } from "@/types/veritabani";
 import { paketKaydet } from "./actions";
 
-export function PaketFormu({ paket }: { paket?: PaketSatiri }) {
+export function PaketFormu({ paket, basariliOlunca }: { paket?: PaketSatiri; basariliOlunca?: () => void }) {
   const on = paket ? `p_${paket.id}_` : "p_yeni_";
   return (
-    <EylemFormu eylem={paketKaydet} gonder={paket ? "Paketi Güncelle" : "Paketi Oluştur"}>
+    <EylemFormu eylem={paketKaydet} basariliOlunca={basariliOlunca} gonder={paket ? "Paketi Güncelle" : "Paketi Oluştur"}>
       {paket && <input type="hidden" name="paket_id" value={paket.id} />}
       <div className="grid gap-4 sm:grid-cols-3">
         <div className="sm:col-span-2">

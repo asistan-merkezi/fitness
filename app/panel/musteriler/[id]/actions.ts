@@ -13,6 +13,7 @@ function yenile(musteriId: string | undefined) {
   if (musteriId) revalidatePath(`/panel/musteriler/${musteriId}`);
   revalidatePath("/panel");
   revalidatePath("/panel/kasa");
+  revalidatePath("/panel/uyelik-paketleri");
 }
 
 /** Üyelik satışı: üyelik + borç (+ ilk tahsilat) tek veritabanı işleminde; idempotent. */

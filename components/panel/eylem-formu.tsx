@@ -11,6 +11,7 @@ type Eylem = (onceki: EylemSonucu | null, formData: FormData) => Promise<EylemSo
  * Server action formu: sonuç mesajı, yükleniyor durumu ve (istenirse) idempotency anahtarı.
  * `anahtarli`: her gönderimde tek kullanımlık UUID gönderilir; başarıdan sonra sunucu yenisini döndürür.
  * `onay`: geri dönüşsüz işlemlerde tarayıcı onay sorusu.
+ * `basariliOlunca`: islem basariyla bitince bir kez cagrilir (or. icinde bulundugu pencereyi kapatmak icin).
  */
 export function EylemFormu({
   eylem,
@@ -23,6 +24,7 @@ export function EylemFormu({
   boyut = "default",
   className,
   gonderSinifi,
+  basariliOlunca,
 }: {
   eylem: Eylem;
   children?: React.ReactNode;
@@ -34,9 +36,15 @@ export function EylemFormu({
   boyut?: "default" | "sm" | "lg";
   className?: string;
   gonderSinifi?: string;
+  basariliOlunca?: () => void;
 }) {
   const [durum, formAction, bekliyor] = useActionState(eylem, null);
   const [ilkAnahtar] = useState(() => crypto.randomUUID());
+  const [gorulen, setGorulen] = useState(durum);
+  if (durum !== gorulen) {
+    setGorulen(durum);
+    if (durum?.success) basariliOlunca?.();
+  }
 
   return (
     <form

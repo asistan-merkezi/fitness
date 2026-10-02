@@ -12,28 +12,44 @@ export async function hesapHareketleriGetir(
   supabase: SupabaseClient,
   o: { baslangic: string; bitis: string; hesap?: "kasa" | "banka" | "kart"; bankaHesapId?: string | "atanmamis"; yontem?: string; limit?: number }
 ): Promise<HesapHareketSatiri[]> {
-  let sorgu = supabase
-    .from("hesap_hareket_gorunum")
-    .select("tarih, hesap, banka_hesap_id, yontem, tutar_kurus, kaynak, kaynak_id, aciklama")
-    .gte("tarih", o.baslangic)
-    .lt("tarih", o.bitis)
-    .order("tarih", { ascending: false })
-    .limit(o.limit ?? 300);
-  if (o.hesap) sorgu = sorgu.eq("hesap", o.hesap);
-  if (o.bankaHesapId === "atanmamis") sorgu = sorgu.is("banka_hesap_id", null);
-  else if (o.bankaHesapId) sorgu = sorgu.eq("banka_hesap_id", o.bankaHesapId);
-  if (o.yontem) sorgu = sorgu.eq("yontem", o.yontem);
+  const SAYFA = 1000; // PostgREST varsayılan en fazla 1000 satır döndürür; daha büyük listeler sayfa sayfa çekilir.
+  const toplamSinir = o.limit ?? 300;
+  const ham: HesapHareketi[] = [];
+  for (let bas = 0; bas < toplamSinir; bas += SAYFA) {
+    let sorgu = supabase
+      .from("hesap_hareket_gorunum")
+      .select("tarih, hesap, banka_hesap_id, yontem, tutar_kurus, kaynak, kaynak_id, aciklama")
+      .gte("tarih", o.baslangic)
+      .lt("tarih", o.bitis)
+      .order("tarih", { ascending: false })
+      .order("kaynak_id") // sayfalar arasında kararlı sıra
+      .range(bas, Math.min(bas + SAYFA, toplamSinir) - 1);
+    if (o.hesap) sorgu = sorgu.eq("hesap", o.hesap);
+    if (o.bankaHesapId === "atanmamis") sorgu = sorgu.is("banka_hesap_id", null);
+    else if (o.bankaHesapId) sorgu = sorgu.eq("banka_hesap_id", o.bankaHesapId);
+    if (o.yontem) sorgu = sorgu.eq("yontem", o.yontem);
+    const { data } = await sorgu;
+    const sayfa = (data ?? []) as HesapHareketi[];
+    ham.push(...sayfa);
+    if (sayfa.length < Math.min(SAYFA, toplamSinir - bas)) break;
+  }
+  const satirlar = ham.map((s) => ({ ...s, tutar_kurus: Number(s.tutar_kurus) })) as HesapHareketSatiri[];
 
-  const { data } = await sorgu;
-  const satirlar = ((data ?? []) as HesapHareketi[]).map((s) => ({ ...s, tutar_kurus: Number(s.tutar_kurus) })) as HesapHareketSatiri[];
-
-  const musteriKayitlari = satirlar.filter((s) => s.kaynak === "musteri").map((s) => s.kaynak_id);
+  // Müşteri adları: `.in()` GET URL'sine gömülür, uzun listelerde sorgu sessizce boş döner → 80'lik gruplarla çekilir.
+  const gruplar = <T,>(liste: T[]) => {
+    const cikti: T[][] = [];
+    for (let i = 0; i < liste.length; i += 80) cikti.push(liste.slice(i, i + 80));
+    return cikti;
+  };
+  const musteriKayitlari = [...new Set(satirlar.filter((s) => s.kaynak === "musteri").map((s) => s.kaynak_id))];
   if (musteriKayitlari.length > 0) {
-    const { data: hareketler } = await supabase.from("musteri_bakiye_hareket").select("id, musteri_id").in("id", musteriKayitlari);
-    const musteriIdleri = [...new Set(((hareketler ?? []) as { id: string; musteri_id: string }[]).map((h) => h.musteri_id))];
-    const { data: adlar } = musteriIdleri.length ? await supabase.from("musteri_ozet").select("id, ad_soyad").in("id", musteriIdleri) : { data: [] };
-    const ad = new Map(((adlar ?? []) as { id: string; ad_soyad: string }[]).map((m) => [m.id, m.ad_soyad]));
-    const hareketMusteri = new Map(((hareketler ?? []) as { id: string; musteri_id: string }[]).map((h) => [h.id, h.musteri_id]));
+    const hareketSonuclari = await Promise.all(gruplar(musteriKayitlari).map((g) => supabase.from("musteri_bakiye_hareket").select("id, musteri_id").in("id", g)));
+    const hareketMusteri = new Map<string, string>();
+    for (const { data } of hareketSonuclari) for (const h of (data ?? []) as { id: string; musteri_id: string }[]) hareketMusteri.set(h.id, h.musteri_id);
+    const musteriIdleri = [...new Set(hareketMusteri.values())];
+    const adSonuclari = await Promise.all(gruplar(musteriIdleri).map((g) => supabase.from("musteri_ozet").select("id, ad_soyad").in("id", g)));
+    const ad = new Map<string, string>();
+    for (const { data } of adSonuclari) for (const m of (data ?? []) as { id: string; ad_soyad: string }[]) ad.set(m.id, m.ad_soyad);
     for (const s of satirlar) {
       if (s.kaynak === "musteri") s.musteri_adi = ad.get(hareketMusteri.get(s.kaynak_id) ?? "");
     }
