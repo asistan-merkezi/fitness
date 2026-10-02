@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Banknote, Plus } from "lucide-react";
-import { DonemCubugu } from "@/components/panel/donem-cubugu";
+import { Pencil, Plus } from "lucide-react";
+import { KlinikDonemCubugu } from "@/components/panel/donem-cubugu";
 import { GrupluDefter } from "@/components/panel/gruplu-defter";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +31,8 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
   if (kullanici.rol === "resepsiyon") redirect("/panel/kasa/tahsilatlar");
   const yonetici = kullanici.rol === "isletme_admin";
   const parametreler = await searchParams;
-  const donem = donemCoz(parametreler);
+  // Klinikteki gibi Kasa Yıllık/Aylık görünür; eski günlük bağlantılar o ayın görünümüne düşer.
+  const donem = donemCoz({ gorunum: parametreler.gorunum === "yil" ? "yil" : "ay", tarih: parametreler.gorunum === "yil" ? parametreler.tarih?.slice(0, 4) : parametreler.tarih?.slice(0, 7) });
   const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
@@ -51,8 +52,7 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Kasa"
-        description={`${donem.etiket} · nakit hareketleri: tahsilat, iade, gider, personel ödemesi ve manuel kayıtlar`}
-        icon={Banknote}
+        breadcrumb="Finans › Kasa"
         actions={
           <span className="flex flex-wrap items-center gap-2">
             <Link href="/panel/kasa/tahsilatlar" className={buttonVariants({ variant: "outline" })}>
@@ -67,38 +67,39 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
         }
       />
 
-      <DonemCubugu yol="/panel/kasa" donem={donem} />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <Card className="min-w-72 flex-1">
+          <CardContent>
+            <details className="group">
+              <summary className="flex cursor-pointer list-none items-center gap-3 select-none">
+                <span className="text-sm text-muted-foreground">Kasa Başlangıç Tutarı</span>
+                <span className="text-base font-semibold tabular-nums">{kurusTLyazi(baslangicTutari)}</span>
+                {yonetici && <Pencil className="size-3.5 text-muted-foreground" aria-label="Düzenle" />}
+              </summary>
+              {yonetici && (
+                <div className="mt-3">
+                  <AcilisFormu hesapKodu="kasa" acilisKurus={baslangicTutari} />
+                </div>
+              )}
+            </details>
+          </CardContent>
+        </Card>
+        {yonetici && (
+          <div className="flex flex-wrap gap-2">
+            <GirenDiyalog hesap="kasa" bankaMi={false} bugun={bugun} />
+            <CikanDiyalog hesap="kasa" bankaMi={false} hesaplar={hesaplar} hesapSecenekleri={pencere.hesapSecenekleri} personel={pencere.personel} araclar={pencere.araclar} bugun={bugun} />
+          </div>
+        )}
+      </div>
+
+      <KlinikDonemCubugu yol="/panel/kasa" donem={donem} />
 
       <section aria-label="Kasa özeti" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <KpiCard label="Açılış bakiyesi" value={kurusTLyazi(kasa?.acilis_kurus ?? 0)} icon={Banknote} />
-        <KpiCard label="Kasaya giren" value={kurusTLyazi(kasa?.giren_kurus ?? 0)} icon={Banknote} iconTone="emerald" />
-        <KpiCard label="Kasadan çıkan" value={kurusTLyazi(kasa?.cikan_kurus ?? 0)} icon={Banknote} iconTone="rose" />
-        <KpiCard vurgu label="Kapanış bakiyesi" value={kurusTLyazi(kasa?.kapanis_kurus ?? 0)} icon={Banknote} />
+        <KpiCard label="Dönem Başı Bakiye" value={kurusTLyazi(kasa?.acilis_kurus ?? 0)} />
+        <KpiCard label="Toplam Nakit Tahsilat" value={<span className="text-success">{kurusTLyazi(kasa?.giren_kurus ?? 0)}</span>} />
+        <KpiCard label="Toplam Nakit Ödenen Gider" value={<span className="text-destructive">{kurusTLyazi(kasa?.cikan_kurus ?? 0)}</span>} />
+        <KpiCard label="Dönem Sonu Bakiye" value={kurusTLyazi(kasa?.kapanis_kurus ?? 0)} />
       </section>
-
-      <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm text-muted-foreground">Kasa başlangıç tutarı</p>
-            <p className="text-xl font-semibold tabular-nums">{kurusTLyazi(baslangicTutari)}</p>
-          </div>
-          {yonetici && (
-            <details>
-              <summary className="cursor-pointer text-sm font-semibold text-primary select-none">Düzenle</summary>
-              <div className="mt-3">
-                <AcilisFormu hesapKodu="kasa" acilisKurus={baslangicTutari} />
-              </div>
-            </details>
-          )}
-        </CardContent>
-      </Card>
-
-      {yonetici && (
-        <div className="flex flex-wrap gap-2">
-          <GirenDiyalog hesap="kasa" bankaMi={false} bugun={bugun} />
-          <CikanDiyalog hesap="kasa" bankaMi={false} hesaplar={hesaplar} hesapSecenekleri={pencere.hesapSecenekleri} personel={pencere.personel} araclar={pencere.araclar} bugun={bugun} />
-        </div>
-      )}
 
       <Card>
         <CardHeader>
@@ -106,7 +107,7 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
           <CardDescription>Nakit tahsilat/iade, nakit gider ve personel ödemesi otomatik düşer; diğer girişleri ve çıkışları yukarıdaki düğmelerle kaydedin. Satıra tıklayınca kalemler açılır.</CardDescription>
         </CardHeader>
         <CardContent>
-          <GrupluDefter satirlar={defterSatirlari(satirlar)} acilisKurus={kasa?.acilis_kurus ?? 0} gruplama={donem.gorunum === "yil" ? "ay" : "gun"} acik={donem.gorunum === "gun"} bosMesaj="Bu dönemde kasa hareketi yok." />
+          <GrupluDefter satirlar={defterSatirlari(satirlar)} acilisKurus={kasa?.acilis_kurus ?? 0} gruplama={donem.gorunum === "yil" ? "ay" : "gun"} girenBaslik="Nakit Tahsilat" cikanBaslik="Nakit Ödenen Gider" bosMesaj="Bu dönemde kasa hareketi yok." />
         </CardContent>
       </Card>
 

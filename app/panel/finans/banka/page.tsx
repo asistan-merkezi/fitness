@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Landmark } from "lucide-react";
-import { DonemCubugu } from "@/components/panel/donem-cubugu";
+import { KlinikDonemCubugu } from "@/components/panel/donem-cubugu";
 import { GrupluDefter } from "@/components/panel/gruplu-defter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -30,8 +30,9 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
   const { kullanici } = await sayfaYetkisiIste(FINANS_YONETIM_ROLLERI);
   const yonetici = kullanici.rol === "isletme_admin";
   const parametreler = await searchParams;
-  // Klinikteki gibi Banka yıl bazlıdır (eski gün/ay bağlantıları o yılın görünümüne düşer).
-  const donem = donemCoz({ gorunum: "yil", tarih: parametreler.tarih?.slice(0, 4) });
+  // Klinikteki gibi Banka Yıllık/Aylık görünür (eski günlük bağlantılar o ayın görünümüne düşer).
+  const yillik = parametreler.gorunum === "yil";
+  const donem = donemCoz({ gorunum: yillik ? "yil" : "ay", tarih: yillik ? parametreler.tarih?.slice(0, 4) : parametreler.tarih?.slice(0, 7) });
   const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
@@ -48,7 +49,9 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
   const hesaplar = [{ kod: "kasa", ad: "Kasa" }, ...pencere.hesapSecenekleri.map((h) => ({ kod: h.id, ad: h.ad }))];
   const hesapAdlari = new Map(pencere.hesapSecenekleri.map((h) => [h.id, h.ad]));
 
-  const secili = parametreler.hesap && (parametreler.hesap === "atanmamis" || bankaSatirlari.some((b) => b.banka_hesap_id === parametreler.hesap)) ? parametreler.hesap : undefined;
+  // Klinikteki gibi tek hesap seçilidir (varsayılan: ilk hesap); "Tümü" sekmesi yoktur.
+  const hesapAnahtari = (id: string | null) => id ?? "atanmamis";
+  const secili = bankaSatirlari.find((b) => hesapAnahtari(b.banka_hesap_id) === parametreler.hesap) ? parametreler.hesap : bankaSatirlari[0] ? hesapAnahtari(bankaSatirlari[0].banka_hesap_id) : undefined;
   const seciliGercek = secili && secili !== "atanmamis" ? secili : undefined; // işlem yapılabilen (kayıtlı) hesap
   const gorunenSatirlar = secili ? bankaSatirlari.filter((b) => (b.banka_hesap_id ?? "atanmamis") === secili) : bankaSatirlari;
   const toplam = (alan: "acilis_kurus" | "giren_kurus" | "cikan_kurus" | "kapanis_kurus") => gorunenSatirlar.reduce((t, b) => t + b[alan], 0);
@@ -57,52 +60,45 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
     hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "banka", bankaHesapId: secili, limit: 5000 }),
     manuelKayitlariGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: seciliGercek ?? "banka" }),
   ]);
-  const hesapAnahtari = (id: string | null) => id ?? "atanmamis";
   // Hesap adı veritabanında "Banka · Şube" gelir; klinikteki gibi "Banka — Şube" gösterilir.
   const hesapEtiketi = (ad: string | null) => (ad ?? "Hesap atanmamış").replace(" · ", " — ");
   const baglanti = (h?: string) => `/panel/finans/banka?gorunum=${donem.gorunum}&tarih=${donem.param}${h ? `&hesap=${h}` : ""}`;
-  const seciliAd = secili ? hesapEtiketi(bankaSatirlari.find((b) => hesapAnahtari(b.banka_hesap_id) === secili)?.ad ?? "Hesap") : "Tüm hesaplar";
 
   return (
     <>
-      <PageHeader title="Banka" description={`${donem.etiket} · banka hesapları bazında havale / EFT gelir-gider takibi`} icon={Landmark} />
-
-      <DonemCubugu yol="/panel/finans/banka" donem={donem} gorunumler={["yil"]} ek={secili ? `hesap=${secili}` : ""} />
+      <PageHeader title="Banka" breadcrumb="Finans › Banka" />
 
       {bankaSatirlari.length === 0 ? (
         <EmptyState icon={Landmark} title="Kayıtlı banka hesabı yok" description="Ayarlar > Şirket Bilgileri'nden banka hesabı (IBAN) ekleyin; tahsilatlar ve giderler hesaba göre izlenir." />
       ) : (
         <>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Hesap">
-            <Link href={baglanti()} aria-current={!secili ? "true" : undefined} className={cn("rounded-lg border px-3 py-1.5 text-sm font-semibold", !secili ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface-2 hover:bg-surface-3")}>
-              Tümü
-            </Link>
-            {bankaSatirlari.map((b) => {
-              const anahtar = hesapAnahtari(b.banka_hesap_id);
-              return (
-                <Link key={anahtar} href={baglanti(anahtar)} aria-current={secili === anahtar ? "true" : undefined} className={cn("rounded-lg border px-3 py-1.5 text-sm font-semibold", secili === anahtar ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface-2 hover:bg-surface-3")}>
-                  {hesapEtiketi(b.ad)}
-                </Link>
-              );
-            })}
-          </div>
-
-          <section aria-label="Banka özeti" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <KpiCard label="Dönem başı bakiye" value={kurusTLyazi(toplam("acilis_kurus"))} icon={Landmark} />
-            <KpiCard label="Bankaya giren" value={kurusTLyazi(toplam("giren_kurus"))} icon={Landmark} iconTone="emerald" />
-            <KpiCard label="Bankadan çıkan" value={kurusTLyazi(toplam("cikan_kurus"))} icon={Landmark} iconTone="rose" />
-            <KpiCard vurgu label={`${seciliAd} — dönem sonu`} value={kurusTLyazi(toplam("kapanis_kurus"))} icon={Landmark} />
-          </section>
-
-          {yonetici &&
-            (seciliGercek ? (
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Hesap">
+              {bankaSatirlari.map((b) => {
+                const anahtar = hesapAnahtari(b.banka_hesap_id);
+                return (
+                  <Link key={anahtar} href={baglanti(anahtar)} aria-current={secili === anahtar ? "true" : undefined} className={cn("rounded-lg border px-4 py-2 text-sm font-medium", secili === anahtar ? "border-primary bg-primary/10 text-primary" : "border-border bg-card text-muted-foreground hover:bg-surface-2")}>
+                    {hesapEtiketi(b.ad)}
+                  </Link>
+                );
+              })}
+            </div>
+            {yonetici && seciliGercek && (
               <div className="flex flex-wrap gap-2">
                 <GirenDiyalog hesap={seciliGercek} bankaMi bugun={bugun} />
                 <CikanDiyalog hesap={seciliGercek} bankaMi hesaplar={hesaplar} hesapSecenekleri={pencere.hesapSecenekleri} personel={pencere.personel} araclar={pencere.araclar} bugun={bugun} />
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Hareket eklemek için yukarıdan bir banka hesabı seçin.</p>
-            ))}
+            )}
+          </div>
+
+          <KlinikDonemCubugu yol="/panel/finans/banka" donem={donem} ek={secili ? `hesap=${secili}` : ""} />
+
+          <section aria-label="Banka özeti" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <KpiCard label="Dönem Başı Bakiye" value={kurusTLyazi(toplam("acilis_kurus"))} />
+            <KpiCard label="Toplam Havale Tahsilat" value={<span className="text-success">{kurusTLyazi(toplam("giren_kurus"))}</span>} />
+            <KpiCard label="Toplam Havale Ödenen Gider" value={<span className="text-destructive">{kurusTLyazi(toplam("cikan_kurus"))}</span>} />
+            <KpiCard label="Dönem Sonu Bakiye" value={kurusTLyazi(toplam("kapanis_kurus"))} />
+          </section>
 
           <Card>
             <CardHeader>
@@ -110,7 +106,7 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
               <CardDescription>Havale/EFT tahsilat ve iadeleri, havale ile ödenen giderler ve personel ödemeleri otomatik düşer. Satıra tıklayınca kalemler açılır.</CardDescription>
             </CardHeader>
             <CardContent>
-              <GrupluDefter satirlar={defterSatirlari(satirlar)} acilisKurus={toplam("acilis_kurus")} gruplama={donem.gorunum === "yil" ? "ay" : "gun"} acik={donem.gorunum === "gun"} bosMesaj="Bu dönemde banka hareketi yok." />
+              <GrupluDefter satirlar={defterSatirlari(satirlar)} acilisKurus={toplam("acilis_kurus")} gruplama={donem.gorunum === "yil" ? "ay" : "gun"} girenBaslik="Havale Tahsilat" cikanBaslik="Havale Ödenen Gider" bosMesaj="Bu dönemde banka hareketi yok." />
             </CardContent>
           </Card>
 

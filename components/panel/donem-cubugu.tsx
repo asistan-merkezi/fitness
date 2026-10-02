@@ -46,3 +46,47 @@ export function DonemCubugu({ yol, donem, gorunumler = ["gun", "ay", "yil"], ek 
     </div>
   );
 }
+
+const AYLAR = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+
+/**
+ * Klinik düzenli dönem çubuğu (Banka / Kasa): Yıllık-Aylık anahtarı, yıl ‹2026› ve (aylıkta) ay ‹Eylül› gezinmesi.
+ * Günlük görünüm yoktur; eski `gorunum=gun` bağlantıları çağıran sayfada aylığa düşürülmelidir.
+ */
+export function KlinikDonemCubugu({ yol, donem, ek = "" }: { yol: string; donem: Donem; ek?: string }) {
+  const ekParam = ek ? `&${ek}` : "";
+  const baglanti = (g: "ay" | "yil", tarih: string) => `${yol}?gorunum=${g}&tarih=${tarih}${ekParam}`;
+  const yil = Number(donem.param.slice(0, 4));
+  const ay = donem.gorunum === "ay" ? Number(donem.param.slice(5, 7)) : 0;
+  const yilParam = (y: number) => (donem.gorunum === "ay" ? baglanti("ay", `${y}-${String(ay).padStart(2, "0")}`) : baglanti("yil", String(y)));
+  const bugun = bugunIstanbulTarihi();
+  const ok = (href: string, etiket: string, sol: boolean) => (
+    <Link href={href} aria-label={etiket} className={buttonVariants({ variant: "ghost", size: "icon" })}>
+      {sol ? <ChevronLeft aria-hidden /> : <ChevronRight aria-hidden />}
+    </Link>
+  );
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="flex gap-1 rounded-lg bg-surface-2 p-1" role="group" aria-label="Görünüm">
+        <Link href={baglanti("yil", String(yil))} aria-current={donem.gorunum === "yil" ? "true" : undefined} className={cn("rounded-md px-3 py-1.5 text-sm font-medium", donem.gorunum === "yil" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-surface-3")}>
+          Yıllık
+        </Link>
+        <Link href={baglanti("ay", donem.gorunum === "ay" ? donem.param : `${yil}-${bugun.slice(0, 4) === String(yil) ? bugun.slice(5, 7) : "01"}`)} aria-current={donem.gorunum === "ay" ? "true" : undefined} className={cn("rounded-md px-3 py-1.5 text-sm font-medium", donem.gorunum === "ay" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:bg-surface-3")}>
+          Aylık
+        </Link>
+      </div>
+      <div className="flex items-center gap-1">
+        {ok(yilParam(yil - 1), "Önceki yıl", true)}
+        <span className="min-w-14 text-center text-sm font-medium tabular-nums">{yil}</span>
+        {ok(yilParam(yil + 1), "Sonraki yıl", false)}
+      </div>
+      {donem.gorunum === "ay" && (
+        <div className="flex items-center gap-1">
+          {ok(baglanti("ay", donem.oncekiParam), "Önceki ay", true)}
+          <span className="min-w-20 text-center text-sm font-medium">{AYLAR[ay - 1]}</span>
+          {ok(baglanti("ay", donem.sonrakiParam), "Sonraki ay", false)}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -78,7 +78,7 @@ export function GirenDiyalog({ hesap, bankaMi, bugun }: { hesap: string; bankaMi
   const baslik = bankaMi ? "Bankaya Giren" : "Kasaya Giren";
   return (
     <>
-      <Button type="button" size="sm" variant="outline" onClick={() => setAcik(true)}>
+      <Button type="button" variant="outline" onClick={() => setAcik(true)} className="border-success-border bg-success-soft text-success hover:bg-success-soft hover:text-success">
         <ArrowDownToLine aria-hidden /> {baslik}
       </Button>
       <Dialog open={acik} onOpenChange={setAcik}>
@@ -150,7 +150,7 @@ export function CikanDiyalog({
 
   return (
     <>
-      <Button type="button" size="sm" variant="outline" onClick={() => setAcik(true)}>
+      <Button type="button" variant="outline" onClick={() => setAcik(true)} className="border-destructive-border bg-destructive-soft text-destructive hover:bg-destructive-soft hover:text-destructive">
         <ArrowUpFromLine aria-hidden /> {baslik}
       </Button>
       <Dialog
