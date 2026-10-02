@@ -70,6 +70,7 @@ const KOD_MESAJLARI: Record<string, string> = {
   risk_zaten_var: "Bu türde aktif bir risk bayrağı zaten var; önce kaldırın.",
   risk_bulunamadi: "Risk bayrağı bulunamadı veya zaten kaldırılmış.",
   iban_gecersiz: "Geçerli bir TR IBAN girin.",
+  muhasebe_bilgi_eksik: "Client ID ve Şirket (Company) ID gerekli.",
   arac_bulunamadi: "Araç bulunamadı veya pasif.",
   gelecek_tarih: "Tarih bugünden sonra olamaz.",
   bekleyen_gider_yontem_olmaz: "Bekleyen giderde ödeme yöntemi seçilmez.",

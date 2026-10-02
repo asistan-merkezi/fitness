@@ -151,3 +151,12 @@ export type SirketBilgileri = {
 
 export type AracSatiri = { id: string; marka: string; model: string; plaka: string; aktif: boolean };
 export type BankaHesabiSatiri = { id: string; banka_adi: string; sube: string | null; hesap_sahibi: string; iban: string; hesap_tipi: "isletme" | "sahis"; aktif: boolean };
+
+/** Muhasebe Sync (Paraşüt) bağlantı durumu; client secret ASLA okunmaz, yalnız `secret_tanimli` görünür. */
+export type MuhasebeEntegrasyonDurum = {
+  parasut_client_id: string | null;
+  parasut_company_id: string | null;
+  secret_tanimli: boolean;
+  baglanti_durumu: "bekliyor" | "baglandi";
+  updated_at: string;
+};
