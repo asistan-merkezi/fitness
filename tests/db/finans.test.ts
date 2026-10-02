@@ -287,6 +287,27 @@ describe("finans: hesaplar, giderler, kasa-banka defteri, fatura, özet", () => 
   describe("fatura kuyruğu", () => {
     let fatura: string;
 
+    it("alıcı bilgisi (e-posta, T.C. kimlik no, adres) eksikken fatura kesilemez; muhasebe yalnız eksik alan adlarını görür; yalnız yönetici/resepsiyon tamamlar", async () => {
+      const eksikler = (k: string) => rpc<{ e: string[] }>(k, "SELECT public.fatura_bilgi_eksikleri($1) AS e", [musteri]).then((r) => r[0].e);
+      expect(await hataMesaji(() => rpc(resepsiyonA, "SELECT public.fatura_olustur($1::uuid[])", [[borcId]]))).toMatch(/fatura_bilgisi_eksik/);
+      expect([...(await eksikler(muhasebeA))].sort()).toEqual(["adres", "eposta", "tc_kimlik_no"]);
+      expect(await hataMesaji(() => rpc(antrenorA, "SELECT public.fatura_bilgi_eksikleri($1)", [musteri]))).toMatch(/yetki_yetersiz/);
+      expect(await hataMesaji(() => rpc(muhasebeA, "SELECT public.musteri_fatura_bilgisi_tamamla($1, 'a@b.com')", [musteri]))).toMatch(/yetki_yetersiz/);
+      expect(await hataMesaji(() => rpc(resepsiyonA, "SELECT public.musteri_fatura_bilgisi_tamamla($1, 'gecersiz')", [musteri]))).toMatch(/eposta_gecersiz/);
+      expect(await hataMesaji(() => rpc(resepsiyonA, "SELECT public.musteri_fatura_bilgisi_tamamla($1, NULL, '12345678901')", [musteri]))).toMatch(/tc_gecersiz/);
+      expect(await hataMesaji(() => rpc(adminB, "SELECT public.musteri_fatura_bilgisi_tamamla($1, 'a@b.com')", [musteri]))).toMatch(/musteri_bulunamadi/);
+
+      // Kısmi tamamlama: yalnız gönderilen alanlar yazılır, eksik kalanlar listelenmeye devam eder.
+      await rpc(resepsiyonA, "SELECT public.musteri_fatura_bilgisi_tamamla($1, 'musteri@salon.com')", [musteri]);
+      expect(await eksikler(muhasebeA)).toEqual(["tc_kimlik_no", "adres"]);
+      await rpc(resepsiyonA, "SELECT public.musteri_fatura_bilgisi_tamamla($1, NULL, '10000000146', 'İstanbul', 'Kadıköy', 'Moda', 'Caferağa Sk. 5/2')", [musteri]);
+      expect(await eksikler(muhasebeA)).toEqual([]);
+      // Tamamlama başka kolonlara (ör. sağlık beyanı) dokunmaz ve var olan değeri boşla ezmez.
+      await rpc(resepsiyonA, "SELECT public.musteri_fatura_bilgisi_tamamla($1, NULL, NULL, 'Ankara')", [musteri]);
+      const h = (await db.query<{ il: string; ilce: string; tc_kimlik_no: string }>("SELECT il, ilce, tc_kimlik_no FROM public.musteri_hassas WHERE musteri_id = $1", [musteri])).rows[0];
+      expect(h).toEqual({ il: "Ankara", ilce: "Kadıköy", tc_kimlik_no: "10000000146" });
+    });
+
     it("faturalanmamış borçlar görünür; fatura KDV dahil tutardan ayrıştırılarak oluşur", async () => {
       const liste = await rpc<{ id: string; net_kurus: number }>(resepsiyonA, "SELECT id, net_kurus FROM public.faturalanmamis_borc WHERE musteri_id = $1", [musteri]);
       expect(liste.map((l) => l.id)).toEqual([borcId]);
@@ -295,6 +316,15 @@ describe("finans: hesaplar, giderler, kasa-banka defteri, fatura, özet", () => 
       const f = (await db.query<{ durum: string; toplam_kurus: number; kdv_kurus: number }>("SELECT durum, toplam_kurus, kdv_kurus FROM public.fatura WHERE id = $1", [fatura])).rows[0];
       expect(f).toEqual({ durum: "bekliyor", toplam_kurus: 10_000, kdv_kurus: 1667 }); // 10.000 × 20/120 = 1.666,67 -> 1.667
       expect(await rpc(resepsiyonA, "SELECT id FROM public.faturalanmamis_borc WHERE musteri_id = $1", [musteri])).toEqual([]);
+    });
+
+    it("cari alacak özeti: kalan = toplam borç − tahsil (ödeme − iade); muhasebe görür, antrenör ve başka işletme görmez", async () => {
+      const oku = (k: string) => rpc<{ toplam_borc_kurus: string; tahsil_kurus: string; kalan_kurus: string }>(k, "SELECT toplam_borc_kurus, tahsil_kurus, kalan_kurus FROM public.cari_alacak_ozet WHERE musteri_id = $1", [musteri]);
+      const [satir] = await oku(muhasebeA);
+      expect(Number(satir.toplam_borc_kurus)).toBe(10_000);
+      expect(Number(satir.kalan_kurus)).toBe(Number(satir.toplam_borc_kurus) - Number(satir.tahsil_kurus));
+      expect(await oku(antrenorA)).toEqual([]);
+      expect(await oku(adminB)).toEqual([]);
     });
 
     it("aynı borç iki faturada olamaz; ödeme satırı, boş liste ve yetkisiz rol reddedilir", async () => {

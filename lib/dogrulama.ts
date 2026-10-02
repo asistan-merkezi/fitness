@@ -689,3 +689,21 @@ export const riskBayragiEkleSemasi = z.object({
 });
 
 export const riskBayragiKaldirSemasi = z.object({ musteri_id: z.uuid(), risk_id: z.uuid() });
+
+/** Fatura için eksik alıcı bilgisi tamamlama: yalnız doldurulan alanlar yazılır (boş alanlar var olan değeri ezmez). */
+export const faturaBilgisiSemasi = z
+  .object({
+    musteri_id: z.uuid(),
+    eposta: epostaOpsiyonel,
+    tc_kimlik_no: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || tcKimlikGecerli(v), "Geçerli bir T.C. kimlik numarası girin.")
+      .transform((v) => v || null),
+    il: metinOpsiyonel(100),
+    ilce: metinOpsiyonel(100),
+    mahalle: metinOpsiyonel(150),
+    adres_detay: metinOpsiyonel(500),
+  })
+  .refine((v) => v.eposta || v.tc_kimlik_no || v.il || v.ilce || v.mahalle || v.adres_detay, { message: "En az bir bilgiyi doldurun." });

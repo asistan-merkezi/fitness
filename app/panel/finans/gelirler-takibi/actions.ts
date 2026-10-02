@@ -1,15 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { faturaIptalSemasi, faturaOlusturSemasi, formVerisi, ilkHata } from "@/lib/dogrulama";
+import { faturaBilgisiSemasi, faturaIptalSemasi, faturaOlusturSemasi, formVerisi, ilkHata } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
-import { FINANS_ROLLERI, FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
+import { FINANS_ROLLERI, FINANS_YONETIM_ROLLERI, MUSTERI_ROLLERI } from "@/lib/panel/roller";
 
 type Onceki = EylemSonucu | null;
 
 function yenile() {
-  revalidatePath("/panel/finans/gelirler-takibi");
+  revalidatePath("/panel/finans/gelirler-takibi", "layout");
   revalidatePath("/panel/finans/raporlar");
 }
 
@@ -48,4 +48,31 @@ export async function faturaIptal(_onceki: Onceki, formData: FormData): Promise<
   }
   yenile();
   return basari("Fatura iptal edildi.");
+}
+
+/** Fatura için eksik alıcı bilgisini tamamlar (yalnız yönetici/resepsiyon; muhasebe kişisel veriyi yazamaz). Yalnız doldurulan alanlar yazılır. */
+export async function faturaBilgisiTamamla(_onceki: Onceki, formData: FormData): Promise<Onceki> {
+  const oturum = await yetkiliOturum(MUSTERI_ROLLERI);
+  if (!oturum) return YETKISIZ;
+
+  const a = faturaBilgisiSemasi.safeParse(formVerisi(formData));
+  if (!a.success) return hata(ilkHata(a.error));
+  const v = a.data;
+
+  const { error } = await oturum.supabase.rpc("musteri_fatura_bilgisi_tamamla", {
+    p_musteri_id: v.musteri_id,
+    p_eposta: v.eposta ?? undefined,
+    p_tc: v.tc_kimlik_no ?? undefined,
+    p_il: v.il ?? undefined,
+    p_ilce: v.ilce ?? undefined,
+    p_mahalle: v.mahalle ?? undefined,
+    p_adres_detay: v.adres_detay ?? undefined,
+  });
+  if (error) {
+    console.error("[faturaBilgisiTamamla]", error.code);
+    return hata(hataMesajiCoz(error));
+  }
+  yenile();
+  revalidatePath(`/panel/musteriler/${v.musteri_id}`);
+  return basari("Fatura bilgileri kaydedildi.");
 }
