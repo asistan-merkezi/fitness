@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
-import { bugunIstanbulTarihi, formatDateForInput, formatTime } from "@/lib/datetime";
+import { bugunIstanbulTarihi, formatDateForInput, formatTime, gunYazi } from "@/lib/datetime";
 import { gunDonemi } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
 import { dersEylemleri } from "@/lib/panel/ders";
@@ -20,6 +20,8 @@ import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { DersSeansiSatiri } from "@/types/veritabani";
+import { BekleyenTalepler, type BekleyenDersTalebi } from "./bekleyen-talepler";
+import { DersDetayDialog, type DersDetayi } from "./ders-detay-dialog";
 import { DersEylemleri } from "./ders-eylemleri";
 import type { MusteriSecenegi } from "./ders-sorgulari";
 import { YeniDersDialog } from "./yeni-ders-dialog";
@@ -36,10 +38,10 @@ const SAAT = /^([01]\d|2[0-3]):[0-5]\d$/;
 export default async function DerslerSayfasi({
   searchParams,
 }: {
-  searchParams: Promise<{ gun?: string; antrenor?: string; ok?: string; gorunum?: string; yeni?: string; uye?: string; saat?: string }>;
+  searchParams: Promise<{ gun?: string; antrenor?: string; ok?: string; gorunum?: string; yeni?: string; uye?: string; saat?: string; ders?: string }>;
 }) {
   const { kullanici, authUser } = await sayfaYetkisiIste([...MUSTERI_ROLLERI, "antrenor"]);
-  const { gun, antrenor, ok, gorunum, yeni, uye, saat } = await searchParams;
+  const { gun, antrenor, ok, gorunum, yeni, uye, saat, ders: dersParam } = await searchParams;
   // Varsayılan görünüm çizelge (alan sütunlu saat ızgarası); "liste" eylem düğmeli ders kartlarını gösterir.
   const liste = gorunum === "liste";
   const yonetim = (MUSTERI_ROLLERI as readonly string[]).includes(kullanici.rol);
@@ -79,6 +81,20 @@ export default async function DerslerSayfasi({
     const { data } = await supabase.from("kullanici").select("id, ad_soyad").in("id", eksikAntrenor);
     for (const a of (data ?? []) as { id: string; ad_soyad: string }[]) antrenorAdi.set(a.id, a.ad_soyad);
   }
+  // Bekleyen ders talepleri (yalnız yönetim/resepsiyon; gün filtresinden bağımsız, en eski önce).
+  let bekleyenTalepler: BekleyenDersTalebi[] = [];
+  if (yonetim) {
+    const { data: talepVeri } = await supabase.from("musteri_ders_talebi").select("id, musteri_id, tercih_tarih, tercih_saat, antrenor_id, not_metni").eq("durum", "bekliyor").order("created_at").limit(50);
+    const talepSatirlari = (talepVeri ?? []) as { id: string; musteri_id: string; tercih_tarih: string; tercih_saat: string | null; antrenor_id: string | null; not_metni: string | null }[];
+    const talepMusteriIdleri = [...new Set(talepSatirlari.map((t) => t.musteri_id))];
+    const talepMusteriAdi = new Map<string, string>();
+    if (talepMusteriIdleri.length) {
+      const { data } = await supabase.from("musteri_ozet").select("id, ad_soyad").in("id", talepMusteriIdleri);
+      for (const m of (data ?? []) as { id: string; ad_soyad: string }[]) talepMusteriAdi.set(m.id, m.ad_soyad);
+    }
+    bekleyenTalepler = talepSatirlari.map((t) => ({ id: t.id, musteri_id: t.musteri_id, musteri_adi: talepMusteriAdi.get(t.musteri_id) ?? "Müşteri", tercih_tarih: t.tercih_tarih, tercih_saat: t.tercih_saat, antrenor_adi: t.antrenor_id ? (antrenorAdi.get(t.antrenor_id) ?? null) : null, not_metni: t.not_metni }));
+  }
+
   const tumAlanlar = (alanVeri ?? []) as { id: string; ad: string; aktif: boolean }[];
   const alanAdi = new Map(tumAlanlar.map((a) => [a.id, a.ad]));
   const kullanilanAlanlar = new Set(dersler.map((d) => d.alan_id));
@@ -98,6 +114,31 @@ export default async function DerslerSayfasi({
 
   const baglanti = (g: string, gorunumu: "cizelge" | "liste" = liste ? "liste" : "cizelge") => `/panel/dersler?gun=${g}${antrenorFiltre ? `&antrenor=${antrenorFiltre}` : ""}${gorunumu === "liste" ? "&gorunum=liste" : ""}`;
   const bugunMu = gunParam === bugun;
+
+  // Ders detayı penceresi (`?ders=`): çizelgede bir derse tıklayınca açılır; yalnız görüntülenen günün dersleri aranır.
+  let detay: DersDetayi | null = null;
+  const seciliDers = dersParam && UUID.test(dersParam) ? dersler.find((d) => d.id === dersParam) : undefined;
+  if (seciliDers) {
+    const durum = DERS_DURUMU[seciliDers.durum];
+    detay = {
+      id: seciliDers.id,
+      musteriId: seciliDers.musteri_id,
+      musteriAdi: musteriAdi.get(seciliDers.musteri_id) ?? "Müşteri",
+      antrenorAdi: antrenorAdi.get(seciliDers.antrenor_id) ?? "Antrenör",
+      alanAdi: alanAdi.get(seciliDers.alan_id) ?? "Alan",
+      zaman: `${gunYazi(formatDateForInput(seciliDers.baslangic))} · ${formatTime(seciliDers.baslangic)}–${formatTime(seciliDers.bitis)}`,
+      durumEtiketi: durum.etiket,
+      durumTonu: durum.ton,
+      ucret: seciliDers.ucret_kurus > 0 ? kurusTLyazi(seciliDers.ucret_kurus) : null,
+      haktenDustu: seciliDers.hak_dusuldu,
+      cariyeYazildi: seciliDers.borc_hareket_id !== null,
+      gecikmeDk: seciliDers.gecikme_dakika,
+      notMetni: seciliDers.not_metni,
+      eylemler: dersEylemleri(seciliDers.durum, kullanici.rol, seciliDers.antrenor_id === authUser.id),
+      tasimaBaslangici: `${formatDateForInput(seciliDers.baslangic)}T${formatTime(seciliDers.baslangic)}`,
+      yonetim,
+    };
+  }
 
   return (
     <>
@@ -125,12 +166,16 @@ export default async function DerslerSayfasi({
         />
       )}
 
+      {detay && <DersDetayDialog ders={detay} kapatHref={baglanti(gunParam)} />}
+
       {ok === "olustu" && (
         <p role="status" className="flex items-center gap-2 rounded-lg border border-success-border bg-success-soft px-4 py-3 text-sm font-semibold text-success">
           <CheckCircle2 className="size-5 shrink-0" strokeWidth={1.5} aria-hidden />
           Ders planlandı.
         </p>
       )}
+
+      <BekleyenTalepler talepler={bekleyenTalepler} />
 
       <div className="flex flex-wrap items-center gap-2">
         <Link href={baglanti(donem.oncekiParam)} aria-label="Önceki gün" className={buttonVariants({ variant: "outline", size: "icon" })}>
@@ -206,7 +251,7 @@ export default async function DerslerSayfasi({
           }))}
           alanlar={cizelgeAlanlari}
           bugunMu={bugunMu}
-          ayrintiHref={(id) => `${baglanti(gunParam, "liste")}#ders-${id}`}
+          ayrintiHref={(id) => `${baglanti(gunParam)}&ders=${id}`}
           maxYukseklik={720}
         />
       ) : (

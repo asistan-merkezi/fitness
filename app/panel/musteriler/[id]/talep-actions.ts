@@ -115,4 +115,5 @@ async function dersMusteriyeAitMi(supabase: Oturum["supabase"], dersId: string, 
 function yenile(musteriId: string) {
   revalidatePath(`/panel/musteriler/${musteriId}`);
   revalidatePath("/panel");
+  revalidatePath("/panel/dersler");
 }

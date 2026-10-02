@@ -80,7 +80,7 @@ export function CanliCizelge({
   const ozet = (Object.keys(DERS_DURUMU) as DersDurumu[])
     .map((d) => ({ durum: d, adet: dersler.filter((x) => x.durum === d).length }))
     .filter((x) => x.adet > 0);
-  const ayrintiHref = (id: string) => `/panel/dersler?gun=${bugun}&gorunum=liste#ders-${id}`;
+  const ayrintiHref = (id: string) => `/panel/dersler?gun=${bugun}&ders=${id}`;
 
   return (
     <Card className="gap-0 overflow-hidden p-0">
