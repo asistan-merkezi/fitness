@@ -48,6 +48,7 @@ export function DersFormu({
   const [alanId, setAlanId] = useState("");
 
   const { veri: paketler } = useMusteriDersPaketleri(musteriId);
+  const eksikTanim = antrenorler.length === 0 || alanlar.length === 0;
   const zamanHazir = tarih !== "" && saat !== "";
   const { veri: dolu, yukleniyor: musaitlikYukleniyor } = useDoluKaynaklar(tarih, saat, sure);
 
@@ -128,7 +129,7 @@ export function DersFormu({
             disabled={bekliyor || !zamanHazir || musaitAntrenorler.length === 0}
           >
             <option value="" disabled>
-              {bosYerMetni("antrenör", musaitAntrenorler.length === 0)}
+              {antrenorler.length === 0 ? "Önce Ayarlar > Personel Tanımlama'dan antrenör ekleyin" : bosYerMetni("antrenör", musaitAntrenorler.length === 0)}
             </option>
             {musaitAntrenorler.map((a) => (
               <option key={a.id} value={a.id}>
@@ -147,7 +148,7 @@ export function DersFormu({
             disabled={bekliyor || !zamanHazir || musaitAlanlar.length === 0}
           >
             <option value="" disabled>
-              {bosYerMetni("alan", musaitAlanlar.length === 0)}
+              {alanlar.length === 0 ? "Önce Yönetim > Donanım'dan alan ekleyin" : bosYerMetni("alan", musaitAlanlar.length === 0)}
             </option>
             {musaitAlanlar.map((a) => (
               <option key={a.id} value={a.id}>
@@ -190,8 +191,8 @@ export function DersFormu({
         </p>
       )}
 
-      <Button type="submit" disabled={bekliyor || musteriMesgul} className="w-fit">
-        {bekliyor ? "Planlanıyor..." : "Dersi Planla"}
+      <Button type="submit" disabled={bekliyor || musteriMesgul || eksikTanim} className="w-fit">
+        {bekliyor ? "Planlanıyor..." : "Ders oluştur"}
       </Button>
     </form>
   );

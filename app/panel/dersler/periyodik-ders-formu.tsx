@@ -52,6 +52,7 @@ export function PeriyodikDersFormu({
   const [antrenorId, setAntrenorId] = useState("");
   const [alanId, setAlanId] = useState("");
 
+  const eksikTanim = antrenorler.length === 0 || alanlar.length === 0;
   const zamanHazir = gunler.every((g) => g.saat !== "");
   const { veri: dolu, yukleniyor } = useDoluKaynaklarCoklu(zamanHazir ? gunler.map((g) => ({ tarih: sonrakiTarih(Number(g.gun)), saat: g.saat })) : [], sure);
 
@@ -126,7 +127,7 @@ export function PeriyodikDersFormu({
         <Alan etiket="Antrenör" htmlFor="p_antrenor">
           <SecimKutusu id="p_antrenor" name="antrenor_id" required value={efektifAntrenorId} onChange={(e) => setAntrenorId(e.target.value)} disabled={bekliyor || !zamanHazir || musaitAntrenorler.length === 0}>
             <option value="" disabled>
-              {bosYerMetni("antrenör", musaitAntrenorler.length === 0)}
+              {antrenorler.length === 0 ? "Önce Ayarlar > Personel Tanımlama'dan antrenör ekleyin" : bosYerMetni("antrenör", musaitAntrenorler.length === 0)}
             </option>
             {musaitAntrenorler.map((a) => (
               <option key={a.id} value={a.id}>
@@ -138,7 +139,7 @@ export function PeriyodikDersFormu({
         <Alan etiket="Alan / stüdyo" htmlFor="p_alan">
           <SecimKutusu id="p_alan" name="alan_id" required value={efektifAlanId} onChange={(e) => setAlanId(e.target.value)} disabled={bekliyor || !zamanHazir || musaitAlanlar.length === 0}>
             <option value="" disabled>
-              {bosYerMetni("alan", musaitAlanlar.length === 0)}
+              {alanlar.length === 0 ? "Önce Yönetim > Donanım'dan alan ekleyin" : bosYerMetni("alan", musaitAlanlar.length === 0)}
             </option>
             {musaitAlanlar.map((a) => (
               <option key={a.id} value={a.id}>
@@ -175,8 +176,8 @@ export function PeriyodikDersFormu({
         </p>
       )}
 
-      <Button type="submit" disabled={bekliyor || !musteriId} className="w-fit">
-        {bekliyor ? "Planlanıyor..." : "Periyodik Dersi Planla"}
+      <Button type="submit" disabled={bekliyor || !musteriId || eksikTanim} className="w-fit">
+        {bekliyor ? "Planlanıyor..." : "Periyodik ders oluştur"}
       </Button>
     </form>
   );

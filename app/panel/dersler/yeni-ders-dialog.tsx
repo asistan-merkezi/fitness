@@ -2,10 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { DersFormu } from "./ders-formu";
 import type { MusteriSecenegi } from "./ders-sorgulari";
@@ -36,12 +34,6 @@ export function YeniDersDialog({
 }) {
   const router = useRouter();
   const [mod, setMod] = useState<"tekil" | "periyodik">("tekil");
-  const eksik =
-    antrenorler.length === 0
-      ? "Önce Ayarlar > Personel Tanımlama'dan bir antrenör ekleyin."
-      : alanlar.length === 0
-        ? "Önce Yönetim > Donanım'dan bir alan ekleyin."
-        : null;
 
   return (
     <Dialog open onOpenChange={(acik) => !acik && router.replace(kapatHref, { scroll: false })}>
@@ -50,23 +42,17 @@ export function YeniDersDialog({
           <DialogTitle>Yeni Ders</DialogTitle>
           <DialogDescription>Müşteriyi seçin, tarih ve saati girin; müsait antrenör ve alanlar listelenir.</DialogDescription>
         </DialogHeader>
-        {eksik ? (
-          <EmptyState compact icon={UserRound} title={eksik} />
+        <div className="grid grid-cols-2 gap-2">
+          {(["tekil", "periyodik"] as const).map((m) => (
+            <Button key={m} type="button" variant="outline" className={cn(mod === m && SEKME_SECILI_SINIFI)} onClick={() => setMod(m)}>
+              {m === "tekil" ? "Tek Ders" : "Periyodik Ders"}
+            </Button>
+          ))}
+        </div>
+        {mod === "tekil" ? (
+          <DersFormu antrenorler={antrenorler} alanlar={alanlar} varsayilanTarih={varsayilanTarih} varsayilanSaat={varsayilanSaat} sabitMusteri={sabitMusteri} />
         ) : (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              {(["tekil", "periyodik"] as const).map((m) => (
-                <Button key={m} type="button" variant="outline" className={cn(mod === m && SEKME_SECILI_SINIFI)} onClick={() => setMod(m)}>
-                  {m === "tekil" ? "Tek Ders" : "Periyodik Ders"}
-                </Button>
-              ))}
-            </div>
-            {mod === "tekil" ? (
-              <DersFormu antrenorler={antrenorler} alanlar={alanlar} varsayilanTarih={varsayilanTarih} varsayilanSaat={varsayilanSaat} sabitMusteri={sabitMusteri} />
-            ) : (
-              <PeriyodikDersFormu antrenorler={antrenorler} alanlar={alanlar} sabitMusteri={sabitMusteri} />
-            )}
-          </>
+          <PeriyodikDersFormu antrenorler={antrenorler} alanlar={alanlar} sabitMusteri={sabitMusteri} />
         )}
       </DialogContent>
     </Dialog>
