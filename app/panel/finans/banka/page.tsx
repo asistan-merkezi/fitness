@@ -30,7 +30,8 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
   const { kullanici } = await sayfaYetkisiIste(FINANS_YONETIM_ROLLERI);
   const yonetici = kullanici.rol === "isletme_admin";
   const parametreler = await searchParams;
-  const donem = donemCoz(parametreler);
+  // Klinikteki gibi Banka yıl bazlıdır (eski gün/ay bağlantıları o yılın görünümüne düşer).
+  const donem = donemCoz({ gorunum: "yil", tarih: parametreler.tarih?.slice(0, 4) });
   const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
@@ -57,14 +58,16 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
     manuelKayitlariGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: seciliGercek ?? "banka" }),
   ]);
   const hesapAnahtari = (id: string | null) => id ?? "atanmamis";
+  // Hesap adı veritabanında "Banka · Şube" gelir; klinikteki gibi "Banka — Şube" gösterilir.
+  const hesapEtiketi = (ad: string | null) => (ad ?? "Hesap atanmamış").replace(" · ", " — ");
   const baglanti = (h?: string) => `/panel/finans/banka?gorunum=${donem.gorunum}&tarih=${donem.param}${h ? `&hesap=${h}` : ""}`;
-  const seciliAd = secili ? (bankaSatirlari.find((b) => hesapAnahtari(b.banka_hesap_id) === secili)?.ad ?? "Hesap") : "Tüm hesaplar";
+  const seciliAd = secili ? hesapEtiketi(bankaSatirlari.find((b) => hesapAnahtari(b.banka_hesap_id) === secili)?.ad ?? "Hesap") : "Tüm hesaplar";
 
   return (
     <>
       <PageHeader title="Banka" description={`${donem.etiket} · banka hesapları bazında havale / EFT gelir-gider takibi`} icon={Landmark} />
 
-      <DonemCubugu yol="/panel/finans/banka" donem={donem} ek={secili ? `hesap=${secili}` : ""} />
+      <DonemCubugu yol="/panel/finans/banka" donem={donem} gorunumler={["yil"]} ek={secili ? `hesap=${secili}` : ""} />
 
       {bankaSatirlari.length === 0 ? (
         <EmptyState icon={Landmark} title="Kayıtlı banka hesabı yok" description="Ayarlar > Şirket Bilgileri'nden banka hesabı (IBAN) ekleyin; tahsilatlar ve giderler hesaba göre izlenir." />
@@ -78,7 +81,7 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
               const anahtar = hesapAnahtari(b.banka_hesap_id);
               return (
                 <Link key={anahtar} href={baglanti(anahtar)} aria-current={secili === anahtar ? "true" : undefined} className={cn("rounded-lg border px-3 py-1.5 text-sm font-semibold", secili === anahtar ? "border-primary bg-primary text-primary-foreground" : "border-border bg-surface-2 hover:bg-surface-3")}>
-                  {b.ad ?? "Hesap atanmamış"}
+                  {hesapEtiketi(b.ad)}
                 </Link>
               );
             })}
@@ -132,7 +135,7 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
                   .filter((b) => b.banka_hesap_id && (!seciliGercek || b.banka_hesap_id === seciliGercek))
                   .map((b) => (
                     <div key={b.banka_hesap_id}>
-                      <p className="mb-2 text-sm font-semibold">{b.ad}</p>
+                      <p className="mb-2 text-sm font-semibold">{hesapEtiketi(b.ad)}</p>
                       <AcilisFormu hesapKodu={b.banka_hesap_id as string} acilisKurus={kayitliAcilis.get(b.banka_hesap_id as string) ?? 0} />
                     </div>
                   ))}
