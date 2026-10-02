@@ -1,4 +1,4 @@
-export type QrKodTipi = "musteri_on_kayit" | "anket" | "puantaj_giris" | "puantaj_cikis";
+export type QrKodTipi = "musteri_on_kayit" | "anket" | "puantaj_giris" | "puantaj_cikis" | "is_basvurusu";
 
 export type QrKodTanimi = {
   tip: QrKodTipi;
@@ -38,6 +38,16 @@ export const QR_KOD_TANIMLARI: QrKodTanimi[] = [
     dosyaAdi: "anket-oneri-qr",
     goruntuleHref: "/panel/ayarlar/qr-kodlari/anket-yanitlari",
     goruntuleEtiket: "Anket yanıtlarını görüntüle",
+    hazir: true,
+  },
+  {
+    tip: "is_basvurusu",
+    baslik: "İş Başvuru Formu",
+    aciklama: "İş arayan kişi ad, telefon, deneyim ve sertifika bilgisini bırakır. Başvurular doğrudan personel olmaz: Personel > Başvurular listesinde yönetici incelemesini bekler. Yalnız 18 yaş ve üzeri başvurabilir.",
+    yol: (kisaKod) => `/basvuru/${kisaKod}`,
+    dosyaAdi: "is-basvuru-qr",
+    goruntuleHref: "/panel/finans/personel/basvurular",
+    goruntuleEtiket: "Başvuruları görüntüle",
     hazir: true,
   },
   {

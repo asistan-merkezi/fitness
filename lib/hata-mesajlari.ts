@@ -88,6 +88,12 @@ const KOD_MESAJLARI: Record<string, string> = {
   donem_bitmedi: "Dönem henüz bitmedi; yalnızca biten aylar kapatılabilir.",
   hareket_turu_gecersiz: "Yalnızca ödeme veya avans kaydı girilebilir.",
   tutar_gecersiz: "Tutar sıfırdan büyük olmalı.",
+  dogum_tarihi_gecersiz: "Doğum tarihi geçerli bir geçmiş tarih olmalı.",
+  acil_kisi_eksik: "Acil durum kişisi için ad ve telefon birlikte girilmelidir.",
+  belge_bulunamadi: "Belge bulunamadı veya zaten kaldırılmış.",
+  basvuru_bulunamadi: "Başvuru bulunamadı veya zaten sonuçlanmış.",
+  puantaj_donem_kapali: "Bu ayın hakedişi kapatılmış; puantaj değiştirilemez.",
+  puantaj_izinli_gun: "Personel bu gün onaylı izinde; puantaj izin kaydından türetilir.",
   personel_bulunamadi: "Personel bulunamadı.",
   borc_islendi: "Bu ders için cariye borç yazıldı; durumu geri alınamaz. Düzeltme gerekiyorsa cari üzerinden yapın.",
 };

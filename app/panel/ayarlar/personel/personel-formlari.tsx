@@ -52,15 +52,19 @@ function PozisyonRolAlani({ idOnek, pozisyonlar, pozisyonId, rol }: { idOnek: st
   );
 }
 
-export function PersonelEkleFormu({ pozisyonlar }: { pozisyonlar: Pozisyon[] }) {
+export type BasvuruVarsayilani = { basvuruId: string; ad: string; eposta: string | null };
+
+/** `varsayilan`: iş başvurusundan açılıyorsa ad/e-posta önceden dolar ve hesap açılınca başvuru olumlu sonuçlanır. */
+export function PersonelEkleFormu({ pozisyonlar, varsayilan }: { pozisyonlar: Pozisyon[]; varsayilan?: BasvuruVarsayilani }) {
   return (
     <EylemFormu eylem={personelEkle} gonder="Hesap Oluştur" yukleniyor="Oluşturuluyor...">
+      {varsayilan && <input type="hidden" name="basvuru_id" value={varsayilan.basvuruId} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <Alan etiket="Ad soyad" htmlFor="pe_ad">
-          <IsimGirdisi id="pe_ad" name="ad_soyad" required />
+          <IsimGirdisi id="pe_ad" name="ad_soyad" varsayilan={varsayilan?.ad ?? ""} required />
         </Alan>
         <Alan etiket="E-posta" htmlFor="pe_eposta">
-          <Input id="pe_eposta" name="eposta" type="email" autoComplete="off" required />
+          <Input id="pe_eposta" name="eposta" type="email" autoComplete="off" defaultValue={varsayilan?.eposta ?? ""} required />
         </Alan>
         <PozisyonRolAlani idOnek="pe" pozisyonlar={pozisyonlar} pozisyonId={null} rol="resepsiyon" />
         <Alan etiket="Geçici şifre" htmlFor="pe_sifre" ipucu="En az 10 karakter, harf ve rakam içermeli. Kişiye güvenli bir yolla iletin.">

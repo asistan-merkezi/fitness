@@ -10,7 +10,7 @@ import { ROL_ETIKETLERI, YONETICI_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { KullaniciRolu } from "@/lib/auth/gecerli-kullanici";
-import { OzelPozisyonFormu, PersonelEkleFormu, PersonelSatiriFormu } from "./personel-formlari";
+import { type BasvuruVarsayilani, OzelPozisyonFormu, PersonelEkleFormu, PersonelSatiriFormu } from "./personel-formlari";
 import { PozisyonListesi } from "./pozisyon-listesi";
 
 type KullaniciListeSatiri = { id: string; ad_soyad: string; rol: KullaniciRolu; aktif: boolean; pozisyon_id: string | null };
@@ -20,12 +20,20 @@ const SEKMELER = [
   { kod: "hesaplar", etiket: "Personel Hesapları" },
 ] as const;
 
-export default async function PersonelSayfasi({ searchParams }: { searchParams: Promise<{ sekme?: string }> }) {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function PersonelSayfasi({ searchParams }: { searchParams: Promise<{ sekme?: string; basvuru?: string }> }) {
   const { authUser, kullanici } = await sayfaYetkisiIste(YONETICI_ROLLERI);
-  const { sekme: sekmeParam } = await searchParams;
-  const sekme = sekmeParam === "hesaplar" ? "hesaplar" : "pozisyonlar";
+  const { sekme: sekmeParam, basvuru: basvuruParam } = await searchParams;
+  const sekme = sekmeParam === "hesaplar" || basvuruParam ? "hesaplar" : "pozisyonlar";
 
   const supabase = await createClient();
+  // Başvurudan gelindiyse (Personel > Başvurular) ad ve e-posta forma taşınır; yalnız bekleyen başvuru kabul edilir.
+  let basvuru: BasvuruVarsayilani | undefined;
+  if (basvuruParam && UUID.test(basvuruParam)) {
+    const { data } = await supabase.from("is_basvurusu").select("id, ad_soyad, eposta").eq("id", basvuruParam).eq("durum", "beklemede").maybeSingle<{ id: string; ad_soyad: string; eposta: string | null }>();
+    if (data) basvuru = { basvuruId: data.id, ad: data.ad_soyad, eposta: data.eposta };
+  }
   const [pozisyonSonuc, kullaniciSonuc] = await Promise.all([
     supabase.from("pozisyonlar").select(POZISYON_SELECT).eq("isletme_id", kullanici.isletme_id).returns<Pozisyon[]>(),
     supabase.from("kullanici").select("id, ad_soyad, rol, aktif, pozisyon_id").eq("isletme_id", kullanici.isletme_id).order("ad_soyad"),
@@ -78,7 +86,7 @@ export default async function PersonelSayfasi({ searchParams }: { searchParams: 
               <CardDescription>Hesap oluşturulur; personel e-posta ve geçici şifreyle giriş yapar. Pozisyon seçilirse rol pozisyondan gelir.</CardDescription>
             </CardHeader>
             <CardContent>
-              <PersonelEkleFormu pozisyonlar={atanabilirPozisyonlar(pozisyonlar)} />
+              <PersonelEkleFormu key={basvuru?.basvuruId ?? "yeni"} pozisyonlar={atanabilirPozisyonlar(pozisyonlar)} varsayilan={basvuru} />
             </CardContent>
           </Card>
 

@@ -32,6 +32,7 @@ export async function izinDegerlendir(_onceki: Onceki, formData: FormData): Prom
   revalidatePath("/panel/yonetim/izinler");
   revalidatePath("/panel/izinlerim");
   revalidatePath("/panel/dersler");
+  revalidatePath("/panel/finans/personel", "layout");
   if (v.karar === "reddet") return basari("İzin talebi reddedildi.");
   const etkilenen = Number(data ?? 0);
   return basari(etkilenen > 0 ? `İzin onaylandı. Bu tarihlerde ${etkilenen} planlı ders var; Dersler sayfasından yeniden planlayın.` : "İzin onaylandı.");
@@ -60,5 +61,6 @@ export async function izinManuelEkle(_onceki: Onceki, formData: FormData): Promi
 
   revalidatePath("/panel/yonetim/izinler");
   revalidatePath("/panel/dersler");
+  revalidatePath("/panel/finans/personel", "layout");
   return basari("İzin kaydedildi.");
 }

@@ -38,6 +38,8 @@ const personelEkleSemasi = z.object({
     .refine((s) => /[a-zA-Z]/.test(s) && /\d/.test(s), "Şifre harf ve rakam içermeli."),
   pozisyon_id: pozisyonSecimi,
   rol: z.enum(ROLLER).optional(),
+  /** İş başvurusundan geliniyorsa: hesap açılınca başvuru olumlu sonuçlanır ve telefon/doğum tarihi karta aktarılır. */
+  basvuru_id: z.string().optional().transform((v) => (v ? v : undefined)).pipe(z.uuid().optional()),
 });
 
 /**
@@ -83,6 +85,18 @@ export async function personelEkle(_onceki: Onceki, formData: FormData): Promise
     console.error("[personelEkle:profil]", profilHatasi.code);
     await admin.auth.admin.deleteUser(olusan.user.id); // yarım kalan hesabı geri al
     return hata("Personel kaydı oluşturulamadı.");
+  }
+
+  // İş başvurusundan geldiyse: başvuruyu olumlu kapat ve iletişim bilgisini personel kartına taşı (hata hesabı geri almaz; loglanır).
+  if (v.basvuru_id) {
+    const { data: basvuru } = await oturum.supabase.from("is_basvurusu").select("telefon, dogum_tarihi").eq("id", v.basvuru_id).eq("durum", "beklemede").maybeSingle<{ telefon: string; dogum_tarihi: string | null }>();
+    const { error: sonucHatasi } = await oturum.supabase.rpc("is_basvurusu_sonuclandir", { p_id: v.basvuru_id, p_durum: "olumlu", p_kullanici_id: olusan.user.id });
+    if (sonucHatasi) console.error("[personelEkle:basvuru]", sonucHatasi.code);
+    if (basvuru) {
+      const { error: kisiselHatasi } = await oturum.supabase.rpc("personel_kisisel_kaydet", { p_kullanici_id: olusan.user.id, p_telefon: basvuru.telefon, p_dogum_tarihi: basvuru.dogum_tarihi ?? undefined });
+      if (kisiselHatasi) console.error("[personelEkle:kisisel]", kisiselHatasi.code);
+    }
+    revalidatePath("/panel/finans/personel", "layout");
   }
 
   revalidatePath("/panel/ayarlar/personel");

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ClipboardEdit, LogIn, LogOut, QrCode, UserPlus } from "lucide-react";
+import { ClipboardEdit, FileUser, LogIn, LogOut, QrCode, UserPlus } from "lucide-react";
 import { QrKarti } from "@/components/panel/qr-kart";
 import { EylemFormu } from "@/components/panel/eylem-formu";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,6 +16,7 @@ export const metadata: Metadata = { title: "QR Kodları" };
 const IKONLAR: Record<QrKodTipi, React.ReactNode> = {
   musteri_on_kayit: <UserPlus className="size-5" strokeWidth={1.5} aria-hidden />,
   anket: <ClipboardEdit className="size-5" strokeWidth={1.5} aria-hidden />,
+  is_basvurusu: <FileUser className="size-5" strokeWidth={1.5} aria-hidden />,
   puantaj_giris: <LogIn className="size-5" strokeWidth={1.5} aria-hidden />,
   puantaj_cikis: <LogOut className="size-5" strokeWidth={1.5} aria-hidden />,
 };

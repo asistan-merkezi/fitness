@@ -89,3 +89,16 @@ export const RISK_TIPI_ETIKETLERI: Record<string, string> = {
   diger: "Diğer",
 };
 export const RISK_SEVIYE_ETIKETLERI = { yuksek: "Yüksek", orta: "Orta", dusuk: "Düşük" } as const;
+
+/** Personel belge türleri. */
+export const PERSONEL_BELGE_TURU: Record<string, string> = { sertifika: "Antrenör / eğitmen sertifikası", ilk_yardim: "İlk yardım", saglik_raporu: "Sağlık raporu", sozlesme: "Sözleşme", diger: "Diğer" };
+
+/** Puantaj durumları: cetvel kodu, etiket, ton. İzin/tatil satır yazılmadan türetilir (kaynak: onaylı izin, resmi tatil, Pazar). */
+export const PUANTAJ_DURUMU: Record<string, { kod: string; etiket: string; ton: StatusTone }> = {
+  geldi: { kod: "G", etiket: "Geldi", ton: "emerald" },
+  yarim_gun: { kod: "½", etiket: "Yarım gün", ton: "primary" },
+  gelmedi: { kod: "Y", etiket: "Gelmedi", ton: "rose" },
+  raporlu: { kod: "R", etiket: "Raporlu", ton: "amber" },
+  izinli: { kod: "İ", etiket: "İzinli", ton: "sky" },
+  tatil: { kod: "T", etiket: "Tatil", ton: "slate" },
+};

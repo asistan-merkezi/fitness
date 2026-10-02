@@ -519,7 +519,7 @@ export const anketSemasi = z.object({
 });
 
 export const qrAyarSemasi = z.object({
-  tip: z.enum(["musteri_on_kayit", "anket", "puantaj_giris", "puantaj_cikis"]),
+  tip: z.enum(["musteri_on_kayit", "anket", "puantaj_giris", "puantaj_cikis", "is_basvurusu"]),
   aktif: onay,
 });
 
@@ -707,3 +707,75 @@ export const faturaBilgisiSemasi = z
     adres_detay: metinOpsiyonel(500),
   })
   .refine((v) => v.eposta || v.tc_kimlik_no || v.il || v.ilce || v.mahalle || v.adres_detay, { message: "En az bir bilgiyi doldurun." });
+
+/** Personel kartı > Kişisel bilgiler (yönetici). Boş alan "temizle" demektir. */
+export const personelKisiselSemasi = z
+  .object({
+    kullanici_id: z.uuid(),
+    telefon: telefonOpsiyonel,
+    dogum_tarihi: gunOpsiyonel,
+    tc_kimlik_no: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || tcKimlikGecerli(v), "Geçerli bir T.C. kimlik numarası girin.")
+      .transform((v) => v || null),
+    adres_il: metinOpsiyonel(100),
+    adres_ilce: metinOpsiyonel(100),
+    adres_mahalle: metinOpsiyonel(150),
+    adres_detay: metinOpsiyonel(500),
+    acil_durum_ad_soyad: isimOpsiyonel,
+    acil_durum_telefon: telefonOpsiyonel,
+  })
+  .superRefine((v, ctx) => {
+    if (v.dogum_tarihi && (v.dogum_tarihi > bugunIstanbulTarihi() || v.dogum_tarihi < "1900-01-01")) ctx.addIssue({ code: "custom", path: ["dogum_tarihi"], message: "Doğum tarihi geçerli bir geçmiş tarih olmalı." });
+    if (Boolean(v.acil_durum_ad_soyad) !== Boolean(v.acil_durum_telefon)) ctx.addIssue({ code: "custom", path: ["acil_durum_telefon"], message: "Acil durum kişisi için ad ve telefon birlikte girilmelidir." });
+  });
+
+export const PERSONEL_BELGE_TURLERI = ["sertifika", "ilk_yardim", "saglik_raporu", "sozlesme", "diger"] as const;
+export const personelBelgeSemasi = z
+  .object({
+    kullanici_id: z.uuid(),
+    tur: z.enum(PERSONEL_BELGE_TURLERI, { error: "Belge türünü seçin." }),
+    ad: z.string().trim().min(2, "Belge adını yazın.").max(150),
+    veren_kurum: metinOpsiyonel(150),
+    belge_no: metinOpsiyonel(60),
+    verilis_tarihi: gunOpsiyonel,
+    gecerlilik_bitis: gunOpsiyonel,
+    not_metni: metinOpsiyonel(300),
+  })
+  .refine((v) => !v.verilis_tarihi || !v.gecerlilik_bitis || v.gecerlilik_bitis >= v.verilis_tarihi, { path: ["gecerlilik_bitis"], message: "Geçerlilik bitişi veriliş tarihinden önce olamaz." });
+export const personelBelgeKaldirSemasi = z.object({ kullanici_id: z.uuid(), belge_id: z.uuid() });
+
+/** Herkese açık iş başvuru formu. */
+export const isBasvurusuSemasi = z.object({
+  ad_soyad: isimAlani,
+  telefon: telefonAlani,
+  eposta: epostaOpsiyonel,
+  dogum_tarihi: gunOpsiyonel,
+  basvurulan_pozisyon: metinOpsiyonel(100),
+  deneyim: metinOpsiyonel(1000),
+  sertifikalar: metinOpsiyonel(500),
+  kvkk: onay.refine((v) => v, "Devam etmek için aydınlatma metnini okuduğunuzu onaylayın."),
+  website: z.string().optional(),
+});
+
+export const isBasvurusuSonucSemasi = z.object({
+  basvuru_id: z.uuid(),
+  durum: z.enum(["olumlu", "olumsuz"], { error: "Sonucu seçin." }),
+  not_metni: metinOpsiyonel(500),
+});
+
+export const PUANTAJ_DURUMLARI = ["geldi", "gelmedi", "raporlu", "yarim_gun"] as const;
+export const puantajKaydetSemasi = z
+  .object({
+    kullanici_id: z.uuid(),
+    tarih: z.string().trim().refine((v) => GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v)), "Geçerli bir tarih girin."),
+    durum: z.enum(PUANTAJ_DURUMLARI, { error: "Durumu seçin." }),
+    giris: saatOpsiyonel,
+    cikis: saatOpsiyonel,
+    fazla_mesai_dk: tamSayiOpsiyonel(0, 960, "Fazla mesai 0-960 dakika olmalı."),
+    not_metni: metinOpsiyonel(200),
+  })
+  .refine((v) => !v.giris || !v.cikis || v.cikis > v.giris, { path: ["cikis"], message: "Çıkış saati girişten sonra olmalı." });
+export const puantajSilSemasi = z.object({ kullanici_id: z.uuid(), tarih: z.string().trim().refine((v) => GUN_FORMATI.test(v), "Geçerli bir tarih girin.") });
