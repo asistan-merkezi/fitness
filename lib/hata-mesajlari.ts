@@ -67,6 +67,8 @@ const KOD_MESAJLARI: Record<string, string> = {
   banka_hesabi_bulunamadi: "Banka hesabı bulunamadı veya pasif.",
   kategori_uygun_degil: "Bu kategori seçilen gider türüyle uyumlu değil.",
   donem_gerekli: "Kamu ödemesi için ait olduğu dönemi (ay ve yıl) seçin.",
+  risk_zaten_var: "Bu türde aktif bir risk bayrağı zaten var; önce kaldırın.",
+  risk_bulunamadi: "Risk bayrağı bulunamadı veya zaten kaldırılmış.",
   iban_gecersiz: "Geçerli bir TR IBAN girin.",
   arac_bulunamadi: "Araç bulunamadı veya pasif.",
   gelecek_tarih: "Tarih bugünden sonra olamaz.",

@@ -680,3 +680,12 @@ export const talepYanitSemasi = z.object({
   talep_id: z.uuid(),
   durum: z.enum(["planlandi", "reddedildi"], { error: "Geçersiz durum." }),
 });
+
+export const riskBayragiEkleSemasi = z.object({
+  musteri_id: z.uuid(),
+  tip: z.enum(["kalp_tansiyon", "diyabet", "astim", "alerji", "hamilelik", "epilepsi", "kalp_pili", "metal_implant", "sakatlik", "diger"], { error: "Risk türünü seçin." }),
+  seviye: z.enum(["yuksek", "orta", "dusuk"], { error: "Risk seviyesini seçin." }),
+  aciklama: metinOpsiyonel(200),
+});
+
+export const riskBayragiKaldirSemasi = z.object({ musteri_id: z.uuid(), risk_id: z.uuid() });

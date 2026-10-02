@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Banknote, CalendarDays, CalendarPlus, CreditCard, Dumbbell, HeartPulse, MessageSquareHeart, Phone, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
+import { ArrowLeft, Banknote, CalendarDays, CalendarPlus, CreditCard, Dumbbell, MessageSquareHeart, Phone, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { OzetModulKarti } from "@/components/panel/ozet-modul-karti";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
-import { bugunIstanbulTarihi, formatDate, formatDateTime, gunYazi } from "@/lib/datetime";
+import { bugunIstanbulTarihi, formatDate, formatDateForInput, formatDateTime, gunYazi } from "@/lib/datetime";
 import { kurusTLyazi } from "@/lib/para";
 import { DERS_DURUMU, HAREKET_TURLERI, KATEGORI_ETIKETLERI, RED_NEDENLERI, UYELIK_DURUMU, YONTEM_ETIKETLERI } from "@/lib/panel/etiketler";
 import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
@@ -20,6 +20,7 @@ import { bitiyorUyarisi, gecenSureYuzdesi, kalanGun } from "@/lib/panel/uyelik-o
 import { createClient } from "@/lib/supabase/server";
 import { cn, telefonGoster, yasHesapla } from "@/lib/utils";
 import type { GirisKaydiSatiri, HareketSatiri, MusteriHassasSatiri, MusteriSatiri, MusteriVeliSatiri, PaketSatiri, UyelikGorunumSatiri } from "@/types/veritabani";
+import { type RiskBayragi, RiskBandi } from "./risk-bandi";
 import { TalepFormu, TalepYanitDugmeleri } from "./talep-formu";
 import { HassasBilgiFormu, IadeFormu, MusteriBilgiFormu, OdemeFormu, SatisFormu, UyelikIslemleri } from "./islem-formlari";
 
@@ -57,7 +58,7 @@ function DersListesi({ dersler, antrenorAdi, alanAdi }: { dersler: DersSatiri[];
           const durum = DERS_DURUMU[d.durum];
           const etiket = d.durum === "gecikmeli_geldi" && d.gecikme_dakika ? `${durum.etiket} (${d.gecikme_dakika} dk)` : (durum?.etiket ?? d.durum);
           return (
-            <div key={d.id} className="flex min-h-[52px] items-center justify-between gap-2 px-4 py-2.5 text-sm">
+            <Link key={d.id} href={`/panel/dersler?gun=${formatDateForInput(d.baslangic)}&ders=${d.id}`} className="flex min-h-[52px] items-center justify-between gap-2 px-4 py-2.5 text-sm transition-colors hover:bg-surface">
               <div className="min-w-0">
                 <p className="font-medium tabular-nums">{formatDateTime(d.baslangic)}</p>
                 <p className="truncate text-xs text-muted-foreground">
@@ -66,7 +67,7 @@ function DersListesi({ dersler, antrenorAdi, alanAdi }: { dersler: DersSatiri[];
                 </p>
               </div>
               <StatusBadge tone={durum?.ton ?? "slate"}>{etiket}</StatusBadge>
-            </div>
+            </Link>
           );
         })}
       </CardContent>
@@ -86,7 +87,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
   const { data: musteri } = await supabase.from("musteri").select("*").eq("id", id).maybeSingle<MusteriSatiri>();
   if (!musteri) notFound();
 
-  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc, hesapSonuc, iskontoSonuc, bekleyenTalepSonuc, dersSonuc] = await Promise.all([
+  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc, hesapSonuc, iskontoSonuc, bekleyenTalepSonuc, dersSonuc, riskSonuc] = await Promise.all([
     supabase.from("musteri_hassas").select("*").eq("musteri_id", id).maybeSingle<MusteriHassasSatiri>(),
     supabase.from("musteri_veli").select("ad_soyad, telefon, yakinlik").eq("musteri_id", id).maybeSingle<MusteriVeliSatiri>(),
     supabase.from("uyelik_gorunum").select("*").eq("musteri_id", id).order("baslangic_tarihi", { ascending: false }),
@@ -99,7 +100,9 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
     supabase.from("kategori_iskonto_orani").select("yuzde").eq("kategori", musteri.kategori).maybeSingle<{ yuzde: number }>(),
     supabase.from("musteri_ders_talebi").select("id", { count: "exact", head: true }).eq("musteri_id", id).eq("durum", "bekliyor"),
     supabase.from("ders_seansi").select("id, baslangic, durum, antrenor_id, alan_id, gecikme_dakika").eq("musteri_id", id).order("baslangic", { ascending: false }).limit(30),
+    supabase.from("musteri_risk_bayragi").select("id, tip, seviye, aciklama").eq("musteri_id", id).eq("aktif", true).order("created_at"),
   ]);
+  const riskBayraklari = (riskSonuc.data ?? []) as RiskBayragi[];
   const dersler = (dersSonuc.data ?? []) as DersSatiri[];
   const [antrenorSonuc, alanSonuc] = dersler.length
     ? await Promise.all([
@@ -169,6 +172,8 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
         <ArrowLeft className="size-4" aria-hidden /> Müşteriler
       </Link>
 
+      <RiskBandi musteriId={id} bayraklar={riskBayraklari} eskiBayraklar={musteri.risk_bayraklari} duzenlenebilir />
+
       <Card className="gap-5">
         <div className="flex flex-wrap items-start gap-4 px-(--card-spacing)">
           <Avatar name={musteri.ad_soyad} className="size-16 text-lg" />
@@ -184,11 +189,6 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
               {yasHesapla(musteri.dogum_tarihi) !== null && ` · ${yasHesapla(musteri.dogum_tarihi)} yaşında`}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
-              {musteri.risk_bayraklari.length > 0 && (
-                <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-warning-border bg-warning-soft px-2.5 text-xs font-semibold text-warning">
-                  <HeartPulse className="size-3.5" strokeWidth={1.5} aria-hidden /> Sağlık / sakatlık riski
-                </span>
-              )}
               {aktifUyelik && (
                 <span className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs font-semibold text-primary">
                   <Ticket className="size-3.5" strokeWidth={1.5} aria-hidden /> {aktifUyelik.paket_adi}

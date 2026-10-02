@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellRing, ChevronRight, Plus, Users } from "lucide-react";
+import { BellRing, ChevronRight, Users } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -16,6 +16,7 @@ import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { telefonGoster } from "@/lib/utils";
 import type { MusteriSatiri } from "@/types/veritabani";
+import { HizliKayitDialog } from "./hizli-kayit-dialog";
 import { MusteriAramaKutusu } from "./musteri-arama-kutusu";
 
 const SAYFA_BOYUTU = 50;
@@ -94,10 +95,7 @@ export default async function MusterilerSayfasi({ searchParams }: { searchParams
               Ön Kayıtlar
               {(onKayitSayisi ?? 0) > 0 && <StatusBadge tone="amber">{onKayitSayisi}</StatusBadge>}
             </Link>
-            <Link href="/panel/musteriler/yeni" className={buttonVariants()}>
-              <Plus className="size-4" aria-hidden />
-              Yeni Müşteri
-            </Link>
+            <HizliKayitDialog />
           </span>
         }
       />

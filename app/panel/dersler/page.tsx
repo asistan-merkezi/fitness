@@ -15,7 +15,7 @@ import { bugunIstanbulTarihi, formatDateForInput, formatTime, gunYazi } from "@/
 import { gunDonemi } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
 import { dersEylemleri } from "@/lib/panel/ders";
-import { DERS_DURUMU } from "@/lib/panel/etiketler";
+import { DERS_DURUMU, RISK_TIPI_ETIKETLERI } from "@/lib/panel/etiketler";
 import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
@@ -120,6 +120,8 @@ export default async function DerslerSayfasi({
   const seciliDers = dersParam && UUID.test(dersParam) ? dersler.find((d) => d.id === dersParam) : undefined;
   if (seciliDers) {
     const durum = DERS_DURUMU[seciliDers.durum];
+    // Risk bayrakları sağlık verisidir: yalnız yönetim/resepsiyon okuyabilir (RLS); antrenörde sorgu zaten boş döner.
+    const { data: riskVeri } = yonetim ? await supabase.from("musteri_risk_bayragi").select("tip, seviye").eq("musteri_id", seciliDers.musteri_id).eq("aktif", true) : { data: [] };
     detay = {
       id: seciliDers.id,
       musteriId: seciliDers.musteri_id,
@@ -134,6 +136,7 @@ export default async function DerslerSayfasi({
       cariyeYazildi: seciliDers.borc_hareket_id !== null,
       gecikmeDk: seciliDers.gecikme_dakika,
       notMetni: seciliDers.not_metni,
+      riskler: ((riskVeri ?? []) as { tip: string; seviye: "yuksek" | "orta" | "dusuk" }[]).map((r) => ({ etiket: RISK_TIPI_ETIKETLERI[r.tip] ?? r.tip, seviye: r.seviye })),
       eylemler: dersEylemleri(seciliDers.durum, kullanici.rol, seciliDers.antrenor_id === authUser.id),
       tasimaBaslangici: `${formatDateForInput(seciliDers.baslangic)}T${formatTime(seciliDers.baslangic)}`,
       yonetim,

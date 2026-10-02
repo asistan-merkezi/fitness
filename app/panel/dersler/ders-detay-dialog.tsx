@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
 import type { DersEylemi } from "@/lib/panel/ders";
@@ -23,6 +24,8 @@ export type DersDetayi = {
   cariyeYazildi: boolean;
   gecikmeDk: number | null;
   notMetni: string | null;
+  /** Müşterinin aktif risk bayrakları (yalnız yönetim/resepsiyon için dolu; sağlık verisidir). */
+  riskler: { etiket: string; seviye: "yuksek" | "orta" | "dusuk" }[];
   eylemler: DersEylemi[];
   tasimaBaslangici: string;
   yonetim: boolean;
@@ -42,6 +45,17 @@ export function DersDetayDialog({ ders, kapatHref }: { ders: DersDetayi; kapatHr
         <DialogHeader>
           <DialogTitle>Ders Detayı</DialogTitle>
         </DialogHeader>
+
+        {ders.riskler.length > 0 && (
+          <div role="alert" className="flex flex-wrap items-center gap-2 rounded-lg border border-warning-border bg-warning-soft px-3 py-2 text-sm font-medium text-warning">
+            <AlertTriangle className="size-4 shrink-0" aria-hidden />
+            {ders.riskler.map((r, i) => (
+              <StatusBadge key={i} tone={r.seviye === "yuksek" ? "rose" : r.seviye === "orta" ? "amber" : "slate"}>
+                {r.etiket}
+              </StatusBadge>
+            ))}
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge tone={ders.durumTonu}>{ders.durumEtiketi}</StatusBadge>

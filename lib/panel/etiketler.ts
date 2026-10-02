@@ -74,3 +74,18 @@ export const IZIN_DURUMU = {
   reddedildi: { etiket: "Reddedildi", ton: "rose" as StatusTone },
   iptal: { etiket: "İptal", ton: "slate" as StatusTone },
 };
+
+/** Müşteri risk bayrağı tipleri (Risk Bandı) ve seviyeleri. */
+export const RISK_TIPI_ETIKETLERI: Record<string, string> = {
+  kalp_tansiyon: "Kalp / Tansiyon",
+  diyabet: "Diyabet",
+  astim: "Astım",
+  alerji: "Alerji",
+  hamilelik: "Hamilelik",
+  epilepsi: "Epilepsi",
+  kalp_pili: "Kalp Pili",
+  metal_implant: "Metal İmplant",
+  sakatlik: "Sakatlık",
+  diger: "Diğer",
+};
+export const RISK_SEVIYE_ETIKETLERI = { yuksek: "Yüksek", orta: "Orta", dusuk: "Düşük" } as const;
