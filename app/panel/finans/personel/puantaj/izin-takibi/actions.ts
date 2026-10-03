@@ -1,5 +1,6 @@
 "use server";
 
+import { IZIN_TAKIBI_YOLU, IZIN_TALEBI_YOLU } from "@/lib/panel/izin-yollari";
 import { revalidatePath } from "next/cache";
 import { formVerisi, ilkHata, izinDegerlendirSemasi, izinManuelSemasi } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
@@ -29,8 +30,8 @@ export async function izinDegerlendir(_onceki: Onceki, formData: FormData): Prom
   }
 
   await izinSonucMesaji(oturum.kullanici.isletme_id, v.izin_id, v.karar === "onayla");
-  revalidatePath("/panel/yonetim/izinler");
-  revalidatePath("/panel/izinlerim");
+  revalidatePath(IZIN_TAKIBI_YOLU);
+  revalidatePath(IZIN_TALEBI_YOLU);
   revalidatePath("/panel/dersler");
   revalidatePath("/panel/finans/personel", "layout");
   if (v.karar === "reddet") return basari("İzin talebi reddedildi.");
@@ -59,7 +60,7 @@ export async function izinManuelEkle(_onceki: Onceki, formData: FormData): Promi
     return hata(hataMesajiCoz(error));
   }
 
-  revalidatePath("/panel/yonetim/izinler");
+  revalidatePath(IZIN_TAKIBI_YOLU);
   revalidatePath("/panel/dersler");
   revalidatePath("/panel/finans/personel", "layout");
   return basari("İzin kaydedildi.");

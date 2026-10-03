@@ -1,5 +1,6 @@
 "use server";
 
+import { IZIN_TAKIBI_YOLU, IZIN_TALEBI_YOLU } from "@/lib/panel/izin-yollari";
 import { revalidatePath } from "next/cache";
 import { formVerisi, ilkHata, izinIptalSemasi, izinTalepSemasi } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
@@ -31,8 +32,9 @@ export async function izinTalepOlustur(_onceki: Onceki, formData: FormData): Pro
   }
 
   if (izinId) await izinTalepMesaji(oturum.kullanici.isletme_id, String(izinId));
-  revalidatePath("/panel/izinlerim");
-  revalidatePath("/panel/yonetim/izinler");
+  revalidatePath(IZIN_TALEBI_YOLU);
+  revalidatePath(IZIN_TAKIBI_YOLU);
+  revalidatePath("/panel/finans/personel", "layout");
   return basari("İzin talebiniz yöneticiye iletildi.");
 }
 
@@ -50,7 +52,8 @@ export async function izinTalepIptal(_onceki: Onceki, formData: FormData): Promi
     return hata(hataMesajiCoz(error));
   }
 
-  revalidatePath("/panel/izinlerim");
-  revalidatePath("/panel/yonetim/izinler");
+  revalidatePath(IZIN_TALEBI_YOLU);
+  revalidatePath(IZIN_TAKIBI_YOLU);
+  revalidatePath("/panel/finans/personel", "layout");
   return basari("İzin talebi iptal edildi.");
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, ClipboardList, Lock } from "lucide-react";
+import { CalendarCheck2, CalendarClock, ChevronLeft, ChevronRight, ClipboardList, Lock } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -9,6 +9,7 @@ import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
 import { bugunIstanbulTarihi, gunYazi } from "@/lib/datetime";
 import { donemCoz } from "@/lib/donem";
 import { PUANTAJ_DURUMU } from "@/lib/panel/etiketler";
+import { IZIN_TAKIBI_YOLU, IZIN_TALEBI_YOLU } from "@/lib/panel/izin-yollari";
 import { ayGunleri, ayOzeti, type HucreTuru, hucreTuru } from "@/lib/panel/puantaj";
 import { FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
@@ -70,12 +71,14 @@ export default async function PuantajCetveliSayfasi({ searchParams }: { searchPa
     if (!data || data.length < SAYFA) break;
   }
 
-  const [{ data: personelVeri }, { data: izinVeri }, { data: tatilVeri }, { data: kapaliVeri }] = await Promise.all([
+  const [{ data: personelVeri }, { data: izinVeri }, { data: tatilVeri }, { data: kapaliVeri }, { count: bekleyenIzin }] = await Promise.all([
     supabase.from("kullanici").select("id, ad_soyad, aktif").neq("rol", "super_admin").order("ad_soyad"),
     // Muhasebe izin kayıtlarını okuyamaz (RLS): onun cetvelinde izin günleri "girilmemiş" görünür.
     supabase.from("izin_talebi").select("kullanici_id, baslangic_tarihi, bitis_tarihi").eq("durum", "onaylandi").lt("baslangic_tarihi", donem.bitisTarih).gte("bitis_tarihi", donem.baslangicTarih),
     supabase.from("resmi_tatil").select("tarih, ad").gte("tarih", donem.baslangicTarih).lt("tarih", donem.bitisTarih),
     supabase.from("personel_hesap_hareket").select("kullanici_id").in("tur", ["hakedis", "prim"]).eq("donem", `${donem.param}-01`),
+    // Başlıktaki "İzin / Rapor Takibi" rozeti: yalnız yönetici okuyabilir (diğer rollerde 0).
+    supabase.from("izin_talebi").select("id", { count: "exact", head: true }).eq("durum", "beklemede"),
   ]);
 
   const tatiller = new Map(((tatilVeri ?? []) as { tarih: string; ad: string }[]).map((t) => [t.tarih, t.ad]));
@@ -112,7 +115,23 @@ export default async function PuantajCetveliSayfasi({ searchParams }: { searchPa
 
   return (
     <>
-      <PageHeader title="Personel" description={`Puantaj Cetveli · ${donem.etiket}`} icon={ClipboardList} />
+      <PageHeader
+        title="Personel"
+        description={`Puantaj Cetveli · ${donem.etiket}`}
+        icon={ClipboardList}
+        actions={
+          <>
+            <Link href={IZIN_TALEBI_YOLU} className={buttonVariants({ variant: "outline" })}>
+              <CalendarClock aria-hidden /> İzin Talebi
+            </Link>
+            {yonetici && (
+              <Link href={IZIN_TAKIBI_YOLU} className={buttonVariants()}>
+                <CalendarCheck2 aria-hidden /> İzin / Rapor Takibi{bekleyenIzin ? ` (${bekleyenIzin})` : ""}
+              </Link>
+            )}
+          </>
+        }
+      />
       <PersonelSekmeleri aktif="puantaj" />
 
       <div className="flex flex-wrap items-center gap-2">

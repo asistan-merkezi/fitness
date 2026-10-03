@@ -5,6 +5,7 @@ import { Bell, CalendarDays, Plus, Search } from "lucide-react";
 import { TemaDugmesi } from "@/components/panel/tema-anahtari";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
+import { IZIN_TAKIBI_YOLU } from "@/lib/panel/izin-yollari";
 
 /**
  * Masaüstü/tablet üst çubuğu (klinikteki yerleşim): müşteri arama, Yeni Ders, bildirim, takvim, tema, kullanıcı.
@@ -50,7 +51,7 @@ export function UstCubuk({
 
       {bekleyenIzin !== null && (
         <Link
-          href="/panel/yonetim/izinler"
+          href={IZIN_TAKIBI_YOLU}
           aria-label={bekleyenIzin > 0 ? `${bekleyenIzin} izin talebi onay bekliyor` : "İzin talepleri"}
           title={bekleyenIzin > 0 ? `${bekleyenIzin} izin talebi onay bekliyor` : "İzin talepleri"}
           className="relative inline-flex size-9 items-center justify-center rounded-lg border border-border bg-surface-2 text-foreground transition-colors hover:bg-surface-3"

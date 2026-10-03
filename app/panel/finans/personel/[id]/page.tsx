@@ -13,13 +13,14 @@ import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
 import { bugunIstanbulTarihi, gunYazi } from "@/lib/datetime";
 import { kurusTLyazi } from "@/lib/para";
 import { IZIN_DURUMU, IZIN_TIPLERI, PERSONEL_BELGE_TURU, PERSONEL_HAREKET_TURLERI, PUANTAJ_DURUMU } from "@/lib/panel/etiketler";
+import { IZIN_TAKIBI_YOLU } from "@/lib/panel/izin-yollari";
 import { hakedisArtirirMi } from "@/lib/panel/personel-odeme";
 import { FINANS_YONETIM_ROLLERI, ROL_ETIKETLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { KullaniciRolu } from "@/lib/auth/gecerli-kullanici";
-import { DegerlendirmeFormu } from "../../../yonetim/izinler/formlar";
-import { IzinIptalButonu } from "../../../izinlerim/izin-formlari";
+import { IzinIptalButonu } from "../puantaj/izin-talebi/izin-formlari";
+import { DegerlendirmeFormu } from "../puantaj/izin-takibi/formlar";
 import { ProfilFormu } from "../formlar";
 import { OdemeEkleDiyalog } from "../odeme-diyalog";
 import { BelgeEkleFormu, BelgeKaldirButonu, KisiselFormu, type KisiselBilgi } from "./kisisel-formlari";
@@ -39,7 +40,6 @@ const SEKMELER = [
   { kod: "genel", etiket: "Genel", yalnizYonetici: false },
   { kod: "kisisel", etiket: "Kişisel Bilgiler ve Belgeler", yalnizYonetici: true },
   { kod: "odeme", etiket: "Maaş ve Ödemeler", yalnizYonetici: false },
-  { kod: "izin", etiket: "İzin", yalnizYonetici: true },
   { kod: "puantaj", etiket: "Puantaj", yalnizYonetici: false },
 ] as const;
 
@@ -65,7 +65,8 @@ export default async function PersonelKartiSayfasi({ params, searchParams }: { p
   if (!UUID.test(id)) notFound();
 
   const gorunenSekmeler = SEKMELER.filter((s) => yonetici || !s.yalnizYonetici);
-  const sekme = gorunenSekmeler.find((s) => s.kod === sekmeParam)?.kod ?? "genel";
+  // Eski "izin" sekmesi Puantaj sekmesine taşındı (izin bakiyesi ve talepleri orada).
+  const sekme = gorunenSekmeler.find((s) => s.kod === (sekmeParam === "izin" ? "puantaj" : sekmeParam))?.kod ?? "genel";
 
   const supabase = await createClient();
   const { data: personel } = await supabase.from("kullanici").select("id, ad_soyad, rol, aktif").eq("id", id).maybeSingle<{ id: string; ad_soyad: string; rol: KullaniciRolu; aktif: boolean }>();
@@ -170,9 +171,8 @@ export default async function PersonelKartiSayfasi({ params, searchParams }: { p
 
       {sekme === "odeme" && <OdemeSekmesi id={id} adSoyad={personel.ad_soyad} yonetici={yonetici} profil={profil} bakiyeKurus={bakiye.kalan} />}
 
-      {sekme === "izin" && yonetici && <IzinSekmesi id={id} />}
 
-      {sekme === "puantaj" && <PuantajSekmesi id={id} ayBasi={ayBasi} bugun={bugun} />}
+      {sekme === "puantaj" && <PuantajSekmesi id={id} ayBasi={ayBasi} bugun={bugun} yonetici={yonetici} />}
     </>
   );
 }
@@ -356,7 +356,8 @@ async function OdemeSekmesi({ id, adSoyad, yonetici, profil, bakiyeKurus }: { id
   );
 }
 
-async function IzinSekmesi({ id }: { id: string }) {
+/** Personelin izin bakiyesi ve talepleri; Puantaj sekmesinin içinde (izin artık puantajın parçası). Yalnız yönetici. */
+async function IzinBolumu({ id }: { id: string }) {
   const supabase = await createClient();
   const [{ data: bakiyeVeri }, { data: talepVeri }] = await Promise.all([
     supabase.rpc("izin_bakiye", { p_kullanici_id: id }),
@@ -380,8 +381,8 @@ async function IzinSekmesi({ id }: { id: string }) {
           <CardTitle>İzin talepleri</CardTitle>
           <CardDescription>
             Hak, işe giriş tarihinden ve (biliniyorsa) yaştan hesaplanır. Yeni izin kaydı için{" "}
-            <Link href="/panel/yonetim/izinler" className="font-semibold underline">
-              İzin Talepleri
+            <Link href={IZIN_TAKIBI_YOLU} className="font-semibold underline">
+              İzin / Rapor Takibi
             </Link>
             .
           </CardDescription>
@@ -419,7 +420,7 @@ async function IzinSekmesi({ id }: { id: string }) {
   );
 }
 
-async function PuantajSekmesi({ id, ayBasi, bugun }: { id: string; ayBasi: string; bugun: string }) {
+async function PuantajSekmesi({ id, ayBasi, bugun, yonetici }: { id: string; ayBasi: string; bugun: string; yonetici: boolean }) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("personel_puantaj")
@@ -483,6 +484,7 @@ async function PuantajSekmesi({ id, ayBasi, bugun }: { id: string; ayBasi: strin
           )}
         </CardContent>
       </Card>
+      {yonetici && <IzinBolumu id={id} />}
     </>
   );
 }

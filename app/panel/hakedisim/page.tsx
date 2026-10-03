@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import { Coins } from "lucide-react";
+import Link from "next/link";
+import { CalendarClock, Coins } from "lucide-react";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
@@ -10,6 +12,7 @@ import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
 import { formatDateTime } from "@/lib/datetime";
 import { kurusTLyazi } from "@/lib/para";
 import { PERSONEL_HAREKET_TURLERI } from "@/lib/panel/etiketler";
+import { IZIN_TALEBI_YOLU } from "@/lib/panel/izin-yollari";
 import { hakedisArtirirMi } from "@/lib/panel/personel-odeme";
 import { createClient } from "@/lib/supabase/server";
 
@@ -31,7 +34,13 @@ export default async function HakedisimSayfasi() {
 
   return (
     <>
-      <PageHeader title="Hakedişim" description="Kapanan dönemlerin hakediş, prim ve ödemelerim" icon={Coins} />
+      <PageHeader title="Hakedişim" description="Kapanan dönemlerin hakediş, prim ve ödemelerim" icon={Coins}
+        actions={
+          <Link href={IZIN_TALEBI_YOLU} className={buttonVariants({ variant: "outline" })}>
+            <CalendarClock aria-hidden /> İzin Talebi
+          </Link>
+        }
+      />
 
       <section aria-label="Bakiye" className="grid gap-4 sm:grid-cols-3">
         <KpiCard vurgu label="Alacağım" value={kurusTLyazi(bakiye.kalan)} />

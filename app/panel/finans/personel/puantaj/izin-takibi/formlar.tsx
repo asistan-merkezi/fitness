@@ -33,12 +33,18 @@ export function DegerlendirmeFormu({ izinId }: { izinId: string }) {
   );
 }
 
-export function ManuelIzinFormu({ personeller, bugun }: { personeller: { id: string; ad_soyad: string }[]; bugun: string }) {
+/**
+ * Manuel kayıt (klinik: "Manuel İzin Ekle" / "Manuel Rapor Ekle"): doğrudan onaylı kaydedilir.
+ * `rapor`: tür sabit "rapor" (tür seçilmez); değilse yıllık/mazeret seçilir.
+ */
+export function ManuelIzinFormu({ personeller, bugun, rapor = false }: { personeller: { id: string; ad_soyad: string }[]; bugun: string; rapor?: boolean }) {
+  const on = rapor ? "mr" : "mi";
   return (
-    <EylemFormu eylem={izinManuelEkle} gonder="İzni Kaydet">
+    <EylemFormu eylem={izinManuelEkle} gonder={rapor ? "Raporu Kaydet" : "İzni Kaydet"}>
+      {rapor && <input type="hidden" name="tip" value="rapor" />}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Alan etiket="Personel" htmlFor="mi_kisi">
-          <SecimKutusu id="mi_kisi" name="kullanici_id" required defaultValue="">
+        <Alan etiket="Personel" htmlFor={`${on}_kisi`}>
+          <SecimKutusu id={`${on}_kisi`} name="kullanici_id" required defaultValue="">
             <option value="" disabled>
               Seçin
             </option>
@@ -49,24 +55,28 @@ export function ManuelIzinFormu({ personeller, bugun }: { personeller: { id: str
             ))}
           </SecimKutusu>
         </Alan>
-        <Alan etiket="İzin türü" htmlFor="mi_tip">
-          <SecimKutusu id="mi_tip" name="tip" defaultValue="rapor">
-            {Object.entries(IZIN_TIPLERI).map(([kod, etiket]) => (
-              <option key={kod} value={kod}>
-                {etiket}
-              </option>
-            ))}
-          </SecimKutusu>
+        {!rapor && (
+          <Alan etiket="İzin türü" htmlFor={`${on}_tip`}>
+            <SecimKutusu id={`${on}_tip`} name="tip" defaultValue="yillik">
+              {Object.entries(IZIN_TIPLERI)
+                .filter(([kod]) => kod !== "rapor")
+                .map(([kod, etiket]) => (
+                  <option key={kod} value={kod}>
+                    {etiket}
+                  </option>
+                ))}
+            </SecimKutusu>
+          </Alan>
+        )}
+        <Alan etiket="Başlangıç" htmlFor={`${on}_bas`}>
+          <Input id={`${on}_bas`} name="baslangic" type="date" defaultValue={bugun} required />
         </Alan>
-        <Alan etiket="Başlangıç" htmlFor="mi_bas">
-          <Input id="mi_bas" name="baslangic" type="date" defaultValue={bugun} required />
-        </Alan>
-        <Alan etiket="Bitiş (dahil)" htmlFor="mi_bit">
-          <Input id="mi_bit" name="bitis" type="date" defaultValue={bugun} required />
+        <Alan etiket="Bitiş (dahil)" htmlFor={`${on}_bit`}>
+          <Input id={`${on}_bit`} name="bitis" type="date" defaultValue={bugun} required />
         </Alan>
       </div>
-      <Alan etiket="Gerekçe" htmlFor="mi_gerekce">
-        <Textarea id="mi_gerekce" name="gerekce" rows={2} maxLength={300} />
+      <Alan etiket={rapor ? "Açıklama" : "Gerekçe"} htmlFor={`${on}_gerekce`}>
+        <Textarea id={`${on}_gerekce`} name="gerekce" rows={2} maxLength={300} />
       </Alan>
     </EylemFormu>
   );

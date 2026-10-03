@@ -48,8 +48,6 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
       { href: "/panel/yonetim/hizmet-tanimlari", etiket: "Hizmet Tanımları", ikon: "hizmet", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/yonetim/antrenman-programlari", etiket: "Antrenman Programları", ikon: "program", roller: YONETICI_ROLLERI, yakinda: true },
       { href: "/panel/yonetim/denetim-gecmisi", etiket: "Denetim Geçmişi", ikon: "denetim", roller: YONETICI_ROLLERI },
-      // Fitness'a özgü: klinikte izinler Personel sekmesi altındadır.
-      { href: "/panel/yonetim/izinler", etiket: "İzin Talepleri", ikon: "izin", roller: YONETICI_ROLLERI },
     ],
   },
   {
