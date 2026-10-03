@@ -147,6 +147,48 @@ describe("personel: kişisel bilgiler, belgeler, iş başvurusu, puantaj", () =>
       expect(await hataMesaji(() => kaydet(adminA, antrenor2, "2026-10-14"))).toMatch(/puantaj_izinli_gun/);
     });
 
+    it("hızlı giriş/çıkış: yalnız yönetici, bugün için; ikinci giriş/çıkış ve sıra dışı çıkış reddedilir; mevcut kaydı ezmez", async () => {
+      const hizli = (k: string, kisi: string, tur: string, saat: string) => rpc(k, "SELECT public.personel_puantaj_hizli($1,$2,$3::time)", [kisi, tur, saat]);
+      expect(await hataMesaji(() => hizli(adminA, antrenor, "cikis", "17:00"))).toMatch(/puantaj_giris_yok/);
+      await hizli(adminA, antrenor, "giris", "09:00");
+      expect(await hataMesaji(() => hizli(adminA, antrenor, "giris", "09:30"))).toMatch(/puantaj_giris_var/);
+      expect(await hataMesaji(() => hizli(adminA, antrenor, "cikis", "08:00"))).toMatch(/puantaj_saat_gecersiz/);
+      await hizli(adminA, antrenor, "cikis", "18:00");
+      expect(await hataMesaji(() => hizli(adminA, antrenor, "cikis", "19:00"))).toMatch(/puantaj_cikis_var/);
+      const k = (await db.query<{ durum: string; giris_saati: string; cikis_saati: string }>("SELECT durum, giris_saati::text, cikis_saati::text FROM public.personel_puantaj WHERE kullanici_id = $1 AND tarih = '2026-10-14'", [antrenor])).rows;
+      expect(k).toEqual([{ durum: "geldi", giris_saati: "09:00:00", cikis_saati: "18:00:00" }]);
+      expect(await hataMesaji(() => hizli(resepsiyonA, antrenor, "giris", "09:00"))).toMatch(/yetki_yetersiz/);
+      expect(await hataMesaji(() => hizli(adminB, antrenor, "giris", "09:00"))).toMatch(/personel_bulunamadi/);
+      expect(await hataMesaji(() => hizli(adminA, antrenor2, "giris", "09:00"))).toMatch(/puantaj_izinli_gun/); // izinli günde yazılmaz
+      expect(await hataMesaji(() => hizli(adminA, antrenor, "mola", "09:00"))).toMatch(/puantaj_hizli_gecersiz/);
+      await db.query("DELETE FROM public.personel_puantaj WHERE kullanici_id = $1 AND tarih = '2026-10-14'", [antrenor]); // sonraki testlerin sayımlarını bozmasın
+    });
+
+    it("kişi KENDİ giriş/çıkışını kendi oturumuyla yapar (saat sunucudan); başkası adına yapılamaz; kural hızlı girişle aynı", async () => {
+      const kendi = (k: string, tur: string) => rpc(k, "SELECT public.personel_puantaj_kendi($1)", [tur]);
+      const satir = async (kisi: string) => (await db.query<{ durum: string; giris_saati: string | null; cikis_saati: string | null }>("SELECT durum, giris_saati::text, cikis_saati::text FROM public.personel_puantaj WHERE kullanici_id = $1 AND tarih = '2026-10-14'", [kisi])).rows;
+
+      expect(await hataMesaji(() => kendi(antrenor, "cikis"))).toMatch(/puantaj_giris_yok/);
+      await kendi(antrenor, "giris");
+      const g = (await satir(antrenor))[0];
+      expect(g.durum).toBe("geldi");
+      expect(g.giris_saati).not.toBeNull();
+      expect(await hataMesaji(() => kendi(antrenor, "giris"))).toMatch(/puantaj_giris_var/);
+      await db.query("UPDATE public.personel_puantaj SET giris_saati = '23:59' WHERE kullanici_id = $1 AND tarih = '2026-10-14'", [antrenor]); // giriş "gelecekte" kalsın: çıkış girişten sonra olmalı kuralı deterministik sınanır
+      expect(await hataMesaji(() => kendi(antrenor, "cikis"))).toMatch(/puantaj_saat_gecersiz/);
+      expect(await hataMesaji(() => kendi(antrenor, "mola"))).toMatch(/puantaj_hizli_gecersiz/);
+
+      // Yalnız kendi satırı: başka personel kendi kaydını açar, antrenörünkine dokunmaz. İzinli gün reddedilir.
+      expect(await hataMesaji(() => kendi(antrenor2, "giris"))).toMatch(/puantaj_izinli_gun/);
+      expect(await satir(antrenor2)).toEqual([]);
+      for (const k of [adminA, resepsiyonA, muhasebeA]) {
+        await kendi(k, "giris"); // her rol kendi hesabıyla
+      }
+      expect((await satir(adminA)).length).toBe(1);
+      expect((await satir(antrenor)).length).toBe(1);
+      await db.query("DELETE FROM public.personel_puantaj WHERE tarih = '2026-10-14' AND kullanici_id = ANY($1::uuid[])", [[antrenor, adminA, resepsiyonA, muhasebeA]]); // sonraki testlerin sayımlarını bozmasın
+    });
+
     it("yönetici, muhasebe ve kişinin kendisi okur; resepsiyon ve başka işletme görmez", async () => {
       expect(await say(adminA, "personel_puantaj")).toBeGreaterThanOrEqual(1);
       expect(await say(muhasebeA, "personel_puantaj")).toBeGreaterThanOrEqual(1);

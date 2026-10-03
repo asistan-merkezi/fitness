@@ -53,7 +53,7 @@ export const QR_KOD_TANIMLARI: QrKodTanimi[] = [
   {
     tip: "puantaj_giris",
     baslik: "Personel Puantaj — Giriş",
-    aciklama: "Personel kapıdaki kodu kendi telefonuyla okutur ve kişisel PIN'ini girerek mesaiye giriş yapar.",
+    aciklama: "Personel kapıdaki kodu kendi telefonuyla okutur, kendi sistem şifresiyle oturum açarak mesaiye giriş yapar.",
     yol: (kisaKod) => `/puantaj/${kisaKod}/giris`,
     dosyaAdi: "personel-puantaj-giris-qr",
     hazir: false,
@@ -62,7 +62,7 @@ export const QR_KOD_TANIMLARI: QrKodTanimi[] = [
   {
     tip: "puantaj_cikis",
     baslik: "Personel Puantaj — Çıkış",
-    aciklama: "Personel kapıdaki kodu kendi telefonuyla okutur ve kişisel PIN'ini girerek mesaiden çıkış yapar.",
+    aciklama: "Personel kapıdaki kodu kendi telefonuyla okutur, kendi sistem şifresiyle oturum açarak mesaiden çıkış yapar.",
     yol: (kisaKod) => `/puantaj/${kisaKod}/cikis`,
     dosyaAdi: "personel-puantaj-cikis-qr",
     hazir: false,

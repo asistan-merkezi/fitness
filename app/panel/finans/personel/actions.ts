@@ -1,6 +1,7 @@
 "use server";
 
 import { createHash } from "node:crypto";
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { formVerisi, ilkHata, isBasvurusuSonucSemasi, personelBelgeKaldirSemasi, personelBelgeSemasi, personelDonemSemasi, personelHareketSemasi, personelTopluOdemeSemasi, personelKisiselSemasi, personelProfilSemasi, puantajKaydetSemasi, puantajSilSemasi } from "@/lib/dogrulama";
 import { bugunIstanbulTarihi } from "@/lib/datetime";
@@ -272,6 +273,21 @@ export async function puantajKaydet(_onceki: Onceki, formData: FormData): Promis
   }
   revalidatePath("/panel/finans/personel", "layout");
   return basari("Puantaj kaydedildi.");
+}
+
+/** Personel listesinden tek tıkla Giriş / Çıkış (yalnız yönetici, BUGÜN için). Mevcut kaydı ezmez; ikinci giriş/çıkış reddedilir. */
+export async function personelPuantajHizli(kullaniciId: string, tur: "giris" | "cikis", saat: string): Promise<EylemSonucu> {
+  const oturum = await yetkiliOturum(YONETICI_ROLLERI);
+  if (!oturum) return YETKISIZ;
+  if (!z.uuid().safeParse(kullaniciId).success || (tur !== "giris" && tur !== "cikis") || !/^([01]\d|2[0-3]):[0-5]\d$/.test(saat)) return hata("Saat geçersiz.");
+
+  const { error } = await oturum.supabase.rpc("personel_puantaj_hizli", { p_kullanici_id: kullaniciId, p_tur: tur, p_saat: saat });
+  if (error) {
+    console.error("[personelPuantajHizli]", error.code);
+    return hata(hataMesajiCoz(error));
+  }
+  revalidatePath("/panel/finans/personel", "layout");
+  return basari(tur === "giris" ? `Giriş kaydedildi (${saat}).` : `Çıkış kaydedildi (${saat}).`);
 }
 
 export async function puantajSil(_onceki: Onceki, formData: FormData): Promise<Onceki> {

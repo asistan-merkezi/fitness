@@ -97,6 +97,11 @@ const KOD_MESAJLARI: Record<string, string> = {
   puantaj_donem_kapali: "Bu ayın hakedişi kapatılmış; puantaj değiştirilemez.",
   puantaj_izinli_gun: "Personel bu gün onaylı izinde; puantaj izin kaydından türetilir.",
   personel_bulunamadi: "Personel bulunamadı.",
+  puantaj_hizli_gecersiz: "Giriş/çıkış ve saat geçerli olmalı.",
+  puantaj_giris_var: "Bugün için giriş zaten kaydedilmiş.",
+  puantaj_cikis_var: "Bugün için çıkış zaten kaydedilmiş.",
+  puantaj_giris_yok: "Önce giriş kaydedilmeli.",
+  puantaj_saat_gecersiz: "Çıkış saati giriş saatinden sonra olmalı.",
   borc_islendi: "Bu ders için cariye borç yazıldı; durumu geri alınamaz. Düzeltme gerekiyorsa cari üzerinden yapın.",
 };
 

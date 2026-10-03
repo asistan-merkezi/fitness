@@ -57,11 +57,11 @@ function belgeDurumu(bitis: string | null, bugun: string): "suresiz" | "gecerli"
   return "gecerli";
 }
 
-export default async function PersonelKartiSayfasi({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sekme?: string }> }) {
+export default async function PersonelKartiSayfasi({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ sekme?: string; odemeEkle?: string }> }) {
   const { kullanici } = await sayfaYetkisiIste(FINANS_YONETIM_ROLLERI);
   const yonetici = kullanici.rol === "isletme_admin";
   const { id } = await params;
-  const { sekme: sekmeParam } = await searchParams;
+  const { sekme: sekmeParam, odemeEkle } = await searchParams;
   if (!UUID.test(id)) notFound();
 
   const gorunenSekmeler = SEKMELER.filter((s) => yonetici || !s.yalnizYonetici);
@@ -169,7 +169,7 @@ export default async function PersonelKartiSayfasi({ params, searchParams }: { p
 
       {sekme === "kisisel" && yonetici && <KisiselSekmesi id={id} belgeler={belgeler} bugun={bugun} />}
 
-      {sekme === "odeme" && <OdemeSekmesi id={id} adSoyad={personel.ad_soyad} yonetici={yonetici} profil={profil} bakiyeKurus={bakiye.kalan} />}
+      {sekme === "odeme" && <OdemeSekmesi id={id} adSoyad={personel.ad_soyad} yonetici={yonetici} profil={profil} bakiyeKurus={bakiye.kalan} otomatikAc={odemeEkle === "1"} />}
 
 
       {sekme === "puantaj" && <PuantajSekmesi id={id} ayBasi={ayBasi} bugun={bugun} yonetici={yonetici} />}
@@ -251,7 +251,7 @@ async function KisiselSekmesi({ id, belgeler, bugun }: { id: string; belgeler: B
   );
 }
 
-async function OdemeSekmesi({ id, adSoyad, yonetici, profil, bakiyeKurus }: { id: string; adSoyad: string; yonetici: boolean; profil: Profil | null; bakiyeKurus: number }) {
+async function OdemeSekmesi({ id, adSoyad, yonetici, profil, bakiyeKurus, otomatikAc }: { id: string; adSoyad: string; yonetici: boolean; profil: Profil | null; bakiyeKurus: number; otomatikAc: boolean }) {
   const supabase = await createClient();
   const bugun = bugunIstanbulTarihi();
   const ayBasi = `${bugun.slice(0, 7)}-01`;
@@ -305,6 +305,7 @@ async function OdemeSekmesi({ id, adSoyad, yonetici, profil, bakiyeKurus }: { id
             satirlar={[{ id, adSoyad, gorev: "", bakiyeKurus, maasKurus: profil ? Number(profil.maas_kurus) : null, buAykiAvansKurus: buAykiAvans }]}
             hesaplar={(hesapVeri ?? []) as { id: string; ad: string }[]}
             bugun={bugun}
+            otomatikAc={otomatikAc}
           />
         </CardContent>
       </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { Plus } from "lucide-react";
 import { Alan } from "@/components/panel/form-alanlari";
 import { SecimKutusu } from "@/components/panel/eylem-formu";
@@ -41,8 +41,15 @@ const maasOnerisi = (s: OdemeSatiri) => Math.max(0, (s.maasKurus ?? 0) - s.buAyk
  * personel kartında `sabitPersonelId` verilir ve yalnız o kişi için Tekil çalışır.
  * Kategoriler: Maaş, Diğer Ödeme, Avans, Prim, Yol, Yemek, Fazla Mesai, Kesinti. Yalnız ödeme ve avansta para kasa/bankadan çıkar → ödeme tipi (+ banka hesabı) sorulur.
  */
-export function OdemeEkleDiyalog({ satirlar, hesaplar, bugun, sabitPersonelId }: { satirlar: OdemeSatiri[]; hesaplar: HesapSecenegi[]; bugun: string; sabitPersonelId?: string }) {
-  const [acik, setAcik] = useState(false);
+export function OdemeEkleDiyalog({ satirlar, hesaplar, bugun, sabitPersonelId, otomatikAc = false }: { satirlar: OdemeSatiri[]; hesaplar: HesapSecenegi[]; bugun: string; sabitPersonelId?: string; otomatikAc?: boolean }) {
+  // Liste kısayolundan (?odemeEkle=1) gelindiyse pencere açık başlar; parametre tek seferliktir, yenilemede tekrar açılmasın diye adresten silinir.
+  const [acik, setAcik] = useState(otomatikAc);
+  useEffect(() => {
+    if (!otomatikAc) return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("odemeEkle");
+    window.history.replaceState(null, "", url.pathname + url.search);
+  }, [otomatikAc]);
   const [mod, setMod] = useState<Mod>("tekil");
   const [kategori, setKategori] = useState<OdemeKategori>("maas");
   const [personelId, setPersonelId] = useState(sabitPersonelId ?? "");

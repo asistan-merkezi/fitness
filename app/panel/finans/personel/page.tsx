@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { UserCog } from "lucide-react";
+import { Briefcase, UserCog } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
@@ -22,8 +22,8 @@ export default async function PersonelSayfasi() {
   const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
-  const [{ data: kisiVeri }, { data: pozisyonVeri }, { data: profilVeri }, { data: bakiyeVeri }, { data: izinVeri }, { data: kisiselVeri }] = await Promise.all([
-    supabase.from("kullanici").select("id, ad_soyad, rol, aktif, pozisyon_id").neq("rol", "super_admin").order("ad_soyad"),
+  const [{ data: kisiVeri }, { data: pozisyonVeri }, { data: profilVeri }, { data: bakiyeVeri }, { data: izinVeri }, { data: kisiselVeri }, { data: puantajVeri }] = await Promise.all([
+    supabase.from("kullanici").select("id, ad_soyad, rol, aktif, pozisyon_id, telefon").neq("rol", "super_admin").order("ad_soyad"),
     supabase.from("pozisyonlar").select(POZISYON_SELECT).returns<Pozisyon[]>(),
     supabase.from("personel_profil").select("kullanici_id, maas_kurus"),
     supabase.from("personel_bakiye").select("kullanici_id, bakiye_kurus"),
@@ -31,6 +31,8 @@ export default async function PersonelSayfasi() {
     supabase.from("izin_talebi").select("kullanici_id, durum, baslangic_tarihi, bitis_tarihi").in("durum", ["onaylandi", "beklemede"]).gte("bitis_tarihi", bugun),
     // Kişisel bilgi tamlığı: özel veri, yalnız yönetici okur (diğer rollerde boş döner ve rozet gösterilmez).
     yonetici ? supabase.from("personel_kisisel").select("kullanici_id, telefon, tc_kimlik_no, dogum_tarihi, il, acil_durum_telefon") : Promise.resolve({ data: [] }),
+    // Bugünkü giriş/çıkış (satır kısayollarının durumu için; yönetici ve muhasebe okur).
+    supabase.from("personel_puantaj").select("kullanici_id, giris_saati, cikis_saati").eq("tarih", bugun),
   ]);
 
   const pozisyon = new Map(((pozisyonVeri ?? []) as Pozisyon[]).map((p) => [p.id, p]));
@@ -41,6 +43,7 @@ export default async function PersonelSayfasi() {
     const k = kisisel.get(id);
     return Boolean(k?.telefon && k.tc_kimlik_no && k.dogum_tarihi && k.il && k.acil_durum_telefon);
   };
+  const bugunPuantaj = new Map(((puantajVeri ?? []) as { kullanici_id: string; giris_saati: string | null; cikis_saati: string | null }[]).map((r) => [r.kullanici_id, r]));
   const izinliler = new Set<string>();
   const bekleyen = new Map<string, number>();
   for (const i of (izinVeri ?? []) as { kullanici_id: string; durum: string; baslangic_tarihi: string; bitis_tarihi: string }[]) {
@@ -48,12 +51,13 @@ export default async function PersonelSayfasi() {
     if (i.durum === "beklemede") bekleyen.set(i.kullanici_id, (bekleyen.get(i.kullanici_id) ?? 0) + 1);
   }
 
-  const satirlar: PersonelSatiri[] = ((kisiVeri ?? []) as { id: string; ad_soyad: string; rol: KullaniciRolu; aktif: boolean; pozisyon_id: string | null }[]).map((k) => {
+  const satirlar: PersonelSatiri[] = ((kisiVeri ?? []) as { id: string; ad_soyad: string; rol: KullaniciRolu; aktif: boolean; pozisyon_id: string | null; telefon: string | null }[]).map((k) => {
     const poz = k.pozisyon_id ? pozisyon.get(k.pozisyon_id) : undefined;
     return {
       id: k.id,
       ad_soyad: k.ad_soyad,
       rolEtiketi: ROL_ETIKETLERI[k.rol],
+      telefon: k.telefon,
       aktif: k.aktif,
       pozisyonGrup: poz?.grup ?? null,
       pozisyonAd: poz?.ad ?? null,
@@ -64,6 +68,8 @@ export default async function PersonelSayfasi() {
       bugunIzinli: izinliler.has(k.id),
       bekleyenIzin: bekleyen.get(k.id) ?? 0,
       bilgiEksik: yonetici && k.aktif && !bilgiTam(k.id),
+      bugunGiris: bugunPuantaj.get(k.id)?.giris_saati?.slice(0, 5) ?? null,
+      bugunCikis: bugunPuantaj.get(k.id)?.cikis_saati?.slice(0, 5) ?? null,
     };
   });
 
@@ -75,14 +81,19 @@ export default async function PersonelSayfasi() {
         icon={UserCog}
         actions={
           yonetici ? (
-            <Link href="/panel/ayarlar/personel?sekme=hesaplar" className={buttonVariants({ variant: "outline" })}>
-              Personel Hesapları
-            </Link>
+            <>
+              <Link href="/panel/ayarlar/personel?sekme=hesaplar" className={buttonVariants({ variant: "outline" })}>
+                Personel Hesapları
+              </Link>
+              <Link href="/panel/finans/personel/basvurular" className={buttonVariants()}>
+                <Briefcase aria-hidden /> İş Başvurusu Ekle
+              </Link>
+            </>
           ) : undefined
         }
       />
       <PersonelSekmeleri aktif="liste" />
-      {satirlar.length === 0 ? <EmptyState icon={UserCog} title="Henüz personel yok" description="Ayarlar > Personel Tanımlama'dan personel hesabı oluşturun." /> : <PersonelListesi personel={satirlar} />}
+      {satirlar.length === 0 ? <EmptyState icon={UserCog} title="Henüz personel yok" description="Ayarlar > Personel Tanımlama'dan personel hesabı oluşturun." /> : <PersonelListesi personel={satirlar} yonetici={yonetici} />}
     </>
   );
 }

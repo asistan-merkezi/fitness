@@ -19,7 +19,7 @@ export const ANA_OGELER: readonly MenuOgesi[] = [
   { href: "/panel/musteriler", etiket: "Müşteriler", ikon: "musteriler", roller: MUSTERI_ROLLERI },
   { href: "/panel/dersler", etiket: "Randevular", ikon: "ders", roller: [...MUSTERI_ROLLERI, "antrenor"] },
   // Fitness'a özgü: personelin kendi kayıtları.
-  { href: "/panel/hakedisim", etiket: "Hakedişim", ikon: "hakedis", roller: ["resepsiyon", "antrenor", "muhasebe"] },
+  { href: "/panel/hakedisim", etiket: "Hakedişim ve Puantajım", ikon: "hakedis", roller: ["resepsiyon", "antrenor", "muhasebe"] },
 ];
 
 export const MENU_GRUPLARI: readonly MenuGrubu[] = [
