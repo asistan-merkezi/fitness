@@ -1,7 +1,8 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { formVerisi, ilkHata, isBasvurusuSonucSemasi, personelBelgeKaldirSemasi, personelBelgeSemasi, personelDonemSemasi, personelHareketSemasi, personelKisiselSemasi, personelProfilSemasi, puantajKaydetSemasi, puantajSilSemasi } from "@/lib/dogrulama";
+import { formVerisi, ilkHata, isBasvurusuSonucSemasi, personelBelgeKaldirSemasi, personelBelgeSemasi, personelDonemSemasi, personelHareketSemasi, personelTopluOdemeSemasi, personelKisiselSemasi, personelProfilSemasi, puantajKaydetSemasi, puantajSilSemasi } from "@/lib/dogrulama";
 import { bugunIstanbulTarihi } from "@/lib/datetime";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
@@ -79,7 +80,17 @@ export async function personelDonemKapat(_onceki: Onceki, formData: FormData): P
   return basari(adet > 0 ? `Dönem kapatıldı: ${adet} kayıt deftere yazıldı.` : "Bu dönem zaten kapalı veya yazılacak hakediş yok.");
 }
 
-/** Personele ödeme veya avans kaydı (yönetici ve muhasebe). Defter değişmez; düzeltme yeni kayıtla yapılır. */
+/** Ödeme sonrası yenilenecek yollar: ödeme/avans kasa-banka-kart defterine ve raporlara düşer. */
+function hareketYenile(kullaniciId?: string) {
+  if (kullaniciId) revalidatePath(`/panel/finans/personel/${kullaniciId}`);
+  revalidatePath("/panel/finans/personel", "layout");
+  for (const yol of ["/panel/kasa", "/panel/finans/banka", "/panel/finans/kredi-karti", "/panel/finans/raporlar"]) revalidatePath(yol);
+}
+
+/**
+ * Personel hesabına ödeme / avans / prim / yol / yemek / fazla mesai / kesinti kaydı (yönetici ve muhasebe; klinikteki "Ödeme Ekle").
+ * Yalnız ödeme ve avans kasa/bankadan çıkar (yöntem + banka hesabı); diğerleri yalnız bakiyeyi etkiler. Defter değişmez; düzeltme yeni kayıtla yapılır.
+ */
 export async function personelHareketEkle(_onceki: Onceki, formData: FormData): Promise<Onceki> {
   const oturum = await yetkiliOturum(FINANS_YONETIM_ROLLERI);
   if (!oturum) return YETKISIZ;
@@ -96,17 +107,59 @@ export async function personelHareketEkle(_onceki: Onceki, formData: FormData): 
     p_aciklama: v.aciklama ?? undefined,
     p_anahtar: v.anahtar,
     p_banka_hesap_id: v.banka_hesap_id,
+    p_tarih: v.tarih,
   });
   if (error) {
     console.error("[personelHareketEkle]", error.code);
     return hata(hataMesajiCoz(error));
   }
 
-  revalidatePath(`/panel/finans/personel/${v.kullanici_id}`);
-  revalidatePath("/panel/finans/personel", "layout");
-  // Ödeme kasa/banka/kart deftere düşer.
-  for (const yol of ["/panel/kasa", "/panel/finans/banka", "/panel/finans/kredi-karti", "/panel/finans/raporlar"]) revalidatePath(yol);
-  return basari(v.tur === "avans" ? "Avans kaydedildi." : "Ödeme kaydedildi.");
+  hareketYenile(v.kullanici_id);
+  return basari(v.tur === "avans" ? "Avans kaydedildi." : v.tur === "odeme" ? "Ödeme kaydedildi." : "Kayıt eklendi.");
+}
+
+/** Gönderim anahtarından kalem başına KARARLI uuid üretir: aynı formun tekrar gönderilmesi çift kayıt açmaz. */
+function kalemAnahtari(anahtar: string, kullaniciId: string): string {
+  const h = createHash("sha256").update(`${anahtar}:${kullaniciId}`).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-8${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+/**
+ * Toplu ödeme (klinikteki "Toplu Ödeme (Maaş)"): seçilen her personele kendi tutarıyla AYRI kayıt yazılır.
+ * Satır bazlı hata toleransı: biri başarısız olsa diğerleri kaydedilir, sonuç mesajı kaç tanesinin yazıldığını söyler.
+ */
+export async function personelTopluOdemeEkle(_onceki: Onceki, formData: FormData): Promise<Onceki> {
+  const oturum = await yetkiliOturum(FINANS_YONETIM_ROLLERI);
+  if (!oturum) return YETKISIZ;
+
+  const ayristirma = personelTopluOdemeSemasi.safeParse(formVerisi(formData));
+  if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
+  const v = ayristirma.data;
+
+  let basarili = 0;
+  let basarisiz = 0;
+  for (const kalem of v.kalemler) {
+    const { error } = await oturum.supabase.rpc("personel_hesap_hareket_ekle", {
+      p_kullanici_id: kalem.kullanici_id,
+      p_tur: v.tur,
+      p_tutar_kurus: kalem.tutar_kurus,
+      p_yontem: v.yontem,
+      p_aciklama: v.aciklama ?? undefined,
+      p_anahtar: kalemAnahtari(v.anahtar, kalem.kullanici_id),
+      p_banka_hesap_id: v.banka_hesap_id,
+      p_tarih: v.tarih,
+    });
+    if (error) {
+      console.error("[personelTopluOdemeEkle]", error.code);
+      basarisiz++;
+    } else {
+      basarili++;
+    }
+  }
+
+  hareketYenile();
+  if (basarili === 0) return hata("Hiçbir ödeme eklenemedi, lütfen tekrar deneyin.");
+  return basari(basarisiz > 0 ? `${basarili} personele ödeme eklendi, ${basarisiz} tanesi başarısız oldu.` : `${basarili} personele ödeme eklendi.`);
 }
 
 /** Kişisel bilgiler (T.C. kimlik no, adres, doğum tarihi, acil durum kişisi): yalnız işletme yöneticisi yazar; özel nitelikli veri. */

@@ -10,6 +10,7 @@ import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
 import { formatDateTime } from "@/lib/datetime";
 import { kurusTLyazi } from "@/lib/para";
 import { PERSONEL_HAREKET_TURLERI } from "@/lib/panel/etiketler";
+import { hakedisArtirirMi } from "@/lib/panel/personel-odeme";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Hakedişim" };
@@ -59,7 +60,7 @@ export default async function HakedisimSayfasi() {
               <TableBody>
                 {hareketler.map((h) => {
                   const tur = PERSONEL_HAREKET_TURLERI[h.tur];
-                  const gelir = h.tur === "hakedis" || h.tur === "prim";
+                  const gelir = hakedisArtirirMi(h.tur);
                   return (
                     <TableRow key={h.id}>
                       <TableCell className="whitespace-nowrap tabular-nums">{formatDateTime(h.created_at)}</TableCell>

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { bugunIstanbulTarihi, toUTC } from "@/lib/datetime";
+import { MANUEL_HAREKET_TURLERI, ODEME_YONTEMLI_TURLER } from "@/lib/panel/personel-odeme";
 import { ibanGecerli, ibanTemizle } from "@/lib/iban";
 import { tlYaziKurusa } from "@/lib/para";
 import { tcKimlikGecerli } from "@/lib/tc-kimlik";
@@ -392,15 +393,57 @@ export const personelProfilSemasi = z
 /** Dönem: "YYYY-MM". */
 export const personelDonemSemasi = z.object({ ay: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, "Geçerli bir dönem seçin.") });
 
-export const personelHareketSemasi = z.object({
-  kullanici_id: z.uuid(),
-  tur: z.enum(["odeme", "avans"], { error: "Ödeme veya avans seçin." }),
-  tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
-  yontem: z.enum(["nakit", "havale"], { error: "Ödeme yöntemi seçin." }),
-  banka_hesap_id: hesapIdOpsiyonel,
-  aciklama: metinOpsiyonel(300),
-  anahtar: z.uuid(),
-});
+const hareketYontemi = z
+  .string()
+  .optional()
+  .transform((v) => (v ? v : undefined))
+  .pipe(z.enum(["nakit", "havale"], { error: "Ödeme yöntemi seçin." }).optional());
+const hareketTarihi = z
+  .string()
+  .trim()
+  .optional()
+  .refine((v) => !v || (GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v))), "Geçerli bir tarih girin.")
+  .transform((v) => (v ? v : undefined));
+/** Kasa/bankadan para çıkan türlerde (ödeme, avans) yöntem zorunludur; prim/yol/yemek/mesai/kesinti'de sorulmaz. */
+const yontemKurali = (v: { tur: string; yontem?: string }, ctx: z.RefinementCtx) => {
+  if (ODEME_YONTEMLI_TURLER.includes(v.tur) && !v.yontem) ctx.addIssue({ code: "custom", path: ["yontem"], message: "Ödeme yöntemi seçin." });
+};
+
+export const personelHareketSemasi = z
+  .object({
+    kullanici_id: z.uuid(),
+    tur: z.enum(MANUEL_HAREKET_TURLERI, { error: "Geçerli bir kategori seçin." }),
+    tutar: tlTutar("Geçerli bir tutar girin.").refine((k) => k > 0, "Tutar sıfırdan büyük olmalı."),
+    yontem: hareketYontemi,
+    banka_hesap_id: hesapIdOpsiyonel,
+    tarih: hareketTarihi,
+    aciklama: metinOpsiyonel(300),
+    anahtar: z.uuid(),
+  })
+  .superRefine(yontemKurali);
+
+/** Toplu maaş ödemesi: her kalem (personel + kuruş tutar) aynı tarih/yöntemle ayrı deftere yazılır. */
+export const personelTopluOdemeSemasi = z
+  .object({
+    tur: z.enum(MANUEL_HAREKET_TURLERI, { error: "Geçerli bir kategori seçin." }),
+    yontem: hareketYontemi,
+    banka_hesap_id: hesapIdOpsiyonel,
+    tarih: hareketTarihi,
+    aciklama: metinOpsiyonel(300),
+    anahtar: z.uuid(),
+    kalemler: z
+      .string()
+      .transform((v, ctx) => {
+        try {
+          return JSON.parse(v) as unknown;
+        } catch {
+          ctx.addIssue({ code: "custom", message: "Girdi hatalı." });
+          return z.NEVER;
+        }
+      })
+      .pipe(z.array(z.object({ kullanici_id: z.uuid(), tutar_kurus: z.number().int().positive().max(100_000_000_000) })).min(1, "En az bir personel seçin.").max(200)),
+  })
+  .superRefine(yontemKurali);
 
 // ---------------------------------------------------------------------------------------------------------
 const gunZorunlu = z

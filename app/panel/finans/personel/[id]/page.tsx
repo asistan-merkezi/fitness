@@ -10,16 +10,18 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
-import { bugunIstanbulTarihi, formatDateTime, gunYazi } from "@/lib/datetime";
+import { bugunIstanbulTarihi, gunYazi } from "@/lib/datetime";
 import { kurusTLyazi } from "@/lib/para";
 import { IZIN_DURUMU, IZIN_TIPLERI, PERSONEL_BELGE_TURU, PERSONEL_HAREKET_TURLERI, PUANTAJ_DURUMU } from "@/lib/panel/etiketler";
+import { hakedisArtirirMi } from "@/lib/panel/personel-odeme";
 import { FINANS_YONETIM_ROLLERI, ROL_ETIKETLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { KullaniciRolu } from "@/lib/auth/gecerli-kullanici";
 import { DegerlendirmeFormu } from "../../../yonetim/izinler/formlar";
 import { IzinIptalButonu } from "../../../izinlerim/izin-formlari";
-import { HareketFormu, ProfilFormu } from "../formlar";
+import { ProfilFormu } from "../formlar";
+import { OdemeEkleDiyalog } from "../odeme-diyalog";
 import { BelgeEkleFormu, BelgeKaldirButonu, KisiselFormu, type KisiselBilgi } from "./kisisel-formlari";
 
 export const metadata: Metadata = { title: "Personel Kartı" };
@@ -28,7 +30,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const BELGE_UYARI_GUN = 60;
 
 type Profil = { maas_kurus: number; ders_prim_kurus: number; ise_giris_tarihi: string | null; isten_cikis_tarihi: string | null };
-type Hareket = { id: string; tur: keyof typeof PERSONEL_HAREKET_TURLERI; tutar_kurus: number; donem: string | null; odeme_yontemi: string | null; aciklama: string | null; created_at: string };
+type Hareket = { id: string; tur: keyof typeof PERSONEL_HAREKET_TURLERI; tutar_kurus: number; donem: string | null; odeme_yontemi: string | null; aciklama: string | null; islem_tarihi: string };
 type Belge = { id: string; tur: string; ad: string; veren_kurum: string | null; belge_no: string | null; verilis_tarihi: string | null; gecerlilik_bitis: string | null; not_metni: string | null };
 type Izin = { id: string; tip: keyof typeof IZIN_TIPLERI; baslangic_tarihi: string; bitis_tarihi: string; gun_sayisi: number; gerekce: string | null; durum: keyof typeof IZIN_DURUMU; red_gerekce: string | null };
 type PuantajSatiri = { tarih: string; durum: string; giris_saati: string | null; cikis_saati: string | null; fazla_mesai_dk: number; not_metni: string | null };
@@ -166,7 +168,7 @@ export default async function PersonelKartiSayfasi({ params, searchParams }: { p
 
       {sekme === "kisisel" && yonetici && <KisiselSekmesi id={id} belgeler={belgeler} bugun={bugun} />}
 
-      {sekme === "odeme" && <OdemeSekmesi id={id} yonetici={yonetici} profil={profil} />}
+      {sekme === "odeme" && <OdemeSekmesi id={id} adSoyad={personel.ad_soyad} yonetici={yonetici} profil={profil} bakiyeKurus={bakiye.kalan} />}
 
       {sekme === "izin" && yonetici && <IzinSekmesi id={id} />}
 
@@ -249,12 +251,16 @@ async function KisiselSekmesi({ id, belgeler, bugun }: { id: string; belgeler: B
   );
 }
 
-async function OdemeSekmesi({ id, yonetici, profil }: { id: string; yonetici: boolean; profil: Profil | null }) {
+async function OdemeSekmesi({ id, adSoyad, yonetici, profil, bakiyeKurus }: { id: string; adSoyad: string; yonetici: boolean; profil: Profil | null; bakiyeKurus: number }) {
   const supabase = await createClient();
-  const [{ data: hareketVeri }, { data: hesapVeri }] = await Promise.all([
-    supabase.from("personel_hesap_hareket").select("id, tur, tutar_kurus, donem, odeme_yontemi, aciklama, created_at").eq("kullanici_id", id).order("created_at", { ascending: false }).limit(100),
+  const bugun = bugunIstanbulTarihi();
+  const ayBasi = `${bugun.slice(0, 7)}-01`;
+  const [{ data: hareketVeri }, { data: hesapVeri }, { data: avansVeri }] = await Promise.all([
+    supabase.from("personel_hesap_hareket").select("id, tur, tutar_kurus, donem, odeme_yontemi, aciklama, islem_tarihi").eq("kullanici_id", id).order("islem_tarihi", { ascending: false }).order("created_at", { ascending: false }).limit(100),
     supabase.rpc("banka_hesap_secenekleri"),
+    supabase.from("personel_hesap_hareket").select("tutar_kurus").eq("kullanici_id", id).eq("tur", "avans").gte("islem_tarihi", ayBasi),
   ]);
+  const buAykiAvans = ((avansVeri ?? []) as { tutar_kurus: number | string }[]).reduce((t, a) => t + Number(a.tutar_kurus), 0);
   const hareketler = (hareketVeri ?? []) as Hareket[];
 
   return (
@@ -290,11 +296,16 @@ async function OdemeSekmesi({ id, yonetici, profil }: { id: string; yonetici: bo
 
       <Card>
         <CardHeader>
-          <CardTitle>Ödeme / avans</CardTitle>
-          <CardDescription>Kayıtlar değiştirilemez; hatalı kayıt için ters yönde yeni kayıt girin.</CardDescription>
+          <CardTitle>Ödeme Ekle</CardTitle>
+          <CardDescription>Maaş, avans, prim, yol, yemek, fazla mesai, kesinti ve diğer ödemeler. Kayıtlar değiştirilemez; hatalı kayıt için ters yönde yeni kayıt girin.</CardDescription>
         </CardHeader>
         <CardContent>
-          <HareketFormu kullaniciId={id} hesaplar={(hesapVeri ?? []) as { id: string; ad: string }[]} />
+          <OdemeEkleDiyalog
+            sabitPersonelId={id}
+            satirlar={[{ id, adSoyad, gorev: "", bakiyeKurus, maasKurus: profil ? Number(profil.maas_kurus) : null, buAykiAvansKurus: buAykiAvans }]}
+            hesaplar={(hesapVeri ?? []) as { id: string; ad: string }[]}
+            bugun={bugun}
+          />
         </CardContent>
       </Card>
 
@@ -318,10 +329,10 @@ async function OdemeSekmesi({ id, yonetici, profil }: { id: string; yonetici: bo
               <TableBody>
                 {hareketler.map((h) => {
                   const tur = PERSONEL_HAREKET_TURLERI[h.tur];
-                  const gelir = h.tur === "hakedis" || h.tur === "prim";
+                  const gelir = hakedisArtirirMi(h.tur);
                   return (
                     <TableRow key={h.id}>
-                      <TableCell className="whitespace-nowrap tabular-nums">{formatDateTime(h.created_at)}</TableCell>
+                      <TableCell className="whitespace-nowrap tabular-nums">{gunYazi(h.islem_tarihi)}</TableCell>
                       <TableCell>
                         <StatusBadge tone={tur.ton}>{tur.etiket}</StatusBadge>
                       </TableCell>

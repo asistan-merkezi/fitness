@@ -64,6 +64,11 @@ export const PERSONEL_HAREKET_TURLERI = {
   prim: { etiket: "Ders primi", ton: "primary" as StatusTone },
   odeme: { etiket: "Ödeme", ton: "emerald" as StatusTone },
   avans: { etiket: "Avans", ton: "amber" as StatusTone },
+  prim_manuel: { etiket: "Prim", ton: "primary" as StatusTone },
+  yol: { etiket: "Yol", ton: "sky" as StatusTone },
+  yemek: { etiket: "Yemek", ton: "sky" as StatusTone },
+  mesai: { etiket: "Fazla mesai", ton: "sky" as StatusTone },
+  kesinti: { etiket: "Kesinti", ton: "rose" as StatusTone },
 };
 
 export const IZIN_TIPLERI = { yillik: "Yıllık izin", mazeret: "Mazeret izni", rapor: "Rapor" } as const;

@@ -1,12 +1,10 @@
 "use client";
 
 import { Alan } from "@/components/panel/form-alanlari";
-import { EylemFormu, SecimKutusu } from "@/components/panel/eylem-formu";
-import { YontemHesapSecimi, type HesapSecenegi } from "@/components/panel/yontem-hesap-secimi";
+import { EylemFormu } from "@/components/panel/eylem-formu";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { kurusGirdiYazi } from "@/lib/para";
-import { personelDonemKapat, personelHareketEkle, personelProfilKaydet } from "./actions";
+import { personelDonemKapat, personelProfilKaydet } from "./actions";
 
 export function ProfilFormu({
   kullaniciId,
@@ -32,29 +30,6 @@ export function ProfilFormu({
           <Input id="pp_cikis" name="isten_cikis_tarihi" type="date" defaultValue={profil?.isten_cikis_tarihi ?? ""} />
         </Alan>
       </div>
-    </EylemFormu>
-  );
-}
-
-export function HareketFormu({ kullaniciId, hesaplar }: { kullaniciId: string; hesaplar: HesapSecenegi[] }) {
-  return (
-    <EylemFormu eylem={personelHareketEkle} gonder="Kaydet" anahtarli>
-      <input type="hidden" name="kullanici_id" value={kullaniciId} />
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Alan etiket="Tür" htmlFor="ph_tur">
-          <SecimKutusu id="ph_tur" name="tur" defaultValue="odeme">
-            <option value="odeme">Maaş / hakediş ödemesi</option>
-            <option value="avans">Avans</option>
-          </SecimKutusu>
-        </Alan>
-        <Alan etiket="Tutar (₺)" htmlFor="ph_tutar">
-          <Input id="ph_tutar" name="tutar" inputMode="decimal" required autoComplete="off" />
-        </Alan>
-        <YontemHesapSecimi id="ph" yontemler={{ havale: "Havale / EFT", nakit: "Nakit" }} hesaplar={hesaplar} hesapGerektirenler={["havale"]} varsayilan="havale" />
-      </div>
-      <Alan etiket="Açıklama" htmlFor="ph_aciklama">
-        <Textarea id="ph_aciklama" name="aciklama" rows={2} maxLength={300} />
-      </Alan>
     </EylemFormu>
   );
 }

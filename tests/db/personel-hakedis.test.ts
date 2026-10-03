@@ -197,6 +197,31 @@ describe("personel hakediş: profil, gün oranı, ders primi, dönem kapatma, de
       expect(await hataMesaji(() => ekle(adminA, "odeme", 100, null))).toMatch(/odeme_yontemi_gerekli/);
       expect(await hataMesaji(() => ekle(resepsiyonA, "odeme", 100, "nakit"))).toMatch(/yetki_yetersiz/);
     });
+    it("prim/yol/yemek/mesai bakiyeyi artırır, kesinti düşürür; yalnız ödeme/avans yöntem ister ve kasa defterine düşer; tarih verilebilir ama gelecek olamaz", async () => {
+      const ekle = (k: string, tur: string, tutar: number, yontem: string | null, tarih: string | null = null) =>
+        kimlikle(db, k, async () => (await db.query<{ id: string }>("SELECT public.personel_hesap_hareket_ekle($1,$2,$3,$4,NULL,NULL,NULL,$5::date) AS id", [antrenorTam, tur, tutar, yontem, tarih])).rows[0].id);
+      const bakiyeAl = () => kimlikle(db, adminA, async () => (await db.query<{ bakiye_kurus: string }>("SELECT bakiye_kurus FROM public.personel_bakiye WHERE kullanici_id = $1", [antrenorTam])).rows[0]);
+      const once = Number((await bakiyeAl()).bakiye_kurus);
+      const kasaOnce = Number((await db.query<{ c: string }>("SELECT count(*) AS c FROM public.hesap_hareket_gorunum WHERE kaynak = 'personel'")).rows[0].c);
+
+      await ekle(adminA, "prim_manuel", 100_000, null);
+      await ekle(muhasebeA, "yol", 50_000, "nakit"); // yöntem para çıkmayan türde yok sayılır
+      await ekle(adminA, "yemek", 25_000, null);
+      await ekle(adminA, "mesai", 25_000, null);
+      await ekle(adminA, "kesinti", 30_000, null);
+      expect(Number((await bakiyeAl()).bakiye_kurus)).toBe(once + 100_000 + 50_000 + 25_000 + 25_000 - 30_000);
+
+      const yontemler = (await db.query<{ tur: string; odeme_yontemi: string | null }>("SELECT tur, odeme_yontemi FROM public.personel_hesap_hareket WHERE tur IN ('prim_manuel','yol','yemek','mesai','kesinti')")).rows;
+      expect(yontemler.every((r) => r.odeme_yontemi === null)).toBe(true);
+      // Para çıkmayan türler kasa/banka/kart defterine düşmez.
+      expect(Number((await db.query<{ c: string }>("SELECT count(*) AS c FROM public.hesap_hareket_gorunum WHERE kaynak = 'personel'")).rows[0].c)).toBe(kasaOnce);
+
+      // Geçmiş tarihli ödeme: islem_tarihi verilen gün olur; gelecek tarih reddedilir.
+      const id = await ekle(adminA, "avans", 10_000, "nakit", "2026-09-10");
+      expect((await db.query<{ islem_tarihi: string }>("SELECT islem_tarihi::text FROM public.personel_hesap_hareket WHERE id = $1", [id])).rows[0].islem_tarihi).toBe("2026-09-10");
+      expect(await hataMesaji(() => ekle(adminA, "odeme", 100, "nakit", "2999-01-01"))).toMatch(/tarih_gelecek/);
+      expect(await hataMesaji(() => ekle(adminA, "bilinmeyen", 100, "nakit"))).toMatch(/hareket_turu_gecersiz/);
+    });
   });
 
   describe("görünürlük ve profil yetkisi", () => {
