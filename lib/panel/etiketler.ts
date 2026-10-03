@@ -71,6 +71,9 @@ export const PERSONEL_HAREKET_TURLERI = {
   kesinti: { etiket: "Kesinti", ton: "rose" as StatusTone },
 };
 
+export const CINSIYETLER = { kadin: "Kadın", erkek: "Erkek", belirtilmemis: "Belirtilmemiş" } as const;
+export const CALISMA_TIPLERI = { tam_zamanli: "Tam Zamanlı", yari_zamanli: "Yarı Zamanlı", vardiyali: "Vardiyalı", prim_usulu: "Prim Usulü" } as const;
+
 export const IZIN_TIPLERI = { yillik: "Yıllık izin", mazeret: "Mazeret izni", rapor: "Rapor" } as const;
 
 export const IZIN_DURUMU = {

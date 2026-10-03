@@ -794,6 +794,29 @@ export const personelKisiselSemasi = z
     adres_detay: metinOpsiyonel(500),
     acil_durum_ad_soyad: isimOpsiyonel,
     acil_durum_telefon: telefonOpsiyonel,
+    dogum_yeri: metinOpsiyonel(100),
+    cinsiyet: z
+      .string()
+      .optional()
+      .transform((v) => v || null)
+      .pipe(z.enum(["kadin", "erkek", "belirtilmemis"], { error: "Geçerli bir cinsiyet seçin." }).nullable()),
+    pasaport_no: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || /^[A-Za-z0-9]{5,20}$/.test(v), "Pasaport no 5-20 harf/rakamdan oluşmalı.")
+      .transform((v) => v || null),
+    sgk_sicil_no: z
+      .string()
+      .trim()
+      .optional()
+      .refine((v) => !v || /^[0-9A-Za-z-]{4,30}$/.test(v), "SGK sicil no 4-30 karakter (harf, rakam, tire) olmalı.")
+      .transform((v) => v || null),
+    calisma_tipi: z
+      .string()
+      .optional()
+      .transform((v) => v || null)
+      .pipe(z.enum(["tam_zamanli", "yari_zamanli", "vardiyali", "prim_usulu"], { error: "Geçerli bir çalışma tipi seçin." }).nullable()),
   })
   .superRefine((v, ctx) => {
     if (v.dogum_tarihi && (v.dogum_tarihi > bugunIstanbulTarihi() || v.dogum_tarihi < "1900-01-01")) ctx.addIssue({ code: "custom", path: ["dogum_tarihi"], message: "Doğum tarihi geçerli bir geçmiş tarih olmalı." });

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { TelefonGirisi } from "@/components/ui/telefon-girisi";
 import { Textarea } from "@/components/ui/textarea";
-import { PERSONEL_BELGE_TURU } from "@/lib/panel/etiketler";
+import { CALISMA_TIPLERI, CINSIYETLER, PERSONEL_BELGE_TURU } from "@/lib/panel/etiketler";
 import { personelBelgeEkle, personelBelgeKaldir, personelKisiselKaydet } from "../actions";
 
 export type KisiselBilgi = {
@@ -21,17 +21,51 @@ export type KisiselBilgi = {
   adres_detay: string | null;
   acil_durum_ad_soyad: string | null;
   acil_durum_telefon: string | null;
+  dogum_yeri: string | null;
+  cinsiyet: string | null;
+  pasaport_no: string | null;
+  sgk_sicil_no: string | null;
+  calisma_tipi: string | null;
 };
 
 /** Kişisel bilgiler (yalnız işletme yöneticisi). Form tüm alanları gönderir; boş alan "temizle" demektir. */
-export function KisiselFormu({ kullaniciId, bilgi }: { kullaniciId: string; bilgi: KisiselBilgi | null }) {
+export function KisiselFormu({ kullaniciId, bilgi, basariliOlunca }: { kullaniciId: string; bilgi: KisiselBilgi | null; basariliOlunca?: () => void }) {
   return (
-    <EylemFormu eylem={personelKisiselKaydet} gonder="Kaydet">
+    <EylemFormu eylem={personelKisiselKaydet} gonder="Kaydet" basariliOlunca={basariliOlunca}>
       <input type="hidden" name="kullanici_id" value={kullaniciId} />
       <div className="grid gap-4 sm:grid-cols-2">
         <TelefonGirisi ad="telefon" label="Cep telefonu" varsayilanTelefon={bilgi?.telefon} />
         <Alan etiket="Doğum tarihi" htmlFor="pk_dogum" ipucu="50 yaş ve üzeri personelin yıllık izin hakkı en az 20 gündür.">
           <Input id="pk_dogum" name="dogum_tarihi" type="date" defaultValue={bilgi?.dogum_tarihi ?? ""} />
+        </Alan>
+        <Alan etiket="Doğum yeri" htmlFor="pk_dogum_yeri">
+          <Input id="pk_dogum_yeri" name="dogum_yeri" maxLength={100} autoComplete="off" defaultValue={bilgi?.dogum_yeri ?? ""} />
+        </Alan>
+        <Alan etiket="Cinsiyet" htmlFor="pk_cinsiyet">
+          <SecimKutusu id="pk_cinsiyet" name="cinsiyet" defaultValue={bilgi?.cinsiyet ?? ""}>
+            <option value="">—</option>
+            {Object.entries(CINSIYETLER).map(([kod, etiket]) => (
+              <option key={kod} value={kod}>
+                {etiket}
+              </option>
+            ))}
+          </SecimKutusu>
+        </Alan>
+        <Alan etiket="Çalışma tipi" htmlFor="pk_calisma">
+          <SecimKutusu id="pk_calisma" name="calisma_tipi" defaultValue={bilgi?.calisma_tipi ?? ""}>
+            <option value="">—</option>
+            {Object.entries(CALISMA_TIPLERI).map(([kod, etiket]) => (
+              <option key={kod} value={kod}>
+                {etiket}
+              </option>
+            ))}
+          </SecimKutusu>
+        </Alan>
+        <Alan etiket="SGK sicil no" htmlFor="pk_sgk">
+          <Input id="pk_sgk" name="sgk_sicil_no" maxLength={30} autoComplete="off" defaultValue={bilgi?.sgk_sicil_no ?? ""} />
+        </Alan>
+        <Alan etiket="Pasaport no" htmlFor="pk_pasaport" ipucu="Yabancı uyruklu personel için.">
+          <Input id="pk_pasaport" name="pasaport_no" maxLength={20} autoComplete="off" defaultValue={bilgi?.pasaport_no ?? ""} />
         </Alan>
         <Alan etiket="T.C. kimlik no" htmlFor="pk_tc">
           <Input id="pk_tc" name="tc_kimlik_no" inputMode="numeric" maxLength={11} pattern="[0-9]*" autoComplete="off" defaultValue={bilgi?.tc_kimlik_no ?? ""} />

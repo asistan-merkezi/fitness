@@ -182,6 +182,11 @@ export async function personelKisiselKaydet(_onceki: Onceki, formData: FormData)
     p_adres_detay: v.adres_detay ?? undefined,
     p_acil_ad: v.acil_durum_ad_soyad ?? undefined,
     p_acil_telefon: v.acil_durum_telefon ?? undefined,
+    p_dogum_yeri: v.dogum_yeri ?? undefined,
+    p_cinsiyet: v.cinsiyet ?? undefined,
+    p_pasaport: v.pasaport_no ?? undefined,
+    p_sgk_sicil: v.sgk_sicil_no ?? undefined,
+    p_calisma_tipi: v.calisma_tipi ?? undefined,
   });
   if (error) {
     console.error("[personelKisiselKaydet]", error.code);

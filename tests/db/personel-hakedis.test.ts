@@ -258,5 +258,28 @@ describe("personel hakediş: profil, gün oranı, ders primi, dönem kapatma, de
       expect(r.rows.length).toBe(1);
       expect(JSON.stringify(r.rows[0])).not.toMatch(/3000000/);
     });
+
+    it("ücret geçmişi: maaş/prim her değiştiğinde yeni satır yazılır (eski ezilmez); aynı değer yeni satır açmaz; yazma ve silme kapalı; yalnız yönetici/muhasebe/kişi okur", async () => {
+      const gecmis = (k: string, kisi = antrenorTam) => kimlikle(db, k, async () => (await db.query<{ maas_kurus: string; ders_prim_kurus: string }>("SELECT maas_kurus, ders_prim_kurus FROM public.personel_ucret_gecmisi WHERE kullanici_id = $1 ORDER BY created_at, id", [kisi])).rows.map((r) => [Number(r.maas_kurus), Number(r.ders_prim_kurus)]));
+      const once = (await gecmis(adminA)).length;
+
+      await kimlikle(db, adminA, () => db.query("UPDATE public.personel_profil SET maas_kurus = 3500000, ders_prim_kurus = 25000 WHERE kullanici_id = $1", [antrenorTam]));
+      await kimlikle(db, adminA, () => db.query("UPDATE public.personel_profil SET maas_kurus = 3500000, ders_prim_kurus = 25000 WHERE kullanici_id = $1", [antrenorTam])); // aynı değer
+      await kimlikle(db, adminA, () => db.query("UPDATE public.personel_profil SET ise_giris_tarihi = '2026-01-01' WHERE kullanici_id = $1", [antrenorTam])); // ücret değişmedi
+      const sonra = await gecmis(adminA);
+      expect(sonra.length).toBe(once + 1);
+      expect(sonra[sonra.length - 1]).toEqual([3500000, 25000]);
+      expect(sonra.slice(0, once)).toEqual((await gecmis(adminA)).slice(0, once)); // önceki satırlar yerinde
+
+      expect(await gecmis(muhasebeA)).toEqual(sonra);
+      expect(await gecmis(antrenorTam)).toEqual(sonra); // kişi kendi geçmişini görür
+      expect(await gecmis(resepsiyonA)).toEqual([]);
+      expect(await gecmis(antrenorGiris, antrenorTam)).toEqual([]); // başka personel göremez
+      expect(await gecmis(adminB)).toEqual([]);
+
+      expect(await hataMesaji(() => kimlikle(db, adminA, () => db.query("INSERT INTO public.personel_ucret_gecmisi (isletme_id, kullanici_id, maas_kurus, ders_prim_kurus) VALUES ($1,$2,1,1)", [isletmeA, antrenorTam])))).toMatch(/permission denied/i);
+      expect(await hataMesaji(() => kimlikle(db, adminA, () => db.query("DELETE FROM public.personel_ucret_gecmisi")))).toMatch(/permission denied/i);
+      expect(await hataMesaji(() => db.query("UPDATE public.personel_ucret_gecmisi SET maas_kurus = 1"))).toMatch(/defter_degismez/);
+    });
   });
 });

@@ -46,6 +46,20 @@ describe("personel: kişisel bilgiler, belgeler, iş başvurusu, puantaj", () =>
       expect(await hataMesaji(() => kaydet(adminA, antrenor, { tel: "05321112233" }))).toMatch(/check/i);
     });
 
+    it("yeni kişisel alanlar (doğum yeri, cinsiyet, pasaport, SGK sicil, çalışma tipi) kaydedilir ve doğrulanır", async () => {
+      const yeni = (k: string, hedef: string, a: { yer?: string; cins?: string; pas?: string; sgk?: string; calisma?: string }) =>
+        rpc(k, "SELECT public.personel_kisisel_kaydet($1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,$2,$3,$4,$5,$6)", [hedef, a.yer ?? null, a.cins ?? null, a.pas ?? null, a.sgk ?? null, a.calisma ?? null]);
+      await yeni(adminA, antrenor, { yer: "Sivas", cins: "erkek", pas: "U1234567", sgk: "12345678", calisma: "tam_zamanli" });
+      const s = (await db.query<{ dogum_yeri: string; cinsiyet: string; pasaport_no: string; sgk_sicil_no: string; calisma_tipi: string }>("SELECT dogum_yeri, cinsiyet, pasaport_no, sgk_sicil_no, calisma_tipi FROM public.personel_kisisel WHERE kullanici_id = $1", [antrenor])).rows[0];
+      expect(s).toEqual({ dogum_yeri: "Sivas", cinsiyet: "erkek", pasaport_no: "U1234567", sgk_sicil_no: "12345678", calisma_tipi: "tam_zamanli" });
+      expect(await hataMesaji(() => yeni(adminA, antrenor, { cins: "belirsiz" }))).toMatch(/cinsiyet_gecersiz/);
+      expect(await hataMesaji(() => yeni(adminA, antrenor, { calisma: "haftalik" }))).toMatch(/calisma_tipi_gecersiz/);
+      expect(await hataMesaji(() => yeni(adminA, antrenor, { pas: "12 3" }))).toMatch(/pasaport_gecersiz/);
+      expect(await hataMesaji(() => yeni(adminA, antrenor, { sgk: "1" }))).toMatch(/sgk_sicil_gecersiz/);
+      expect(await hataMesaji(() => yeni(resepsiyonA, antrenor, { yer: "X" }))).toMatch(/yetki_yetersiz/);
+      expect(await rpc(muhasebeA, "SELECT pasaport_no, sgk_sicil_no FROM public.personel_kisisel")).toEqual([]); // muhasebe satır görmez (özel veri)
+    });
+
     it("kayıt tüm alanları değiştirir (boş alan temizler); doğrudan yazılamaz", async () => {
       await kaydet(adminA, antrenor, { il: "Ankara" });
       const s = (await db.query<{ il: string; tc_kimlik_no: string | null; telefon: string | null }>("SELECT il, tc_kimlik_no, telefon FROM public.personel_kisisel WHERE kullanici_id = $1", [antrenor])).rows[0];
