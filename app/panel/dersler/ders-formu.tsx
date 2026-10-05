@@ -7,10 +7,11 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { gunYazi, toUTC } from "@/lib/datetime";
+import { bugunIstanbulTarihi, gunYazi, toUTC } from "@/lib/datetime";
+import { musaitSaatler } from "@/lib/panel/musait-saatler";
 import { cn, telefonGoster } from "@/lib/utils";
 import { dersOlustur } from "./actions";
-import { useDoluKaynaklar, useMusteriDersPaketleri, type MusteriSecenegi } from "./ders-sorgulari";
+import { useMesgulAraliklar, useMusteriDersPaketleri, type MusteriSecenegi } from "./ders-sorgulari";
 import { MusteriArama } from "./musteri-arama";
 
 const SURELER = [30, 45, 60, 90, 120] as const;
@@ -21,8 +22,8 @@ const saatYazi = (tarih: string, saat: string, sureDk: number) =>
   );
 
 /**
- * Yeni ders formu (klinikteki Yeni Randevu düzeni): Müşteri → ders paketi → Tarih → Saat → Süre → Antrenör → Alan.
- * Antrenör ve alan listeleri tarih+saat girilince yalnız o aralıkta MÜSAİT olanları gösterir.
+ * Yeni ders formu (klinikteki Yeni Randevu düzeni): Müşteri → ders paketi → Tarih → Süre → Antrenör → Alan → müsait saat butonları.
+ * Saat serbest girilmez: antrenör + alan seçilince 30 dk'lık ızgaradan yalnız antrenör, alan ve müşterinin boş olduğu saatler listelenir.
  */
 export function DersFormu({
   antrenorler,
@@ -49,24 +50,22 @@ export function DersFormu({
 
   const { veri: paketler } = useMusteriDersPaketleri(musteriId);
   const eksikTanim = antrenorler.length === 0 || alanlar.length === 0;
-  const zamanHazir = tarih !== "" && saat !== "";
-  const { veri: dolu, yukleniyor: musaitlikYukleniyor } = useDoluKaynaklar(tarih, saat, sure);
-
-  const musaitAntrenorler = dolu ? antrenorler.filter((a) => !dolu.antrenorler.has(a.id)) : antrenorler;
-  const musaitAlanlar = dolu ? alanlar.filter((a) => !dolu.alanlar.has(a.id)) : alanlar;
-  // Zaman değişince seçili antrenör/alan doluya düşerse seçim sessizce boşalır (gönderilen değer buna göre türer).
-  const efektifAntrenorId = musaitAntrenorler.some((a) => a.id === antrenorId) ? antrenorId : "";
-  const efektifAlanId = musaitAlanlar.some((a) => a.id === alanId) ? alanId : "";
-  const musteriMesgul = Boolean(dolu && musteriId && dolu.musteriler.has(musteriId));
+  const bugun = bugunIstanbulTarihi();
+  const efektifAntrenorId = antrenorler.some((a) => a.id === antrenorId) ? antrenorId : "";
+  const efektifAlanId = alanlar.some((a) => a.id === alanId) ? alanId : "";
+  const saatlerHazir = tarih !== "" && efektifAntrenorId !== "" && efektifAlanId !== "";
+  const { veri: mesgul, yukleniyor: musaitlikYukleniyor } = useMesgulAraliklar(saatlerHazir ? tarih : "", saatlerHazir ? tarih : "", efektifAntrenorId, efektifAlanId, musteriId);
+  const saatler = saatlerHazir && mesgul ? musaitSaatler(tarih, sure, mesgul, varsayilanSaat ?? "") : [];
+  // Seçili saat, antrenör/alan/tarih/süre değişince dolu hâle gelirse sessizce sıfırlanır.
+  const efektifSaat = saatler.includes(saat) ? saat : "";
+  const zamanHazir = efektifSaat !== "";
 
   const paketVar = (paketler?.length ?? 0) > 0;
-  const bosYerMetni = (ad: string, bos: boolean) =>
-    !zamanHazir ? "Önce tarih ve saat seçin" : musaitlikYukleniyor ? "Müsaitlik kontrol ediliyor…" : bos ? `Bu saatte müsait ${ad} yok` : "Seçin";
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
       <input type="hidden" name="anahtar" value={durum?.anahtar ?? ilkAnahtar} suppressHydrationWarning />
-      <input type="hidden" name="baslangic" value={zamanHazir ? `${tarih}T${saat}` : ""} />
+      <input type="hidden" name="baslangic" value={zamanHazir ? `${tarih}T${efektifSaat}` : ""} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -102,12 +101,8 @@ export function DersFormu({
         )}
 
         <Alan etiket="Tarih" htmlFor="d_tarih">
-          <Input id="d_tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} required disabled={bekliyor} />
+          <Input id="d_tarih" type="date" value={tarih} min={bugun} onChange={(e) => setTarih(e.target.value)} required disabled={bekliyor} />
         </Alan>
-        <Alan etiket="Saat" htmlFor="d_saat" ipucu={zamanHazir ? `Bitiş: ${saatYazi(tarih, saat, sure)}` : undefined}>
-          <Input id="d_saat" type="time" value={saat} onChange={(e) => setSaat(e.target.value)} required disabled={bekliyor} />
-        </Alan>
-
         <Alan etiket="Süre" htmlFor="d_sure">
           <SecimKutusu id="d_sure" name="sure" value={sure} onChange={(e) => setSure(Number(e.target.value))} disabled={bekliyor}>
             {SURELER.map((s) => (
@@ -117,7 +112,6 @@ export function DersFormu({
             ))}
           </SecimKutusu>
         </Alan>
-        <div className="hidden sm:block" aria-hidden />
 
         <Alan etiket="Antrenör" htmlFor="d_antrenor">
           <SecimKutusu
@@ -126,12 +120,12 @@ export function DersFormu({
             required
             value={efektifAntrenorId}
             onChange={(e) => setAntrenorId(e.target.value)}
-            disabled={bekliyor || !zamanHazir || musaitAntrenorler.length === 0}
+            disabled={bekliyor || tarih === "" || antrenorler.length === 0}
           >
             <option value="" disabled>
-              {antrenorler.length === 0 ? "Önce Ayarlar > Personel Tanımlama'dan antrenör ekleyin" : bosYerMetni("antrenör", musaitAntrenorler.length === 0)}
+              {antrenorler.length === 0 ? "Önce Ayarlar > Personel Tanımlama'dan antrenör ekleyin" : "Seçin"}
             </option>
-            {musaitAntrenorler.map((a) => (
+            {antrenorler.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.ad_soyad}
               </option>
@@ -145,18 +139,50 @@ export function DersFormu({
             required
             value={efektifAlanId}
             onChange={(e) => setAlanId(e.target.value)}
-            disabled={bekliyor || !zamanHazir || musaitAlanlar.length === 0}
+            disabled={bekliyor || tarih === "" || alanlar.length === 0}
           >
             <option value="" disabled>
-              {alanlar.length === 0 ? "Önce Yönetim > Donanım'dan alan ekleyin" : bosYerMetni("alan", musaitAlanlar.length === 0)}
+              {alanlar.length === 0 ? "Önce Yönetim > Donanım'dan alan ekleyin" : "Seçin"}
             </option>
-            {musaitAlanlar.map((a) => (
+            {alanlar.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.ad}
               </option>
             ))}
           </SecimKutusu>
         </Alan>
+
+        <div className="flex flex-col gap-2 sm:col-span-2">
+          <span className="text-sm font-medium">Saat</span>
+          {!saatlerHazir ? (
+            <p className="text-sm text-muted-foreground">Müsait saatleri görmek için tarih, antrenör ve alan seçin.</p>
+          ) : musaitlikYukleniyor ? (
+            <p className="text-sm text-muted-foreground">Müsait saatler kontrol ediliyor…</p>
+          ) : saatler.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Bu gün için müsait saat yok.</p>
+          ) : (
+            <>
+              <div role="radiogroup" aria-label="Müsait saatler" className="flex flex-wrap gap-2">
+                {saatler.map((s) => (
+                  <Button
+                    key={s}
+                    type="button"
+                    role="radio"
+                    aria-checked={efektifSaat === s}
+                    variant={efektifSaat === s ? "default" : "outline"}
+                    size="sm"
+                    disabled={bekliyor}
+                    onClick={() => setSaat(s)}
+                    className="tabular"
+                  >
+                    {s}
+                  </Button>
+                ))}
+              </div>
+              {zamanHazir && <p className="text-xs text-muted-foreground">Bitiş: {saatYazi(tarih, efektifSaat, sure)}</p>}
+            </>
+          )}
+        </div>
 
         {musteriId && !paketVar && paketler && (
           <div className="sm:col-span-2">
@@ -173,12 +199,6 @@ export function DersFormu({
         </div>
       </div>
 
-      {musteriMesgul && (
-        <p role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-          Bu müşterinin seçilen saatte başka bir dersi var — başka bir saat seçin.
-        </p>
-      )}
-
       {durum && (
         <p
           role={durum.success ? "status" : "alert"}
@@ -191,7 +211,7 @@ export function DersFormu({
         </p>
       )}
 
-      <Button type="submit" disabled={bekliyor || musteriMesgul || eksikTanim} className="w-fit">
+      <Button type="submit" disabled={bekliyor || !zamanHazir || eksikTanim} className="w-fit">
         {bekliyor ? "Planlanıyor..." : "Ders oluştur"}
       </Button>
     </form>

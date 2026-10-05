@@ -9,7 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { bugunIstanbulTarihi } from "@/lib/datetime";
 import { cn, telefonGoster } from "@/lib/utils";
 import { periyodikDersOlustur } from "./actions";
-import { useDoluKaynaklarCoklu, type MusteriSecenegi } from "./ders-sorgulari";
+import { gunEkleStr, ilkGerceklesenTarih, saatAdaylari, saatMusaitMi } from "@/lib/panel/musait-saatler";
+import { useMesgulAraliklar, type MusteriSecenegi } from "./ders-sorgulari";
 import { MusteriArama } from "./musteri-arama";
 
 const SURELER = [30, 45, 60, 90, 120] as const;
@@ -33,7 +34,8 @@ function sonrakiTarih(haftaninGunu: number): string {
 }
 
 /**
- * Periyodik ders formu (klinikteki Periyodik Randevu düzeni): Müşteri → Haftada kaç gün → Gün/Saatler → Süre → Antrenör → Alan.
+ * Periyodik ders formu (klinikteki Periyodik Randevu düzeni): Müşteri → Haftada kaç gün → Günler → Süre → Antrenör → Alan → her gün için müsait saat butonları.
+ * Saat serbest girilmez; her günün müsaitliği o günün İLK gerçekleşecek tarihine göre hesaplanır (bugünse ve saat geçmişse bir sonraki hafta).
  * Seçilen gün+saatlerde ≈5 aylık haftalık dersler açılır; dolu haftalar atlanır.
  */
 export function PeriyodikDersFormu({
@@ -53,15 +55,22 @@ export function PeriyodikDersFormu({
   const [alanId, setAlanId] = useState("");
 
   const eksikTanim = antrenorler.length === 0 || alanlar.length === 0;
-  const zamanHazir = gunler.every((g) => g.saat !== "");
-  const { veri: dolu, yukleniyor } = useDoluKaynaklarCoklu(zamanHazir ? gunler.map((g) => ({ tarih: sonrakiTarih(Number(g.gun)), saat: g.saat })) : [], sure);
+  const efektifAntrenorId = antrenorler.some((a) => a.id === antrenorId) ? antrenorId : "";
+  const efektifAlanId = alanlar.some((a) => a.id === alanId) ? alanId : "";
+  const kaynakHazir = efektifAntrenorId !== "" && efektifAlanId !== "";
 
-  const musaitAntrenorler = dolu ? antrenorler.filter((a) => !dolu.antrenorler.has(a.id)) : antrenorler;
-  const musaitAlanlar = dolu ? alanlar.filter((a) => !dolu.alanlar.has(a.id)) : alanlar;
-  const efektifAntrenorId = musaitAntrenorler.some((a) => a.id === antrenorId) ? antrenorId : "";
-  const efektifAlanId = musaitAlanlar.some((a) => a.id === alanId) ? alanId : "";
-  const bosYerMetni = (ad: string, bos: boolean) =>
-    !zamanHazir ? "Önce gün ve saat seçin" : yukleniyor ? "Müsaitlik kontrol ediliyor…" : bos ? `Bu saatte müsait ${ad} yok` : "Seçin";
+  // Tek sorgu: her günün ilk tarihinden (+7 gün payı, geçmiş saat için kayan hafta) arasını kapsar.
+  const ilkTarihler = gunler.map((g) => sonrakiTarih(Number(g.gun))).sort();
+  const { veri: mesgul, yukleniyor } = useMesgulAraliklar(
+    kaynakHazir ? ilkTarihler[0] : "",
+    kaynakHazir ? gunEkleStr(ilkTarihler[ilkTarihler.length - 1], 7) : "",
+    efektifAntrenorId,
+    efektifAlanId,
+    musteriId
+  );
+  const adaylar = saatAdaylari();
+  const saatMusait = (gun: string, saat: string) => Boolean(mesgul) && saatMusaitMi(ilkGerceklesenTarih(sonrakiTarih(Number(gun)), saat), saat, sure, mesgul!);
+  const zamanHazir = kaynakHazir && gunler.every((g) => g.saat !== "" && saatMusait(g.gun, g.saat));
 
   function gunSayisiDegisti(n: number) {
     setGunler((m) => (n <= m.length ? m.slice(0, n) : [...m, ...Array.from({ length: n - m.length }, () => ({ gun: "1", saat: "" }))]));
@@ -73,7 +82,7 @@ export function PeriyodikDersFormu({
       <p className="text-xs text-muted-foreground">
         Seçilen gün(ler) + saat(ler)de ileriye dönük 5 aylık dersler tek seferde oluşturulur. Antrenör, alan ya da müşteri o saatte doluysa o hafta atlanır.
       </p>
-      <input type="hidden" name="gunler_json" value={JSON.stringify(gunler)} />
+      <input type="hidden" name="gunler_json" value={JSON.stringify(gunler.map((g) => ({ ...g, saat: kaynakHazir && g.saat !== "" && saatMusait(g.gun, g.saat) ? g.saat : "" })))} />
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2">
@@ -109,27 +118,26 @@ export function PeriyodikDersFormu({
         </Alan>
 
         <div className="flex flex-col gap-2 sm:col-span-2">
-          <span className="text-sm font-medium">Gün ve Saatler</span>
-          {gunler.map((g, i) => (
-            <div key={i} className="grid grid-cols-2 gap-2">
-              <SecimKutusu aria-label={`${i + 1}. gün`} value={g.gun} onChange={(e) => satirGuncelle(i, { gun: e.target.value })} disabled={bekliyor}>
+          <span className="text-sm font-medium">Günler</span>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {gunler.map((g, i) => (
+              <SecimKutusu key={i} aria-label={`${i + 1}. gün`} value={g.gun} onChange={(e) => satirGuncelle(i, { gun: e.target.value, saat: "" })} disabled={bekliyor}>
                 {GUNLER.map((x) => (
                   <option key={x.deger} value={x.deger}>
                     {x.etiket}
                   </option>
                 ))}
               </SecimKutusu>
-              <Input type="time" aria-label={`${i + 1}. saat`} value={g.saat} onChange={(e) => satirGuncelle(i, { saat: e.target.value })} required disabled={bekliyor} />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
         <Alan etiket="Antrenör" htmlFor="p_antrenor">
-          <SecimKutusu id="p_antrenor" name="antrenor_id" required value={efektifAntrenorId} onChange={(e) => setAntrenorId(e.target.value)} disabled={bekliyor || !zamanHazir || musaitAntrenorler.length === 0}>
+          <SecimKutusu id="p_antrenor" name="antrenor_id" required value={efektifAntrenorId} onChange={(e) => setAntrenorId(e.target.value)} disabled={bekliyor || antrenorler.length === 0}>
             <option value="" disabled>
-              {antrenorler.length === 0 ? "Önce Ayarlar > Personel Tanımlama'dan antrenör ekleyin" : bosYerMetni("antrenör", musaitAntrenorler.length === 0)}
+              {antrenorler.length === 0 ? "Önce Ayarlar > Personel Tanımlama'dan antrenör ekleyin" : "Seçin"}
             </option>
-            {musaitAntrenorler.map((a) => (
+            {antrenorler.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.ad_soyad}
               </option>
@@ -137,17 +145,62 @@ export function PeriyodikDersFormu({
           </SecimKutusu>
         </Alan>
         <Alan etiket="Alan / stüdyo" htmlFor="p_alan">
-          <SecimKutusu id="p_alan" name="alan_id" required value={efektifAlanId} onChange={(e) => setAlanId(e.target.value)} disabled={bekliyor || !zamanHazir || musaitAlanlar.length === 0}>
+          <SecimKutusu id="p_alan" name="alan_id" required value={efektifAlanId} onChange={(e) => setAlanId(e.target.value)} disabled={bekliyor || alanlar.length === 0}>
             <option value="" disabled>
-              {alanlar.length === 0 ? "Önce Yönetim > Donanım'dan alan ekleyin" : bosYerMetni("alan", musaitAlanlar.length === 0)}
+              {alanlar.length === 0 ? "Önce Yönetim > Donanım'dan alan ekleyin" : "Seçin"}
             </option>
-            {musaitAlanlar.map((a) => (
+            {alanlar.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.ad}
               </option>
             ))}
           </SecimKutusu>
         </Alan>
+
+        <div className="flex flex-col gap-3 sm:col-span-2">
+          <span className="text-sm font-medium">Saatler</span>
+          {!kaynakHazir ? (
+            <p className="text-sm text-muted-foreground">Müsait saatleri görmek için gün(ler), antrenör ve alan seçin.</p>
+          ) : yukleniyor || !mesgul ? (
+            <p className="text-sm text-muted-foreground">Müsait saatler kontrol ediliyor…</p>
+          ) : (
+            gunler.map((g, i) => {
+              const gunAd = GUNLER.find((x) => x.deger === g.gun)?.etiket ?? "";
+              const saatler = adaylar.filter(
+                (a) => saatMusait(g.gun, a) && !gunler.some((d, j) => j !== i && d.gun === g.gun && d.saat === a)
+              );
+              const secili = saatler.includes(g.saat) ? g.saat : "";
+              return (
+                <div key={i} className="flex flex-col gap-1.5">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {i + 1}. gün · {gunAd}
+                  </span>
+                  {saatler.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Bu gün için müsait saat yok.</p>
+                  ) : (
+                    <div role="radiogroup" aria-label={`${gunAd} müsait saatler`} className="flex flex-wrap gap-2">
+                      {saatler.map((a) => (
+                        <Button
+                          key={a}
+                          type="button"
+                          role="radio"
+                          aria-checked={secili === a}
+                          variant={secili === a ? "default" : "outline"}
+                          size="sm"
+                          disabled={bekliyor}
+                          onClick={() => satirGuncelle(i, { saat: a })}
+                          className="tabular"
+                        >
+                          {a}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
 
         {musteriId && (
           <div className="sm:col-span-2">
@@ -176,7 +229,7 @@ export function PeriyodikDersFormu({
         </p>
       )}
 
-      <Button type="submit" disabled={bekliyor || !musteriId || eksikTanim} className="w-fit">
+      <Button type="submit" disabled={bekliyor || !musteriId || eksikTanim || !zamanHazir} className="w-fit">
         {bekliyor ? "Planlanıyor..." : "Periyodik ders oluştur"}
       </Button>
     </form>
