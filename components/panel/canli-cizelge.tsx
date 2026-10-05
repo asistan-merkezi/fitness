@@ -13,7 +13,6 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { formatTime } from "@/lib/datetime";
 import { DERS_DURUMU } from "@/lib/panel/etiketler";
 import { createClient } from "@/lib/supabase/client";
-import { cn } from "@/lib/utils";
 import type { DersDurumu } from "@/types/veritabani";
 
 type Gorunum = "cizelge" | "liste";
@@ -90,27 +89,15 @@ export function CanliCizelge({
             <Activity className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
             Günün Çizelgesi
           </h2>
-          <div role="group" aria-label="Görünüm" className="flex gap-1 rounded-lg bg-muted p-1">
-            {(
-              [
-                ["cizelge", "Çizelge", LayoutGrid],
-                ["liste", "Liste", List],
-              ] as const
-            ).map(([deger, etiket, Ikon]) => (
-              <button
-                key={deger}
-                type="button"
-                aria-pressed={gorunum === deger}
-                onClick={() => setGorunum(deger)}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm font-medium transition-colors",
-                  gorunum === deger ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Ikon className="size-4" strokeWidth={1.5} aria-hidden /> {etiket}
-              </button>
-            ))}
-          </div>
+          {/* Tek düğme: çizelge görünümündeyken yalnız "Liste", liste görünümündeyken yalnız "Çizelge" yazar (geçilecek görünüm). */}
+          <button
+            type="button"
+            onClick={() => setGorunum(gorunum === "cizelge" ? "liste" : "cizelge")}
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            {gorunum === "cizelge" ? <List aria-hidden /> : <LayoutGrid aria-hidden />}
+            {gorunum === "cizelge" ? "Liste" : "Çizelge"}
+          </button>
           {yeniDersHref && (
             <Link href={yeniDersHref} className={buttonVariants({ variant: "outline", size: "sm" })}>
               <CalendarPlus aria-hidden /> Yeni Ders
