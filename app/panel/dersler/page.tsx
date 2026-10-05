@@ -76,9 +76,9 @@ export default async function DerslerSayfasi({
     const { data } = await supabase.from("kullanici").select("id, ad_soyad").in("id", eksikAntrenor);
     for (const a of (data ?? []) as { id: string; ad_soyad: string }[]) antrenorAdi.set(a.id, a.ad_soyad);
   }
-  // Bekleyen ders talepleri (yalnız yönetim/resepsiyon; gün filtresinden bağımsız, en eski önce).
+  // Bekleyen ders talepleri (yönetim/resepsiyon hepsini, antrenör RLS ile yalnız kendisine yönlendirilenleri görür; gün filtresinden bağımsız, en eski önce).
   let bekleyenTalepler: BekleyenDersTalebi[] = [];
-  if (yonetim) {
+  {
     const { data: talepVeri } = await supabase.from("musteri_ders_talebi").select("id, musteri_id, tercih_tarih, tercih_saat, antrenor_id, not_metni").eq("durum", "bekliyor").order("created_at").limit(50);
     const talepSatirlari = (talepVeri ?? []) as { id: string; musteri_id: string; tercih_tarih: string; tercih_saat: string | null; antrenor_id: string | null; not_metni: string | null }[];
     const talepMusteriAdi = await musteriAdlariGetir(supabase, talepSatirlari.map((t) => t.musteri_id));
@@ -174,7 +174,7 @@ export default async function DerslerSayfasi({
         </p>
       )}
 
-      <BekleyenTalepler talepler={bekleyenTalepler} />
+      <BekleyenTalepler talepler={bekleyenTalepler} saltOkunur={!yonetim} />
 
       <div className="flex flex-wrap items-center gap-2">
         <Link href={baglanti(donem.oncekiParam)} aria-label="Önceki gün" className={buttonVariants({ variant: "outline", size: "icon" })}>

@@ -132,9 +132,18 @@ describe("müşteri talep ve öneriler: ders talebi, yorum, yetki, tenant izolas
       expect(hata).toMatch(/permission denied/);
     });
 
-    it("muhasebe ve antrenör talepleri okuyamaz", async () => {
+    it("muhasebe talepleri okuyamaz; antrenör yalnız KENDİNE yönlendirilenleri okur, başkasınınkini ve yönlendirilmemişi görmez", async () => {
       expect(await kimlikle(db, muhasebeA, async () => (await db.query("SELECT id FROM public.musteri_ders_talebi")).rows.length)).toBe(0);
-      expect(await kimlikle(db, antrenor1, async () => (await db.query("SELECT id FROM public.musteri_ders_talebi")).rows.length)).toBe(0);
+      const antrenor2 = await kullaniciOlustur(db, { isletmeId: isletmeA, rol: "antrenor" });
+      const kendine = await talep(resepsiyonA, musteri, "2026-10-10", "18:00", antrenor2);
+      await talep(resepsiyonA, musteri, "2026-10-10", null, null);
+      const gorulen = await kimlikle(db, antrenor2, async () => (await db.query<{ id: string; antrenor_id: string }>("SELECT id, antrenor_id FROM public.musteri_ders_talebi")).rows);
+      expect(gorulen.map((r) => r.id)).toEqual([kendine]);
+      expect(gorulen.every((r) => r.antrenor_id === antrenor2)).toBe(true);
+      // antrenor1'e yönlendirilmiş talepler antrenor2'ye görünmez; antrenor1 yalnız kendininkileri görür.
+      const a1 = await kimlikle(db, antrenor1, async () => (await db.query<{ antrenor_id: string }>("SELECT antrenor_id FROM public.musteri_ders_talebi")).rows);
+      expect(a1.length).toBeGreaterThan(0);
+      expect(a1.every((r) => r.antrenor_id === antrenor1)).toBe(true);
     });
   });
 

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PanelKabugu } from "@/components/panel/kabuk";
 import { gecerliKullanici } from "@/lib/auth/gecerli-kullanici";
+import { bildirimKaynagiVarMi, bildirimleriGetir } from "@/lib/panel/bildirimler";
 import { anaOgelerIcinRol, gruplarIcinRol } from "@/lib/panel/menu-gruplari";
 import { MUSTERI_ROLLERI, ROL_ETIKETLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
@@ -37,14 +38,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     logoUrlKoyu = data?.logo_url_koyu ?? null;
   }
 
-  // Üst çubuk: yalnız yönetici/resepsiyon müşteri arar ve ders açar; bekleyen izin rozeti yalnız yöneticide.
+  // Üst çubuk: yalnız yönetici/resepsiyon müşteri arar ve ders açar; zil = rolün her yerden gelen bekleyen bildirimleri (lib/panel/bildirimler.ts).
   const musteriYetkisi = !!kullanici?.rol && (MUSTERI_ROLLERI as readonly string[]).includes(kullanici.rol);
-  let bekleyenIzin: number | null = null;
-  if (kullanici?.rol === "isletme_admin") {
-    const supabase = await createClient();
-    const { count } = await supabase.from("izin_talebi").select("id", { count: "exact", head: true }).eq("durum", "beklemede");
-    bekleyenIzin = count ?? 0;
-  }
+  const bildirimSayisi = bildirimKaynagiVarMi(kullanici?.rol) ? (await bildirimleriGetir(await createClient(), kullanici?.rol)).toplam : null;
 
   return (
     <PanelKabugu
@@ -55,7 +51,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       logoUrl={logoUrl}
       logoUrlKoyu={logoUrlKoyu}
       cikisEylemi={cikisYap}
-      ust={{ yeniDers: musteriYetkisi, bekleyenIzin, aramaVar: musteriYetkisi }}
+      ust={{ yeniDers: musteriYetkisi, bildirimSayisi, aramaVar: musteriYetkisi }}
     >
       {children}
     </PanelKabugu>

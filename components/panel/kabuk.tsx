@@ -47,8 +47,8 @@ export function PanelKabugu({
   logoUrl: string | null;
   logoUrlKoyu: string | null;
   cikisEylemi: () => Promise<void>;
-  /** Masaüstü üst çubuğu ayarları: Yeni Ders düğmesi, bekleyen izin rozeti (yalnız yönetici), müşteri arama. */
-  ust: { yeniDers: boolean; bekleyenIzin: number | null; aramaVar: boolean };
+  /** Masaüstü üst çubuğu ayarları: Yeni Ders düğmesi, bildirim zili sayısı, müşteri arama. */
+  ust: { yeniDers: boolean; bildirimSayisi: number | null; aramaVar: boolean };
   children: React.ReactNode;
 }) {
   const yol = usePathname();
@@ -147,7 +147,7 @@ export function PanelKabugu({
       </header>
 
       <div className="md:pl-16 xl:pl-[260px]">
-        <UstCubuk kullaniciAdi={kullaniciAdi} rolEtiketi={rolEtiketi} yeniDers={ust.yeniDers} bekleyenIzin={ust.bekleyenIzin} aramaVar={ust.aramaVar} />
+        <UstCubuk kullaniciAdi={kullaniciAdi} rolEtiketi={rolEtiketi} yeniDers={ust.yeniDers} bildirimSayisi={ust.bildirimSayisi} aramaVar={ust.aramaVar} />
         <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 p-4 pb-28 md:p-6 md:pb-8 xl:p-8">{children}</main>
       </div>
 

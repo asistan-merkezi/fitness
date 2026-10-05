@@ -5,24 +5,23 @@ import { Bell, CalendarDays, Plus, Search } from "lucide-react";
 import { TemaDugmesi } from "@/components/panel/tema-anahtari";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
-import { IZIN_TAKIBI_YOLU } from "@/lib/panel/izin-yollari";
 
 /**
- * Masaüstü/tablet üst çubuğu (klinikteki yerleşim): müşteri arama, Yeni Ders, bildirim, takvim, tema, kullanıcı.
+ * Masaüstü/tablet üst çubuğu (klinikteki yerleşim): müşteri arama, Yeni Ders, bildirimler (zil), takvim, tema, kullanıcı.
  * Mobilde gösterilmez (mobilde kendi üst çubuğu ve alt menüsü vardır).
  */
 export function UstCubuk({
   kullaniciAdi,
   rolEtiketi,
   yeniDers,
-  bekleyenIzin,
+  bildirimSayisi,
   aramaVar,
 }: {
   kullaniciAdi: string;
   rolEtiketi: string | null;
   yeniDers: boolean;
-  /** Yalnız işletme yöneticisi için onay bekleyen izin sayısı; diğerlerinde null. */
-  bekleyenIzin: number | null;
+  /** Rolün görebildiği tüm kaynaklardan bekleyen bildirim sayısı (lib/panel/bildirimler.ts); rolün kaynağı yoksa null → zil çizilmez. */
+  bildirimSayisi: number | null;
   aramaVar: boolean;
 }) {
   return (
@@ -49,16 +48,16 @@ export function UstCubuk({
         </Link>
       )}
 
-      {bekleyenIzin !== null && (
+      {bildirimSayisi !== null && (
         <Link
-          href={IZIN_TAKIBI_YOLU}
-          aria-label={bekleyenIzin > 0 ? `${bekleyenIzin} izin talebi onay bekliyor` : "İzin talepleri"}
-          title={bekleyenIzin > 0 ? `${bekleyenIzin} izin talebi onay bekliyor` : "İzin talepleri"}
+          href="/panel/bildirimler"
+          aria-label={bildirimSayisi > 0 ? `Bildirimler, ${bildirimSayisi} bekleyen` : "Bildirimler"}
+          title={bildirimSayisi > 0 ? `${bildirimSayisi} bekleyen bildirim` : "Bildirimler"}
           className="relative inline-flex size-9 items-center justify-center rounded-lg border border-border bg-surface-2 text-foreground transition-colors hover:bg-surface-3"
         >
           <Bell className="size-4" strokeWidth={1.5} aria-hidden />
-          {bekleyenIzin > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-bold text-white tabular-nums">{bekleyenIzin > 9 ? "9+" : bekleyenIzin}</span>
+          {bildirimSayisi > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-bold text-white tabular-nums">{bildirimSayisi > 9 ? "9+" : bildirimSayisi}</span>
           )}
         </Link>
       )}
