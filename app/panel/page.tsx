@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Banknote, BellRing, CalendarClock, CalendarDays, CalendarPlus, LayoutDashboard, Link2Off, Phone, RefreshCw, ScanLine, UserPlus, Users } from "lucide-react";
+import { BellRing, CalendarClock, CalendarDays, CalendarPlus, LayoutDashboard, Link2Off, Phone, RefreshCw, ScanLine, UserPlus, Users } from "lucide-react";
 import { CanliCizelge } from "@/components/panel/canli-cizelge";
 import type { CizelgeDersi } from "@/components/panel/gun-cizelgesi";
 import { Avatar } from "@/components/ui/avatar";
@@ -71,8 +71,10 @@ export default async function PanelAnaSayfa() {
       ? supabase
           .from("uyelik_gorunum")
           .select("id, musteri_id, paket_adi, tur, baslangic_tarihi, bitis_tarihi, kalan_hak, toplam_hak, gecerli_durum")
+          // Bitişi geçmiş üyelikler (yıllar içinde çoğunluk) indeksle elenir; geçerli durum yalnız adaylarda hesaplanır.
+          .eq("durum", "aktif")
+          .or(`and(kalan_hak.lte.2,or(bitis_tarihi.is.null,bitis_tarihi.gte.${bugun})),and(bitis_tarihi.gte.${bugun},bitis_tarihi.lte.${hafta})`)
           .eq("gecerli_durum", "aktif")
-          .or(`kalan_hak.lte.2,bitis_tarihi.lte.${hafta}`)
           .order("bitis_tarihi", { ascending: true, nullsFirst: false })
           .limit(10)
       : Promise.resolve(null),

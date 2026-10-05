@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -15,11 +15,14 @@ export type HizSiniriKurali = { anahtar: string; limit: number; pencereSn: numbe
 
 const IP_BILINMIYOR = "bilinmiyor";
 
-/** IP düz saklanmaz (KVKK); kısa bir özet yeterlidir. */
+/**
+ * IP düz saklanmaz (KVKK). Tuzsuz SHA-256 yetmez: IPv4 uzayı küçüktür, özet birkaç dakikada tersine çevrilir. Sunucudaki gizli
+ * anahtarla HMAC alınır (yeni ortam değişkeni gerekmez; anahtar değişirse yalnız sayaçlar sıfırlanır).
+ */
 async function istemciImzasi(): Promise<string> {
   const h = await headers();
   const ham = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? IP_BILINMIYOR;
-  return createHash("sha256").update(ham).digest("hex").slice(0, 16);
+  return createHmac("sha256", process.env.SUPABASE_SERVICE_ROLE_KEY ?? "").update(ham).digest("hex").slice(0, 16);
 }
 
 async function kuralUygula(kural: HizSiniriKurali, artir: boolean): Promise<boolean> {

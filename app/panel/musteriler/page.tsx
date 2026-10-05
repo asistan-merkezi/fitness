@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellRing, ChevronRight, Users } from "lucide-react";
+import { BellRing, ChevronRight, RefreshCw, Users } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -94,6 +94,10 @@ export default async function MusterilerSayfasi({ searchParams }: { searchParams
               <BellRing className="size-4" aria-hidden />
               Ön Kayıtlar
               {(onKayitSayisi ?? 0) > 0 && <StatusBadge tone="amber">{onKayitSayisi}</StatusBadge>}
+            </Link>
+            <Link href="/panel/musteriler/yenileme" className={buttonVariants({ variant: "outline" })}>
+              <RefreshCw className="size-4" aria-hidden />
+              Yenileme Takibi
             </Link>
             <HizliKayitDialog />
           </span>

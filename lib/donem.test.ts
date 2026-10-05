@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ayDonemi, donemCoz, gunDonemi, gunEkle, gunFarki, yilDonemi } from "./donem";
+import { ayDonemi, donemCoz, gunDonemi, gunEkle, gunFarki, haftaGunuIlkTarih, takvimTarihiGecerli, yilDonemi } from "./donem";
 
 describe("gunDonemi — İstanbul takvim günü, yarı açık aralık", () => {
   it("00:00 İstanbul = önceki gün 21:00Z; bitiş ertesi gün 00:00 İstanbul (dışlayıcı)", () => {
@@ -103,5 +103,31 @@ describe("gunFarki", () => {
     expect(gunFarki("2026-12-31", "2027-01-01")).toBe(1);
     expect(gunFarki("2028-02-28", "2028-03-01")).toBe(2);
     expect(gunFarki("2026-10-01", "2026-10-01")).toBe(0);
+  });
+});
+
+describe("haftaGunuIlkTarih", () => {
+  it("aynı gün kendisi, sonraki günler ileri sarar (yıl sonu dahil)", () => {
+    // 2026-10-05 Pazartesi
+    expect(haftaGunuIlkTarih("2026-10-05", 1)).toBe("2026-10-05");
+    expect(haftaGunuIlkTarih("2026-10-05", 0)).toBe("2026-10-11");
+    expect(haftaGunuIlkTarih("2026-10-05", 6)).toBe("2026-10-10");
+    // 2026-12-31 Perşembe → sonraki Pazartesi 2027-01-04
+    expect(haftaGunuIlkTarih("2026-12-31", 1)).toBe("2027-01-04");
+  });
+});
+
+describe("takvimTarihiGecerli", () => {
+  it("olmayan günleri reddeder (Date.parse bunları kabul ediyordu)", () => {
+    expect(takvimTarihiGecerli("2026-02-28")).toBe(true);
+    expect(takvimTarihiGecerli("2028-02-29")).toBe(true);
+    expect(takvimTarihiGecerli("2026-02-29")).toBe(false);
+    expect(takvimTarihiGecerli("2026-02-31")).toBe(false);
+    expect(takvimTarihiGecerli("2026-04-31")).toBe(false);
+    expect(takvimTarihiGecerli("2026-13-01")).toBe(false);
+    expect(takvimTarihiGecerli("26-01-01")).toBe(false);
+    // Doğum tarihi gibi alanlar için 2000 öncesi geçerlidir.
+    expect(takvimTarihiGecerli("1985-06-15")).toBe(true);
+    expect(takvimTarihiGecerli("1899-12-31")).toBe(false);
   });
 });

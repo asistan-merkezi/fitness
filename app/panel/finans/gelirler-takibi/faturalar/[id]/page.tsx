@@ -11,7 +11,8 @@ import { kurusTLyazi } from "@/lib/para";
 import { FINANS_ROLLERI, FINANS_YONETIM_ROLLERI, MUSTERI_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { FaturaIptalFormu } from "../../formlar";
-import { FATURA_BILGI_ETIKETLERI, musteriAdlariGetir } from "../../sorgular";
+import { musteriAdlariGetir } from "@/lib/panel/musteri-adlari";
+import { FATURA_BILGI_ETIKETLERI } from "../../sorgular";
 import { EksikBilgiDialog } from "./eksik-bilgi-dialog";
 import { FaturaKesFormu, type FaturasizSatir } from "./fatura-kes-formu";
 

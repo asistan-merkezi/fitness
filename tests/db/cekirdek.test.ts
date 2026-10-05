@@ -71,7 +71,8 @@ describe("çekirdek şema: tenant izolasyonu, rol koruması, audit", () => {
     const h4 = await kimlikle(db, adminA, () =>
       hataMesaji(() => db.query("UPDATE public.kullanici SET isletme_id = $1 WHERE id = $2", [isletmeB, resepsiyonA]))
     );
-    expect(h4).toMatch(/isletme_degistirilemez/);
+    // 20261005100000 sonrası kolon yetkisi daha önce durdurur; tetikleyici ikinci savunma.
+    expect(h4).toMatch(/isletme_degistirilemez|permission denied/);
     // Yönetici kendi işletmesindeki personelin rolünü değiştirebilir
     await kimlikle(db, adminA, () => db.query("UPDATE public.kullanici SET rol = 'muhasebe' WHERE id = $1", [resepsiyonA]));
     await db.query("UPDATE public.kullanici SET rol = 'resepsiyon' WHERE id = $1", [resepsiyonA]);

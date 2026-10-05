@@ -1,4 +1,5 @@
 import { toUTC } from "@/lib/datetime";
+import { gunEkle } from "@/lib/donem";
 
 /**
  * Ders formlarındaki "müsait saat" seçicisinin ortak hesabı (Tek Ders + Periyodik Ders; klinikteki
@@ -49,14 +50,7 @@ export function musaitSaatler(tarih: string, sureDk: number, dolu: Aralik[], eks
   return saatAdaylari(ekstra).filter((s) => gelecekteMi(tarih, s) && saatMusaitMi(tarih, s, sureDk, dolu));
 }
 
-/** "yyyy-MM-dd" tarihine n gün ekler. */
-export function gunEkleStr(tarih: string, n: number) {
-  const d = new Date(`${tarih}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-}
-
 /** Haftalık serinin ilk gerçekleşecek tarihi: `tarih` günü saati geçmişse bir sonraki hafta. */
 export function ilkGerceklesenTarih(tarih: string, saat: string) {
-  return gelecekteMi(tarih, saat) ? tarih : gunEkleStr(tarih, 7);
+  return gelecekteMi(tarih, saat) ? tarih : gunEkle(tarih, 7);
 }

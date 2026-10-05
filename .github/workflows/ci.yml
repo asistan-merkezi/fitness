@@ -1,0 +1,39 @@
+# Her push ve pull request'te: tip denetimi, lint, testler (PGlite = gerçek Postgres üzerinde migration + RLS testleri dahil), build.
+# Gizli anahtar GEREKMEZ: build sahte Supabase adresiyle yapılır (sayfalar dinamiktir, build sırasında veritabanına bağlanılmaz).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  dogrula:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: https://ornek.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-sahte-anahtar
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tip denetimi
+        run: npx tsc --noEmit
+      - name: Lint
+        run: npm run lint
+      - name: Testler
+        run: npm test
+      - name: Build
+        run: npm run build

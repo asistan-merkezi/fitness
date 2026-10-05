@@ -51,6 +51,13 @@ export function gunEkle(tarih: string, gun: number): string {
   return `${t.getUTCFullYear()}-${pad2(t.getUTCMonth() + 1)}-${pad2(t.getUTCDate())}`;
 }
 
+/** `tarih` ve sonrasındaki ilk verilen haftanın günü (0=Pazar … 6=Cumartesi), "YYYY-MM-DD"; `tarih` o günse kendisi. */
+export function haftaGunuIlkTarih(tarih: string, haftaninGunu: number): string {
+  const [y, m, d] = tarih.split("-").map(Number);
+  const bugunHaftaGunu = new Date(Date.UTC(y, m - 1, d, 12)).getUTCDay();
+  return gunEkle(tarih, (haftaninGunu - bugunHaftaGunu + 7) % 7);
+}
+
 /** İki "YYYY-MM-DD" arasındaki takvim günü farkı (b - a); saat dilimi kaymasından bağımsız. */
 export function gunFarki(a: string, b: string): number {
   const [ay, am, ad] = a.split("-").map(Number);
@@ -102,12 +109,19 @@ export function yilDonemi(yil: number): Donem {
   return donemOlustur("yil", ayBaslangiciUTC(yil, 1), ayBaslangiciUTC(yil + 1, 1), String(yil), String(yil), String(yil - 1), String(yil + 1));
 }
 
-function gecerliTarih(s: string): boolean {
+/**
+ * "YYYY-MM-DD" gerçek bir takvim günü mü (1900–2100)? `Date.parse("2026-02-31")` GEÇERLİ sayar (3 Mart'a kayar); bu yüzden
+ * ay sonu ayrıca denetlenir. Tüm tarih doğrulamaları bunu kullanmalı; alana özgü aralık (geçmiş/gelecek) şemada ayrıca denetlenir.
+ */
+export function takvimTarihiGecerli(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const [y, m, d] = s.split("-").map(Number);
-  if (y < 2000 || y > 2100 || m < 1 || m > 12 || d < 1) return false;
+  if (y < 1900 || y > 2100 || m < 1 || m > 12 || d < 1) return false;
   return d <= new Date(Date.UTC(y, m, 0)).getUTCDate();
 }
+
+/** Dönem gezintisi 2000–2100 ile sınırlı (URL ile uç yıllara gidilip boş/ağır sorgu üretilmesin). */
+const donemGunuGecerli = (s: string) => takvimTarihiGecerli(s) && Number(s.slice(0, 4)) >= 2000;
 
 /**
  * URL parametrelerinden dönem çözer. Bozuk/eksik parametre HATA değil varsayılan üretir:
@@ -119,7 +133,7 @@ export function donemCoz(parametreler: { gorunum?: string; tarih?: string }): Do
   const p = parametreler.tarih ?? "";
 
   if (gorunum === "gun") {
-    return gunDonemi(gecerliTarih(p) ? p : bugun);
+    return gunDonemi(donemGunuGecerli(p) ? p : bugun);
   }
   if (gorunum === "ay") {
     const m = /^(\d{4})-(\d{2})$/.exec(p);

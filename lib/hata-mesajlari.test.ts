@@ -10,6 +10,12 @@ describe("hataMesajiCoz", () => {
   it("kod mesajın içinde geçse de çözer", () => {
     expect(hataMesajiCoz({ message: "ERROR: yetki_yetersiz CONTEXT: PL/pgSQL" })).toBe("Bu işlem için yetkiniz yok.");
   });
+  it("iç içe kodlarda en özgül olan kazanır (izin_cakisma ≠ cakisma)", () => {
+    expect(hataMesajiCoz({ message: "izin_cakisma" })).toMatch(/izin/);
+    expect(hataMesajiCoz({ message: "ERROR: izin_cakisma" })).toMatch(/izin/);
+    expect(hataMesajiCoz({ message: "dondurma_cakisma" })).toMatch(/dondurma/);
+    expect(hataMesajiCoz({ message: "cakisma" })).toMatch(/çakışan bir ders/);
+  });
   it("izin/RLS ve kısıt ihlalleri", () => {
     expect(hataMesajiCoz({ message: 'new row violates row-level security policy for table "musteri"' })).toMatch(/yetkiniz/);
     expect(hataMesajiCoz({ message: 'duplicate key value violates unique constraint "x"' })).toMatch(/zaten mevcut/);

@@ -18,7 +18,7 @@ import { FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
 import { dersDurumOzetiHesapla, dersleriGetir, finansOzetiCoz, gelirOzetiHesapla, giderKirilimiHesapla, gunlukDokumHesapla, odenmisGiderleriGetir, toplamGider, yillikSeriGetir } from "@/lib/raporlar/hesaplamalar";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
-import { musteriAdlariGetir } from "../gelirler-takibi/sorgular";
+import { musteriAdlariGetir } from "@/lib/panel/musteri-adlari";
 
 export const metadata: Metadata = { title: "Finans Raporları" };
 

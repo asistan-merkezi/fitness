@@ -15,7 +15,7 @@ import { FINANS_ROLLERI, FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { FaturaIptalFormu } from "../formlar";
-import { musteriAdlariGetir } from "../sorgular";
+import { musteriAdlariGetir } from "@/lib/panel/musteri-adlari";
 
 export const metadata: Metadata = { title: "Kesilen Faturalar" };
 

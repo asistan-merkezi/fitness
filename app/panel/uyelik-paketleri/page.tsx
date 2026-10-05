@@ -7,6 +7,7 @@ import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
 import { bugunIstanbulTarihi } from "@/lib/datetime";
 import { paketArsivdeMi } from "@/lib/panel/paket";
 import { MUSTERI_ROLLERI, PAKET_GORUNTULEME_ROLLERI } from "@/lib/panel/roller";
+import { tumSayfalariOku } from "@/lib/supabase/sayfali-oku";
 import { createClient } from "@/lib/supabase/server";
 import type { PaketSatiri } from "@/types/veritabani";
 import { PaketSatiri as PaketSatiriBileseni } from "./paket-satiri";
@@ -22,13 +23,24 @@ export default async function PaketlerSayfasi() {
   const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
-  const [{ data }, { data: uyeVeri }] = await Promise.all([
+  // Aktif üye sayısı: PostgREST tek seferde en çok 1000 satır döndürür; sayfalı okunur. Bitişi geçmiş/iptal üyelikler (yıllar içinde
+  // biriken çoğunluk) indeksle önceden elenir, geçerli durum hesabı yalnız adaylarda çalışır.
+  const [{ data }, uyeVeri] = await Promise.all([
     supabase.from("uyelik_paketi").select("*").order("ad"),
-    supabase.from("uyelik_gorunum").select("paket_id").in("gecerli_durum", ["aktif", "dondurulmus"]).limit(5000),
+    tumSayfalariOku<{ paket_id: string }>((bas, son) =>
+      supabase
+        .from("uyelik_gorunum")
+        .select("paket_id")
+        .eq("durum", "aktif")
+        .or(`bitis_tarihi.is.null,bitis_tarihi.gte.${bugun}`)
+        .in("gecerli_durum", ["aktif", "dondurulmus"])
+        .order("id")
+        .range(bas, son)
+    ),
   ]);
   const paketler = (data ?? []) as PaketSatiri[];
   const uyeSayisi = new Map<string, number>();
-  for (const u of (uyeVeri ?? []) as { paket_id: string }[]) uyeSayisi.set(u.paket_id, (uyeSayisi.get(u.paket_id) ?? 0) + 1);
+  for (const u of uyeVeri) uyeSayisi.set(u.paket_id, (uyeSayisi.get(u.paket_id) ?? 0) + 1);
 
   const guncel = paketler.filter((p) => !paketArsivdeMi(p, bugun));
   const arsiv = paketler.filter((p) => paketArsivdeMi(p, bugun));

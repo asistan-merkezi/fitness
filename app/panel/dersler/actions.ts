@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { dersDurumSemasi, dersOlusturSemasi, dersTasiSemasi, formVerisi, ilkHata, periyodikDersSemasi } from "@/lib/dogrulama";
 import { bugunIstanbulTarihi, formatDateForInput, gunYazi, toUTC } from "@/lib/datetime";
+import { gunEkle, haftaGunuIlkTarih } from "@/lib/donem";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
 import { dersHakMesaji, dersMesaji } from "@/lib/mesaj/olaylar";
@@ -60,17 +61,14 @@ export async function periyodikDersOlustur(_onceki: Onceki, formData: FormData):
   const v = ayristirma.data;
 
   const simdi = Date.now();
-  const bugun = new Date(`${bugunIstanbulTarihi()}T00:00:00Z`);
+  const bugun = bugunIstanbulTarihi();
   let olusan = 0;
   const atlanan: string[] = [];
 
   for (const { gun, saat } of v.gunler) {
-    const ilk = new Date(bugun);
-    ilk.setUTCDate(ilk.getUTCDate() + ((Number(gun) - ilk.getUTCDay() + 7) % 7));
+    const ilk = haftaGunuIlkTarih(bugun, Number(gun));
     for (let hafta = 0; hafta < PERIYODIK_HAFTA; hafta++) {
-      const gunTarihi = new Date(ilk);
-      gunTarihi.setUTCDate(gunTarihi.getUTCDate() + hafta * 7);
-      const tarih = gunTarihi.toISOString().slice(0, 10);
+      const tarih = gunEkle(ilk, hafta * 7);
       const baslangic = toUTC(`${tarih}T${saat}:00`);
       if (Date.parse(baslangic) <= simdi) continue; // bugünün geçmiş saati
 

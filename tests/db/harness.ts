@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { btree_gist } from "@electric-sql/pglite/contrib/btree_gist";
+import { pg_trgm } from "@electric-sql/pglite/contrib/pg_trgm";
 
 /**
  * Migration'ları GERÇEK Postgres (PGlite, WASM) üzerinde çalıştırır. Supabase'in
@@ -38,7 +39,7 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authen
 const MIGRATION_DIZINI = path.resolve(__dirname, "../../supabase/migrations");
 
 export async function yeniVeritabani(): Promise<PGlite> {
-  const db = new PGlite({ extensions: { btree_gist } });
+  const db = new PGlite({ extensions: { btree_gist, pg_trgm } });
   await db.exec(SUPABASE_TAKLIDI);
   const dosyalar = readdirSync(MIGRATION_DIZINI)
     .filter((f) => f.endsWith(".sql"))

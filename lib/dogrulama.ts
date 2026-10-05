@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { bugunIstanbulTarihi, toUTC } from "@/lib/datetime";
+import { takvimTarihiGecerli } from "@/lib/donem";
 import { MANUEL_HAREKET_TURLERI, ODEME_YONTEMLI_TURLER } from "@/lib/panel/personel-odeme";
 import { ibanGecerli, ibanTemizle } from "@/lib/iban";
 import { tlYaziKurusa } from "@/lib/para";
@@ -21,8 +22,6 @@ export function formVerisi(formData: FormData): Record<string, string | string[]
   }
   return cikti;
 }
-
-const GUN_FORMATI = /^\d{4}-\d{2}-\d{2}$/;
 
 const isimAlani = z.string().trim().min(2, "En az 2 karakter girin.").max(100, "En fazla 100 karakter.").transform(isimNormalle);
 const isimOpsiyonel = z
@@ -60,7 +59,7 @@ const gunOpsiyonel = z
   .string()
   .trim()
   .optional()
-  .refine((v) => !v || (GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v))), "Geçerli bir tarih girin.")
+  .refine((v) => !v || (takvimTarihiGecerli(v)), "Geçerli bir tarih girin.")
   .transform((v) => (v ? v : null));
 /** Onay kutusu: işaretliyse "on"/"true" gelir, değilse alan hiç gelmez. */
 const onay = z
@@ -309,7 +308,7 @@ const dersZamani = z
   .string()
   .trim()
   .regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, "Geçerli bir tarih ve saat girin.")
-  .refine((v) => !Number.isNaN(Date.parse(`${v}:00Z`)), "Geçerli bir tarih ve saat girin.")
+  .refine((v) => takvimTarihiGecerli(v.slice(0, 10)) && Number(v.slice(11, 13)) < 24 && Number(v.slice(14, 16)) < 60, "Geçerli bir tarih ve saat girin.")
   .transform((v) => toUTC(v));
 const uuidOpsiyonel = z
   .string()
@@ -402,7 +401,7 @@ const hareketTarihi = z
   .string()
   .trim()
   .optional()
-  .refine((v) => !v || (GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v))), "Geçerli bir tarih girin.")
+  .refine((v) => !v || (takvimTarihiGecerli(v)), "Geçerli bir tarih girin.")
   .transform((v) => (v ? v : undefined));
 /** Kasa/bankadan para çıkan türlerde (ödeme, avans) yöntem zorunludur; prim/yol/yemek/mesai/kesinti'de sorulmaz. */
 const yontemKurali = (v: { tur: string; yontem?: string }, ctx: z.RefinementCtx) => {
@@ -449,7 +448,7 @@ export const personelTopluOdemeSemasi = z
 const gunZorunlu = z
   .string()
   .trim()
-  .refine((v) => GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v)), "Geçerli bir tarih girin.");
+  .refine((v) => takvimTarihiGecerli(v), "Geçerli bir tarih girin.");
 export const IZIN_TIPLERI = ["yillik", "mazeret", "rapor"] as const;
 
 export const izinTalepSemasi = z
@@ -570,7 +569,7 @@ export const onKayitSemasi = z.object({
   dogum_tarihi: z
     .string()
     .trim()
-    .refine((v) => GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v)), "Geçerli bir doğum tarihi girin.")
+    .refine((v) => takvimTarihiGecerli(v), "Geçerli bir doğum tarihi girin.")
     .refine((v) => !resitDegilMi(v), "18 yaşından küçükler için kayıt resepsiyonda veli ile birlikte yapılır."),
   kvkk: onay.refine((v) => v, "Devam etmek için aydınlatma metnini okuduğunuzu onaylayın."),
   ticari: onay,
@@ -733,7 +732,7 @@ export const dersTalebiSemasi = z.object({
   tarih: z
     .string()
     .trim()
-    .refine((v) => GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v)), "Geçerli bir tercih tarihi girin."),
+    .refine((v) => takvimTarihiGecerli(v), "Geçerli bir tercih tarihi girin."),
   saat: z
     .string()
     .trim()
@@ -872,7 +871,7 @@ export const PUANTAJ_DURUMLARI = ["geldi", "gelmedi", "raporlu", "yarim_gun"] as
 export const puantajKaydetSemasi = z
   .object({
     kullanici_id: z.uuid(),
-    tarih: z.string().trim().refine((v) => GUN_FORMATI.test(v) && !Number.isNaN(Date.parse(v)), "Geçerli bir tarih girin."),
+    tarih: z.string().trim().refine((v) => takvimTarihiGecerli(v), "Geçerli bir tarih girin."),
     durum: z.enum(PUANTAJ_DURUMLARI, { error: "Durumu seçin." }),
     giris: saatOpsiyonel,
     cikis: saatOpsiyonel,
@@ -880,4 +879,4 @@ export const puantajKaydetSemasi = z
     not_metni: metinOpsiyonel(200),
   })
   .refine((v) => !v.giris || !v.cikis || v.cikis > v.giris, { path: ["cikis"], message: "Çıkış saati girişten sonra olmalı." });
-export const puantajSilSemasi = z.object({ kullanici_id: z.uuid(), tarih: z.string().trim().refine((v) => GUN_FORMATI.test(v), "Geçerli bir tarih girin.") });
+export const puantajSilSemasi = z.object({ kullanici_id: z.uuid(), tarih: z.string().trim().refine(takvimTarihiGecerli, "Geçerli bir tarih girin.") });

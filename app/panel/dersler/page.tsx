@@ -12,11 +12,12 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { sayfaYetkisiIste } from "@/lib/auth/sayfa-yetkisi";
 import { bugunIstanbulTarihi, formatDateForInput, formatTime, gunYazi } from "@/lib/datetime";
-import { gunDonemi } from "@/lib/donem";
+import { gunDonemi, takvimTarihiGecerli } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
 import { dersEylemleri } from "@/lib/panel/ders";
 import { DERS_DURUMU, RISK_TIPI_ETIKETLERI } from "@/lib/panel/etiketler";
 import { MUSTERI_ROLLERI } from "@/lib/panel/roller";
+import { musteriAdlariGetir } from "@/lib/panel/musteri-adlari";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import type { DersSeansiSatiri } from "@/types/veritabani";
@@ -29,7 +30,6 @@ import { YeniDersDialog } from "./yeni-ders-dialog";
 export const metadata: Metadata = { title: "Dersler" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const GUN = /^\d{4}-\d{2}-\d{2}$/;
 const BEKLEYEN = ["planlandi", "ertelendi"];
 const KAPANAN = ["iptal", "gelmedi"];
 
@@ -47,7 +47,7 @@ export default async function DerslerSayfasi({
   const yonetim = (MUSTERI_ROLLERI as readonly string[]).includes(kullanici.rol);
 
   const bugun = bugunIstanbulTarihi();
-  const gunParam = gun && GUN.test(gun) && !Number.isNaN(Date.parse(gun)) ? gun : bugun;
+  const gunParam = gun && takvimTarihiGecerli(gun) ? gun : bugun;
   const donem = gunDonemi(gunParam);
   const antrenorFiltre = yonetim && antrenor && UUID.test(antrenor) ? antrenor : null;
 
@@ -68,12 +68,7 @@ export default async function DerslerSayfasi({
   const dersler = (dersVeri ?? []) as DersSeansiSatiri[];
   const antrenorler = (antrenorVeri ?? []) as { id: string; ad_soyad: string }[];
 
-  const musteriAdi = new Map<string, string>();
-  const idler = [...new Set(dersler.map((d) => d.musteri_id))];
-  if (idler.length) {
-    const { data } = await supabase.from("musteri_ozet").select("id, ad_soyad").in("id", idler);
-    for (const m of (data ?? []) as { id: string; ad_soyad: string }[]) musteriAdi.set(m.id, m.ad_soyad);
-  }
+  const musteriAdi = await musteriAdlariGetir(supabase, dersler.map((d) => d.musteri_id));
   // Pasif antrenör de geçmiş derste görünebilsin diye ders satırlarındaki antrenörler ayrıca çözülür.
   const antrenorAdi = new Map(antrenorler.map((a) => [a.id, a.ad_soyad]));
   const eksikAntrenor = [...new Set(dersler.map((d) => d.antrenor_id))].filter((id) => !antrenorAdi.has(id));
@@ -86,12 +81,7 @@ export default async function DerslerSayfasi({
   if (yonetim) {
     const { data: talepVeri } = await supabase.from("musteri_ders_talebi").select("id, musteri_id, tercih_tarih, tercih_saat, antrenor_id, not_metni").eq("durum", "bekliyor").order("created_at").limit(50);
     const talepSatirlari = (talepVeri ?? []) as { id: string; musteri_id: string; tercih_tarih: string; tercih_saat: string | null; antrenor_id: string | null; not_metni: string | null }[];
-    const talepMusteriIdleri = [...new Set(talepSatirlari.map((t) => t.musteri_id))];
-    const talepMusteriAdi = new Map<string, string>();
-    if (talepMusteriIdleri.length) {
-      const { data } = await supabase.from("musteri_ozet").select("id, ad_soyad").in("id", talepMusteriIdleri);
-      for (const m of (data ?? []) as { id: string; ad_soyad: string }[]) talepMusteriAdi.set(m.id, m.ad_soyad);
-    }
+    const talepMusteriAdi = await musteriAdlariGetir(supabase, talepSatirlari.map((t) => t.musteri_id));
     bekleyenTalepler = talepSatirlari.map((t) => ({ id: t.id, musteri_id: t.musteri_id, musteri_adi: talepMusteriAdi.get(t.musteri_id) ?? "Müşteri", tercih_tarih: t.tercih_tarih, tercih_saat: t.tercih_saat, antrenor_adi: t.antrenor_id ? (antrenorAdi.get(t.antrenor_id) ?? null) : null, not_metni: t.not_metni }));
   }
 

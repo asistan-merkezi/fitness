@@ -19,6 +19,9 @@ type KuyrukSatiri = {
 
 export type KuyrukIslemSonucu = { durum: MesajKuyrukDurum; hataMesaji?: string };
 
+/** Satır başka bir işleyicide ya da artık beklemede değil: bu çağrı hiçbir şey yapmadı. */
+const SAHIPLENILEMEDI = "satır zaten işleniyor veya beklemede değil";
+
 async function bakiyeyiSenkronla(admin: SupabaseClient, isletmeId: string, kanal: MesajKanal, bakiye: number, versiyon: number) {
   const { error } = await admin.rpc("mesaj_kredi_senkronla", { p_isletme_id: isletmeId, p_kanal: kanal, p_bakiye: bakiye, p_versiyon: versiyon });
   if (error) console.error("[mesaj] mesaj_kredi_senkronla hatası:", error.message);
@@ -35,12 +38,12 @@ export async function kuyrukSatiriniIsle(admin: SupabaseClient, satirId: string)
   // Satırı ATOMİK sahiplen: yalnız hâlâ beklemede olan satır "gonderiliyor"a geçer; iki işleyici aynı satırı iki kez işleyemez.
   const { data: satir, error: sahiplenmeHatasi } = await admin
     .from("mesaj_kuyrugu")
-    .update({ durum: "gonderiliyor" })
+    .update({ durum: "gonderiliyor", sahiplenme_zamani: new Date().toISOString() })
     .eq("id", satirId)
     .eq("durum", "beklemede")
     .select("id, isletme_id, kanal, alici_adres, gonderilecek_metin, tetikleyici_kodu, test_mi, deneme_sayisi, idempotency_anahtari")
     .maybeSingle<KuyrukSatiri>();
-  if (sahiplenmeHatasi || !satir) return { durum: "beklemede", hataMesaji: "satır zaten işleniyor veya beklemede değil" };
+  if (sahiplenmeHatasi || !satir) return { durum: "beklemede", hataMesaji: SAHIPLENILEMEDI };
 
   const sonuc = await merkezeGonder({
     isletmeId: satir.isletme_id,
@@ -82,14 +85,53 @@ async function geciciHataIsle(admin: SupabaseClient, satir: KuyrukSatiri, hataMe
   return { durum: "beklemede", hataMesaji };
 }
 
-/** Vadesi gelmiş bekleyen satırları (en fazla `limit`) sırayla işler; cron işi kullanır. */
-export async function bekleyenleriIsle(admin: SupabaseClient, limit = 50): Promise<{ islenen: number; gonderilen: number }> {
-  if (!merkezYapilandirildiMi()) return { islenen: 0, gonderilen: 0 };
-  const { data } = await admin.from("mesaj_kuyrugu").select("id").eq("durum", "beklemede").lte("planlanan_zaman", new Date().toISOString()).order("planlanan_zaman").limit(limit);
+/** Sahiplenip bu süreden uzun "gonderiliyor"da kalan satır takılmış sayılır (merkez isteği 15 sn'de zaman aşımına uğrar). */
+const TAKILMA_ESIGI_DK = 15;
+const PARTI = 50;
+
+/**
+ * Gönderim sırasında süreç ölürse (zaman aşımı, deploy) satır "gonderiliyor"da kalır: yeniden kuyruğa alınır.
+ * Merkez aynı Idempotency-Key'i tekrar göndermediği için mesaj çift gitmez.
+ */
+async function takilanlariKurtar(admin: SupabaseClient): Promise<number> {
+  const esik = new Date(Date.now() - TAKILMA_ESIGI_DK * 60_000).toISOString();
+  const { data, error } = await admin
+    .from("mesaj_kuyrugu")
+    .update({ durum: "beklemede", sahiplenme_zamani: null })
+    .eq("durum", "gonderiliyor")
+    .or(`sahiplenme_zamani.is.null,sahiplenme_zamani.lt.${esik}`)
+    .select("id");
+  if (error) console.error("[mesaj] takılan satırlar kurtarılamadı:", error.message);
+  return data?.length ?? 0;
+}
+
+/**
+ * Vadesi gelmiş bekleyen satırları zaman bütçesi içinde, kuyruk boşalana kadar 50'lik partilerle işler (cron işi kullanır).
+ * Tek parti sınırı TÜM işletmeler için günde 50 mesaj demekti; işletme sayısı arttıkça kuyruk sonsuza dek birikirdi.
+ */
+export async function bekleyenleriIsle(admin: SupabaseClient, butceMs = 200_000): Promise<{ kurtarilan: number; islenen: number; gonderilen: number }> {
+  if (!merkezYapilandirildiMi()) return { kurtarilan: 0, islenen: 0, gonderilen: 0 };
+  const bitis = Date.now() + butceMs;
+  const kurtarilan = await takilanlariKurtar(admin);
+  let islenen = 0;
   let gonderilen = 0;
-  for (const { id } of (data ?? []) as { id: string }[]) {
-    const sonuc = await kuyrukSatiriniIsle(admin, id);
-    if (sonuc.durum === "gonderildi") gonderilen += 1;
+  while (Date.now() < bitis) {
+    const { data, error } = await admin.from("mesaj_kuyrugu").select("id").eq("durum", "beklemede").lte("planlanan_zaman", new Date().toISOString()).order("planlanan_zaman").limit(PARTI);
+    if (error) {
+      console.error("[mesaj] bekleyenler okunamadı:", error.message);
+      break;
+    }
+    const satirlar = (data ?? []) as { id: string }[];
+    let ilerledi = false;
+    for (const { id } of satirlar) {
+      if (Date.now() >= bitis) break;
+      const sonuc = await kuyrukSatiriniIsle(admin, id);
+      islenen += 1;
+      if (sonuc.durum === "gonderildi") gonderilen += 1;
+      // Geçici hatada satır ileri bir zamana ertelenir, kalıcıda kuyruktan çıkar: her iki durumda da sonraki okumada gelmez.
+      if (sonuc.hataMesaji !== SAHIPLENILEMEDI) ilerledi = true;
+    }
+    if (satirlar.length < PARTI || !ilerledi) break;
   }
-  return { islenen: (data ?? []).length, gonderilen };
+  return { kurtarilan, islenen, gonderilen };
 }

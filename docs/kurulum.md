@@ -25,6 +25,21 @@ Bu adımlar **sizin** Supabase projenizde yapılır; anahtarlar asla repoya yaz�
 | `20260930200000_mesajlasma.sql` | SMS/WhatsApp/Mail kuralları, kuyruk, merkez kredi aynası, zamanlanmış tarama yardımcıları |
 | `20260930210000_qr_kodlari.sql` | QR kısa kodu, QR aç/kapa, hız sınırı, müşteri ön kayıt kuyruğu, anket yanıtları |
 | `20260930220000_finans.sql` | Kasa/banka hesap ayrımı, gider, manuel kasa-banka hareketi, hesap hareket görünümü, kategori iskontosu, fatura kuyruğu, finans özeti |
+| `20261001100000_musteri_talep_oneri.sql` | müşteri ders talebi ve ders/antrenör yorumu (puanlı) |
+| `20261001110000_ders_seansi_realtime.sql` | günün çizelgesi canlı güncelleme (Realtime yayını) |
+| `20261001120000_pozisyonlar.sql` | departman bazlı pozisyon kataloğu, personel-pozisyon bağı |
+| `20261001130000_arac_ve_kamusal_donem.sql` | işletme araçları, gider-araç bağı, kamu ödemesi dönemi (`gider_ekle` yeni imza) |
+| `20261001140000_kasa_banka_kart_ayrimi.sql` | kasa / banka / kredi kartı ayrımı, `hesap_ozet` |
+| `20261002100000_musteri_risk_bayragi.sql` | müşteri risk bayrakları (risk bandı) |
+| `20261002110000_fatura_bilgi_kontrolu_ve_cari_ozet.sql` | fatura öncesi alıcı bilgisi kontrolü, cari alacak özeti |
+| `20261002120000_personel_kisisel_basvuru_puantaj.sql` | personel kişisel bilgi + belgeler, iş başvuruları, puantaj |
+| `20261002130000_muhasebe_sync_entegrasyonu.sql` | Paraşüt API kimlik bilgileri (işletme başına) |
+| `20261003100000_personel_hesap_odeme_kategorileri.sql` | personel ödeme kategorileri (maaş, avans, prim, yol, yemek, fazla mesai, kesinti) |
+| `20261003110000_personel_hizli_puantaj.sql` | listeden tek tıkla giriş/çıkış (yönetici) |
+| `20261003120000_personel_kendi_puantaj.sql` | personelin kendi giriş/çıkışı |
+| `20261003130000_personel_ucret_gecmisi_ve_kisisel_alanlar.sql` | ücret geçmişi, ek kişisel alanlar |
+| `20261004100000_kasa_kontrol_ve_hareket_detay.sql` | kasa başlangıç/dengeleme, hareket detay görünümü |
+| `20261005100000_uzun_vade_dayaniklilik.sql` | audit bölümü kurtarma + saklama süresi, mesaj kuyruğu kurtarma, `kullanici` kolon yetkisi, müşteri arama indeksi (`pg_trgm`), cron çalışma kaydı |
 
 Supabase CLI ile: `supabase link --project-ref <ref>` → `supabase db push`. SQL Editor ile: her dosyayı sırayla yapıştırın.
 Hepsi idempotent yazılmıştır; yine de **önce test projesinde** deneyin.
@@ -32,7 +47,7 @@ Hepsi idempotent yazılmıştır; yine de **önce test projesinde** deneyin.
 > Bu migration'lar PGlite (gerçek Postgres, WASM) üzerinde `npm test` ile test edilir (RLS, rol matrisi, KVKK kuralları, cari, üyelik, check-in). Gerçek Supabase'de çalıştırıldığında çıkan farkları (uzantı şeması, varsayılan yetkiler vb.) bildirin.
 
 ## 3. Ortam değişkenleri
-`cp .env.example .env.local` ve doldurun (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`). `.env.local` commit edilmez.
+`cp .env.example .env.local` ve doldurun (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`; isteğe bağlı `MESAJ_MERKEZ_*`, `AUDIT_LOG_SAKLAMA_AY`). `.env.local` commit edilmez.
 
 ## 4. İlk işletme ve yönetici
 ```bash
@@ -50,3 +65,12 @@ Sonra `npm run dev` → `/giris`. Yönetici, **Personel** ekranından diğer hes
 - Test projesinde: üyelik sat → check-in → ödeme → iade → dondurma akışı elle denendi mi?
 - `docs/hukuki/` taslakları **avukat onayından** geçti mi? (sağlık verisi ve 18 yaş altı dahil)
 - `npm test && npm run lint && npx tsc --noEmit && npm run build` temiz mi?
+
+## 7. İzleme
+- `/api/saglik`: veritabanı erişimi + her cron işinin son 26 saatte başarıyla bitip bitmediği. Sağlıklıysa **200**, değilse **503**; herkese açık yanıt yalnız `{"ok": true|false}`.
+- Ayrıntı için: `curl -H "Authorization: Bearer $CRON_SECRET" https://<alan-adı>/api/saglik` (hangi cron, kaç saat önce, son hata kodu).
+- Dış izleme (ör. UptimeRobot, ücretsiz plan): HTTP(s) monitor → `https://<alan-adı>/api/saglik`, 5 dk aralık, 503'te e-posta/SMS uyarısı. İlk kurulumda cron'lar ilk kez çalışana kadar (en geç ertesi sabah) "hiç çalışmadı" uyarısı normaldir.
+- En sık arıza: `CRON_SECRET` Vercel'de tanımlı değil → cron her gün 401 alır, sağlık ucu bunu "hiç çalışmadı" olarak gösterir.
+
+## 8. Yedek ve geri yükleme
+Ayrıntılı prova adımları: [`docs/yedek-geri-yukleme.md`](yedek-geri-yukleme.md). Canlıya çıkmadan önce bir kez, sonra üç ayda bir yapılır.

@@ -6,7 +6,7 @@ import { formVerisi, ilkHata, paketSemasi } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
 import { MUSTERI_ROLLERI, PAKET_GORUNTULEME_ROLLERI, YONETICI_ROLLERI } from "@/lib/panel/roller";
-import { musteriAdlariGetir } from "../finans/gelirler-takibi/sorgular";
+import { musteriAdlariGetir } from "@/lib/panel/musteri-adlari";
 
 type Onceki = EylemSonucu | null;
 

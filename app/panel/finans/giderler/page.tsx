@@ -9,6 +9,7 @@ import { donemCoz } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
 import { GIDER_KATEGORI_ETIKETLERI, kategoriDagilimi, vadesiGecti } from "@/lib/panel/finans";
 import { FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
+import { tumSayfalariOku } from "@/lib/supabase/sayfali-oku";
 import { createClient } from "@/lib/supabase/server";
 import { DonemSecici } from "./donem-secici";
 import { BekleyenGiderler, GiderTablosu } from "./gider-tablosu";
@@ -27,13 +28,15 @@ export default async function GiderlerSayfasi({ searchParams }: { searchParams: 
   const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
-  const [{ data: donemVeri }, bekleyenler, { data: hesapVeri }, araclar] = await Promise.all([
-    supabase.from("gider").select(GIDER_SECIM).eq("tur", "gider").gte("tarih", donem.baslangicTarih).lt("tarih", donem.bitisTarih).order("tarih", { ascending: false }).limit(500),
+  // Yıllık görünümde satır sayısı yüzleri aşar: toplam eksik kalmasın diye sayfalı okunur (PostgREST tek seferde ≤1000 döndürür).
+  const [giderler, bekleyenler, { data: hesapVeri }, araclar] = await Promise.all([
+    tumSayfalariOku<Gider>((bas, son) =>
+      supabase.from("gider").select(GIDER_SECIM).eq("tur", "gider").gte("tarih", donem.baslangicTarih).lt("tarih", donem.bitisTarih).order("tarih", { ascending: false }).order("id").range(bas, son)
+    ),
     bekleyenGiderleriGetir(supabase, "gider"),
     supabase.rpc("banka_hesap_secenekleri"),
     araclariGetir(supabase),
   ]);
-  const giderler = (donemVeri ?? []) as Gider[];
   const hesaplar = (hesapVeri ?? []) as { id: string; ad: string }[];
 
   const odenenler = giderler.filter((g) => g.durum === "odendi");

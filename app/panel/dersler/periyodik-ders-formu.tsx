@@ -7,9 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { bugunIstanbulTarihi } from "@/lib/datetime";
+import { gunEkle, haftaGunuIlkTarih } from "@/lib/donem";
 import { cn, telefonGoster } from "@/lib/utils";
 import { periyodikDersOlustur } from "./actions";
-import { gunEkleStr, ilkGerceklesenTarih, saatAdaylari, saatMusaitMi } from "@/lib/panel/musait-saatler";
+import { ilkGerceklesenTarih, saatAdaylari, saatMusaitMi } from "@/lib/panel/musait-saatler";
 import { useMesgulAraliklar, type MusteriSecenegi } from "./ders-sorgulari";
 import { MusteriArama } from "./musteri-arama";
 
@@ -27,11 +28,7 @@ const GUNLER = [
 type GunSaat = { gun: string; saat: string };
 
 /** Bugünden (İstanbul) itibaren verilen haftanın gününe (0=Pazar) denk gelen ilk tarih, "yyyy-MM-dd". */
-function sonrakiTarih(haftaninGunu: number): string {
-  const d = new Date(`${bugunIstanbulTarihi()}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + ((haftaninGunu - d.getUTCDay() + 7) % 7));
-  return d.toISOString().slice(0, 10);
-}
+const sonrakiTarih = (haftaninGunu: number) => haftaGunuIlkTarih(bugunIstanbulTarihi(), haftaninGunu);
 
 /**
  * Periyodik ders formu (klinikteki Periyodik Randevu düzeni): Müşteri → Haftada kaç gün → Günler → Süre → Antrenör → Alan → her gün için müsait saat butonları.
@@ -63,7 +60,7 @@ export function PeriyodikDersFormu({
   const ilkTarihler = gunler.map((g) => sonrakiTarih(Number(g.gun))).sort();
   const { veri: mesgul, yukleniyor } = useMesgulAraliklar(
     kaynakHazir ? ilkTarihler[0] : "",
-    kaynakHazir ? gunEkleStr(ilkTarihler[ilkTarihler.length - 1], 7) : "",
+    kaynakHazir ? gunEkle(ilkTarihler[ilkTarihler.length - 1], 7) : "",
     efektifAntrenorId,
     efektifAlanId,
     musteriId

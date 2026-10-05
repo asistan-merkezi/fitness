@@ -8,6 +8,7 @@ import { donemCoz } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
 import { vadesiGecti } from "@/lib/panel/finans";
 import { FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
+import { tumSayfalariOku } from "@/lib/supabase/sayfali-oku";
 import { createClient } from "@/lib/supabase/server";
 import { DonemSecici } from "../donem-secici";
 import { BekleyenGiderler, GiderTablosu } from "../gider-tablosu";
@@ -44,14 +45,16 @@ export default async function KamusalGiderlerSayfasi({ searchParams }: { searchP
   const supabase = await createClient();
   // Dönemi bu yıl olan kamu ödemeleri (dönemsiz eski kayıtlar için vade/tarih de aranır); asıl ayrım giderDonemi ile yapılır.
   const aralik = (alan: string) => `and(${alan}.gte.${yilDonemi.baslangicTarih},${alan}.lt.${yilDonemi.bitisTarih})`;
-  const [{ data: yilVeri }, bekleyenler, { data: hesapVeri }, araclar] = await Promise.all([
-    supabase.from("gider").select(GIDER_SECIM).eq("tur", "kamusal").or(`donem_yil.eq.${yil},${aralik("tarih")},${aralik("vade_tarihi")}`).order("tarih", { ascending: false }).limit(1000),
+  const [yilVeri, bekleyenler, { data: hesapVeri }, araclar] = await Promise.all([
+    tumSayfalariOku<Gider>((bas, son) =>
+      supabase.from("gider").select(GIDER_SECIM).eq("tur", "kamusal").or(`donem_yil.eq.${yil},${aralik("tarih")},${aralik("vade_tarihi")}`).order("tarih", { ascending: false }).order("id").range(bas, son)
+    ),
     bekleyenGiderleriGetir(supabase, "kamusal"),
     supabase.rpc("banka_hesap_secenekleri"),
     araclariGetir(supabase),
   ]);
   const hesaplar = (hesapVeri ?? []) as { id: string; ad: string }[];
-  const yilKayitlari = ((yilVeri ?? []) as Gider[]).filter((g) => giderDonemi(g).yil === Number(yil));
+  const yilKayitlari = yilVeri.filter((g) => giderDonemi(g).yil === Number(yil));
   const donemKayitlari = yilKayitlari.filter((g) => {
     const { yil: dy, ay: da } = giderDonemi(g);
     return donem.gorunum === "yil" || `${dy}-${String(da).padStart(2, "0")}` === donem.param;

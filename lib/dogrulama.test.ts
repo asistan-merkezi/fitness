@@ -52,6 +52,9 @@ describe("musteriSemasi", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-10-05T10:00:00Z"));
     expect(ilkHata(musteriSemasi.safeParse({ ...temel, dogum_tarihi: "2027-01-01" }))).toMatch(/geçmiş/);
+    // Olmayan gün reddedilir (Date.parse "2026-02-31"i 3 Mart sayıyordu); 2000 öncesi doğum tarihi geçerlidir.
+    expect(ilkHata(musteriSemasi.safeParse({ ...temel, dogum_tarihi: "1990-02-31" }))).toMatch(/tarih/i);
+    expect(musteriSemasi.safeParse({ ...temel, dogum_tarihi: "1985-06-15" }).success).toBe(true);
   });
 
   it("18 yaş altı: veli ve veli onayı zorunlu; İstanbul gününe göre 18. gün", () => {

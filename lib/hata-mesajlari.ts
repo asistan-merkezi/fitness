@@ -107,7 +107,16 @@ const KOD_MESAJLARI: Record<string, string> = {
   puantaj_giris_yok: "Önce giriş kaydedilmeli.",
   puantaj_saat_gecersiz: "Çıkış saati giriş saatinden sonra olmalı.",
   borc_islendi: "Bu ders için cariye borç yazıldı; durumu geri alınamaz. Düzeltme gerekiyorsa cari üzerinden yapın.",
+  durum_gecersiz: "Geçersiz durum seçimi.",
+  gun_gecersiz: "Gün sayısı geçersiz.",
+  on_kayit_bulunamadi: "Ön kayıt bulunamadı.",
+  on_kayit_sonuclanmis: "Bu ön kayıt zaten sonuçlandırılmış.",
+  kanal_gecersiz: "Geçersiz mesaj kanalı.",
+  miktar_gecersiz: "Miktar geçersiz.",
 };
+
+/** Uzun kod önce: `izin_cakisma` mesajı `cakisma` kodunu da içerir, en özgül kod kazanmalı. */
+const KODLAR_UZUNDAN_KISAYA = Object.keys(KOD_MESAJLARI).sort((a, b) => b.length - a.length);
 
 /** Kısıt/izin ihlalleri için ipuçları (Postgres standart mesajından). */
 const IPUCLARI: Array<[RegExp, string]> = [
@@ -129,9 +138,9 @@ export const GENEL_HATA = "Bir hata oluştu, lütfen tekrar deneyin.";
 
 export function hataMesajiCoz(hata: { message?: string } | null | undefined): string {
   const mesaj = hata?.message ?? "";
-  for (const [kod, metin] of Object.entries(KOD_MESAJLARI)) {
-    if (mesaj === kod || mesaj.includes(kod)) return metin;
-  }
+  if (Object.hasOwn(KOD_MESAJLARI, mesaj)) return KOD_MESAJLARI[mesaj];
+  const kod = KODLAR_UZUNDAN_KISAYA.find((k) => mesaj.includes(k));
+  if (kod) return KOD_MESAJLARI[kod];
   for (const [desen, metin] of IPUCLARI) {
     if (desen.test(mesaj)) return metin;
   }
