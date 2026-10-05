@@ -32,7 +32,7 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
       { href: "/panel/finans/giderler", etiket: "Giderler", ikon: "gider", roller: FINANS_YONETIM_ROLLERI },
       { href: "/panel/finans/gelirler-takibi", etiket: "Gelirler Takibi ve Faturalandırma", ikon: "gelir", roller: FINANS_ROLLERI },
       { href: "/panel/finans/banka", etiket: "Banka", ikon: "banka", roller: FINANS_YONETIM_ROLLERI },
-      { href: "/panel/kasa", etiket: "Kasa", ikon: "kasa", roller: FINANS_ROLLERI },
+      { href: "/panel/kasa", etiket: "Kasa", ikon: "kasa", roller: FINANS_YONETIM_ROLLERI },
       { href: "/panel/finans/kredi-karti", etiket: "Kredi Kartı", ikon: "kredi-karti", roller: FINANS_YONETIM_ROLLERI },
       { href: "/panel/finans/raporlar", etiket: "Raporlar", ikon: "rapor", roller: FINANS_YONETIM_ROLLERI },
       { href: "/panel/finans/kategori-iskonto-oranlari", etiket: "Kategori / İskonto Oranları", ikon: "iskonto", roller: FINANS_YONETIM_ROLLERI },

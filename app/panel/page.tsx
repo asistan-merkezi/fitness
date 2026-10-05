@@ -256,10 +256,9 @@ export default async function PanelAnaSayfa() {
       {musteriYetkisi && (
         <section aria-label="Hızlı işlemler" className="flex flex-col gap-3">
           <h2 className="text-etiket text-muted-foreground">Hızlı resepsiyon işlemleri</h2>
-          <div className="grid grid-cols-2 gap-3 sm:max-w-2xl sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:max-w-xl sm:grid-cols-3">
             {[
               { href: "/panel/dersler?yeni=1", etiket: "Yeni Ders", ikon: CalendarPlus },
-              { href: "/panel/kasa/hizli-tahsilat", etiket: "Hızlı Tahsilat", ikon: Banknote },
               { href: "/panel/musteriler/yeni", etiket: "Yeni Kayıt", ikon: UserPlus },
               { href: "/panel/check-in", etiket: "Check-in", ikon: ScanLine },
             ].map(({ href, etiket, ikon: Ikon }) => (

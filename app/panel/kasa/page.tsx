@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { redirect } from "next/navigation";
-import { Plus } from "lucide-react";
 import { KlinikDonemCubugu } from "@/components/panel/donem-cubugu";
 import { GrupluDefter } from "@/components/panel/gruplu-defter";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
@@ -14,7 +10,7 @@ import { donemCoz } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
 import { defterSatirlari } from "@/lib/panel/finans";
 import { hesapHareketleriGetir } from "@/lib/panel/hesap-hareketleri";
-import { FINANS_ROLLERI } from "@/lib/panel/roller";
+import { FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { CikanDiyalog, GirenDiyalog } from "../finans/hesaplar/hareket-diyaloglari";
 import { KasaKontrolDiyalog } from "../finans/hesaplar/kasa-kontrol";
@@ -26,9 +22,8 @@ type IsletmeKasa = { kasa_acilis_kurus: number; kasa_baslangic_zamani: string | 
 type OzetSatiri = { hesap: string; banka_hesap_id: string | null; acilis_kurus: number; giren_kurus: number; cikan_kurus: number; kapanis_kurus: number };
 
 export default async function KasaSayfasi({ searchParams }: { searchParams: Promise<{ gorunum?: string; tarih?: string }> }) {
-  const { kullanici } = await sayfaYetkisiIste(FINANS_ROLLERI);
-  // Resepsiyon gider/personel/banka hareketlerini göremez: yalnız tahsilat özetine yönlenir.
-  if (kullanici.rol === "resepsiyon") redirect("/panel/kasa/tahsilatlar");
+  const { kullanici } = await sayfaYetkisiIste(FINANS_YONETIM_ROLLERI);
+  // Resepsiyon kasa hareketlerini görmez; müşteri tahsilatını müşteri kartı Cari sekmesinden alır.
   const yonetici = kullanici.rol === "isletme_admin";
   const parametreler = await searchParams;
   // Klinikteki gibi Kasa Yıllık/Aylık görünür; eski günlük bağlantılar o ayın görünümüne düşer.
@@ -52,18 +47,6 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Kasa"
         breadcrumb="Finans › Kasa"
-        actions={
-          <span className="flex flex-wrap items-center gap-2">
-            <Link href="/panel/kasa/tahsilatlar" className={buttonVariants({ variant: "outline" })}>
-              Tahsilat Özeti
-            </Link>
-            {yonetici && (
-              <Link href="/panel/kasa/hizli-tahsilat" className={buttonVariants()}>
-                <Plus aria-hidden /> Hızlı Tahsilat
-              </Link>
-            )}
-          </span>
-        }
       />
 
       <div className="flex flex-wrap items-center justify-end gap-3">
