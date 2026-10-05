@@ -7,7 +7,7 @@ import { IsletmeLogosu } from "@/components/marka/isletme-logosu";
 import { Logo } from "@/components/marka/logo";
 import { MENU_IKONLARI, type MenuIkonu } from "@/components/panel/menu-ikonlari";
 import { TemaDugmesi } from "@/components/panel/tema-anahtari";
-import { UstCubuk } from "@/components/panel/ust-cubuk";
+import { BildirimZili, UstCubuk } from "@/components/panel/ust-cubuk";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -47,7 +47,7 @@ export function PanelKabugu({
   logoUrl: string | null;
   logoUrlKoyu: string | null;
   cikisEylemi: () => Promise<void>;
-  /** Masaüstü üst çubuğu ayarları: Yeni Ders düğmesi, bildirim zili sayısı, müşteri arama. */
+  /** Üst çubuk ayarları: Yeni Ders düğmesi (masaüstü), bildirim zili sayısı (masaüstü + mobil), müşteri arama (masaüstü). */
   ust: { yeniDers: boolean; bildirimSayisi: number | null; aramaVar: boolean };
   children: React.ReactNode;
 }) {
@@ -139,6 +139,7 @@ export function PanelKabugu({
           </span>
         </span>
         <span className="flex items-center gap-2">
+          <BildirimZili sayi={ust.bildirimSayisi} />
           <TemaDugmesi etiketGoster={false} />
           <Link href="/panel/daha-fazla" aria-label="Hesap ve diğer menüler">
             <Avatar name={kullaniciAdi} size="sm" />

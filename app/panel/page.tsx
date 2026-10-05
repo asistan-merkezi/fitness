@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BellRing, CalendarClock, CalendarDays, CalendarPlus, LayoutDashboard, Link2Off, Phone, RefreshCw, ScanLine, UserPlus, Users } from "lucide-react";
+import { CalendarDays, CalendarPlus, LayoutDashboard, Link2Off, UserPlus, Users } from "lucide-react";
 import { CanliCizelge } from "@/components/panel/canli-cizelge";
 import type { CizelgeDersi } from "@/components/panel/gun-cizelgesi";
 import { Avatar } from "@/components/ui/avatar";
@@ -9,19 +9,15 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { gecerliKullanici } from "@/lib/auth/gecerli-kullanici";
 import { bugunIstanbulTarihi, gunYazi } from "@/lib/datetime";
-import { gunDonemi, gunEkle } from "@/lib/donem";
-import { kurusTLyazi } from "@/lib/para";
+import { gunDonemi } from "@/lib/donem";
 import { ANTRENOR_DURUMU, antrenorDurumu } from "@/lib/panel/antrenor-durumu";
 import { FINANS_ROLLERI, MUSTERI_ROLLERI } from "@/lib/panel/roller";
-import { kalanGun } from "@/lib/panel/uyelik-ozeti";
 import { createClient } from "@/lib/supabase/server";
 import { telefonGoster } from "@/lib/utils";
-import type { DersDurumu, UyelikGorunumSatiri } from "@/types/veritabani";
+import type { DersDurumu } from "@/types/veritabani";
 
-type YaklasanSatiri = Pick<UyelikGorunumSatiri, "id" | "musteri_id" | "paket_adi" | "tur" | "bitis_tarihi" | "kalan_hak" | "baslangic_tarihi" | "toplam_hak" | "gecerli_durum">;
 type DersSatiri = { id: string; musteri_id: string; antrenor_id: string; alan_id: string; baslangic: string; bitis: string; durum: DersDurumu };
 
 export default async function PanelAnaSayfa() {
@@ -59,24 +55,12 @@ export default async function PanelAnaSayfa() {
 
   const supabase = await createClient();
   const bugun = bugunIstanbulTarihi();
-  const hafta = gunEkle(bugun, 7);
   const donem = gunDonemi(bugun);
   const simdiIso = new Date().toISOString();
 
-  const [girisSonuc, yaklasanSonuc, dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, isletmeSonuc, onKayitSonuc, dersTalebiSonuc] = await Promise.all([
+  const [girisSonuc, dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, isletmeSonuc, onKayitSonuc, dersTalebiSonuc] = await Promise.all([
     musteriYetkisi
       ? supabase.from("giris_kaydi").select("id", { count: "exact", head: true }).eq("giris_tarihi", bugun).eq("sonuc", "kabul").eq("iptal", false)
-      : Promise.resolve(null),
-    finansYetkisi
-      ? supabase
-          .from("uyelik_gorunum")
-          .select("id, musteri_id, paket_adi, tur, baslangic_tarihi, bitis_tarihi, kalan_hak, toplam_hak, gecerli_durum")
-          // Bitişi geçmiş üyelikler (yıllar içinde çoğunluk) indeksle elenir; geçerli durum yalnız adaylarda hesaplanır.
-          .eq("durum", "aktif")
-          .or(`and(kalan_hak.lte.2,or(bitis_tarihi.is.null,bitis_tarihi.gte.${bugun})),and(bitis_tarihi.gte.${bugun},bitis_tarihi.lte.${hafta})`)
-          .eq("gecerli_durum", "aktif")
-          .order("bitis_tarihi", { ascending: true, nullsFirst: false })
-          .limit(10)
       : Promise.resolve(null),
     // Dersler RLS ile süzülür: yönetici/resepsiyon hepsini, antrenör yalnız kendi derslerini görür.
     dersYetkisi
@@ -96,23 +80,13 @@ export default async function PanelAnaSayfa() {
   const onKayitlar = (onKayitSonuc?.data ?? []) as { id: string; ad_soyad: string; telefon: string; created_at: string }[];
   const onKayitSayisi = onKayitSonuc?.count ?? 0;
 
-  const yaklasan = (yaklasanSonuc?.data ?? []) as YaklasanSatiri[];
   const dersler = (dersSonuc?.data ?? []) as DersSatiri[];
-  const musteriIdleri = [...new Set([...yaklasan.map((u) => u.musteri_id), ...dersler.map((d) => d.musteri_id), ...dersTalepleri.map((t) => t.musteri_id)])];
+  const musteriIdleri = [...new Set([...dersler.map((d) => d.musteri_id), ...dersTalepleri.map((t) => t.musteri_id)])];
 
   const adHaritasi = new Map<string, string>();
-  const telefonHaritasi = new Map<string, string>();
-  const bakiyeHaritasi = new Map<string, number>();
   if (musteriIdleri.length) {
-    const yaklasanIdleri = yaklasan.map((u) => u.musteri_id);
-    const [{ data: adlar }, { data: telefonlar }, { data: bakiyeler }] = await Promise.all([
-      supabase.from("musteri_ozet").select("id, ad_soyad").in("id", musteriIdleri),
-      musteriYetkisi && yaklasanIdleri.length ? supabase.from("musteri").select("id, telefon").in("id", yaklasanIdleri) : Promise.resolve({ data: [] }),
-      finansYetkisi && yaklasanIdleri.length ? supabase.from("musteri_bakiye").select("musteri_id, bakiye_kurus").in("musteri_id", yaklasanIdleri) : Promise.resolve({ data: [] }),
-    ]);
+    const { data: adlar } = await supabase.from("musteri_ozet").select("id, ad_soyad").in("id", musteriIdleri);
     for (const m of (adlar ?? []) as { id: string; ad_soyad: string }[]) adHaritasi.set(m.id, m.ad_soyad);
-    for (const m of (telefonlar ?? []) as { id: string; telefon: string }[]) telefonHaritasi.set(m.id, m.telefon);
-    for (const b of (bakiyeler ?? []) as { musteri_id: string; bakiye_kurus: number }[]) bakiyeHaritasi.set(b.musteri_id, Number(b.bakiye_kurus));
   }
 
   const antrenorler = (antrenorSonuc?.data ?? []) as { id: string; ad_soyad: string }[];
@@ -258,11 +232,10 @@ export default async function PanelAnaSayfa() {
       {musteriYetkisi && (
         <section aria-label="Hızlı işlemler" className="flex flex-col gap-3">
           <h2 className="text-etiket text-muted-foreground">Hızlı resepsiyon işlemleri</h2>
-          <div className="grid grid-cols-2 gap-3 sm:max-w-xl sm:grid-cols-3">
+          <div className="grid grid-cols-2 gap-3 sm:max-w-md">
             {[
               { href: "/panel/dersler?yeni=1", etiket: "Yeni Ders", ikon: CalendarPlus },
               { href: "/panel/musteriler/yeni", etiket: "Yeni Kayıt", ikon: UserPlus },
-              { href: "/panel/check-in", etiket: "Check-in", ikon: ScanLine },
             ].map(({ href, etiket, ikon: Ikon }) => (
               <Link
                 key={href}
@@ -277,75 +250,6 @@ export default async function PanelAnaSayfa() {
             ))}
           </div>
         </section>
-      )}
-
-      {finansYetkisi && (
-        <Card className="gap-4 p-5">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
-              <BellRing className="size-5 text-primary" strokeWidth={1.5} aria-hidden />
-              Yenileme Bekleyen Üyelikler
-            </h2>
-            {yaklasan.length > 0 && <StatusBadge tone="amber">{yaklasan.length} üyelik</StatusBadge>}
-          </div>
-          {yaklasan.length === 0 ? (
-            <EmptyState compact icon={CalendarClock} title="Yenileme bekleyen üyelik yok." description="Kalan hakkı 2 veya daha az, ya da 7 gün içinde bitecek aktif üyelikler burada listelenir." />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Müşteri</TableHead>
-                  <TableHead className="hidden md:table-cell">Paket</TableHead>
-                  <TableHead className="hidden sm:table-cell">Bitiş</TableHead>
-                  <TableHead className="hidden md:table-cell">Bakiye</TableHead>
-                  <TableHead className="text-right">Kalan</TableHead>
-                  {musteriYetkisi && <TableHead className="text-right">İşlem</TableHead>}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {yaklasan.map((u) => {
-                  const musteriAdi = adHaritasi.get(u.musteri_id) ?? "Müşteri";
-                  const telefon = telefonHaritasi.get(u.musteri_id);
-                  const bakiye = bakiyeHaritasi.get(u.musteri_id) ?? 0;
-                  const gun = kalanGun(u, bugun);
-                  const hakUyari = u.kalan_hak !== null && u.kalan_hak <= 2;
-                  return (
-                    <TableRow key={u.id}>
-                      <TableCell>
-                        <Link href={`/panel/musteriler/${u.musteri_id}?sekme=uyelikler`} className="flex items-center gap-2 hover:underline">
-                          <Avatar name={musteriAdi} size="sm" />
-                          <span className="font-medium">{musteriAdi}</span>
-                        </Link>
-                      </TableCell>
-                      <TableCell className="hidden text-muted-foreground md:table-cell">{u.paket_adi}</TableCell>
-                      <TableCell className="hidden text-muted-foreground tabular-nums sm:table-cell">{u.bitis_tarihi ? gunYazi(u.bitis_tarihi) : "Süresiz"}</TableCell>
-                      <TableCell className={bakiye < 0 ? "hidden font-semibold text-destructive tabular-nums md:table-cell" : "hidden text-muted-foreground tabular-nums md:table-cell"}>
-                        {bakiye < 0 ? `${kurusTLyazi(-bakiye)} borç` : kurusTLyazi(bakiye)}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <StatusBadge tone="amber">{hakUyari ? `${u.kalan_hak} hak` : gun === 0 ? "Bugün" : `${gun} gün`}</StatusBadge>
-                      </TableCell>
-                      {musteriYetkisi && (
-                        <TableCell className="text-right">
-                          <span className="inline-flex gap-2">
-                            {telefon && (
-                              <a href={`tel:${telefon}`} className={buttonVariants({ variant: "outline", size: "sm" })} aria-label={`${musteriAdi} ara`}>
-                                <Phone aria-hidden />
-                              </a>
-                            )}
-                            <Link href={`/panel/musteriler/${u.musteri_id}?sekme=uyelikler#uyelik-sat`} className={buttonVariants({ size: "sm" })}>
-                              <RefreshCw aria-hidden /> Yenile
-                            </Link>
-                          </span>
-                        </TableCell>
-                      )}
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </Card>
       )}
     </>
   );

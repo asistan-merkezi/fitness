@@ -48,19 +48,7 @@ export function UstCubuk({
         </Link>
       )}
 
-      {bildirimSayisi !== null && (
-        <Link
-          href="/panel/bildirimler"
-          aria-label={bildirimSayisi > 0 ? `Bildirimler, ${bildirimSayisi} bekleyen` : "Bildirimler"}
-          title={bildirimSayisi > 0 ? `${bildirimSayisi} bekleyen bildirim` : "Bildirimler"}
-          className="relative inline-flex size-9 items-center justify-center rounded-lg border border-border bg-surface-2 text-foreground transition-colors hover:bg-surface-3"
-        >
-          <Bell className="size-4" strokeWidth={1.5} aria-hidden />
-          {bildirimSayisi > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-bold text-white tabular-nums">{bildirimSayisi > 9 ? "9+" : bildirimSayisi}</span>
-          )}
-        </Link>
-      )}
+      <BildirimZili sayi={bildirimSayisi} />
 
       <Link href="/panel/dersler" aria-label="Ders takvimi" title="Ders takvimi" className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-surface-2 text-foreground transition-colors hover:bg-surface-3">
         <CalendarDays className="size-4" strokeWidth={1.5} aria-hidden />
@@ -76,5 +64,23 @@ export function UstCubuk({
         </div>
       </div>
     </header>
+  );
+}
+
+/** Bildirimler zili (masaüstü üst çubuk + mobil üst çubuk ortak); `sayi` null → rolün kaynağı yok, çizilmez. */
+export function BildirimZili({ sayi }: { sayi: number | null }) {
+  if (sayi === null) return null;
+  return (
+    <Link
+      href="/panel/bildirimler"
+      aria-label={sayi > 0 ? `Bildirimler, ${sayi} bekleyen` : "Bildirimler"}
+      title={sayi > 0 ? `${sayi} bekleyen bildirim` : "Bildirimler"}
+      className="relative inline-flex size-9 items-center justify-center rounded-lg border border-border bg-surface-2 text-foreground transition-colors hover:bg-surface-3"
+    >
+      <Bell className="size-4" strokeWidth={1.5} aria-hidden />
+      {sayi > 0 && (
+        <span className="absolute -top-1.5 -right-1.5 flex min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] leading-4 font-bold text-white tabular-nums">{sayi > 9 ? "9+" : sayi}</span>
+      )}
+    </Link>
   );
 }
