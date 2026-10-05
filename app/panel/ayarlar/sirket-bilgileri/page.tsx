@@ -80,8 +80,8 @@ export default async function SirketBilgileriSayfasi() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Banka Hesapları</CardTitle>
-          <CardDescription>Kasa/banka hareketleri, gider ve personel ödemelerinde hesap seçimini besler. Hesap silinmez, pasife alınır.</CardDescription>
+          <CardTitle>Banka Bilgileri</CardTitle>
+          <CardDescription>Kasa/banka hareketleri, gider ve personel ödemelerinde hesap seçimini besler. Hesap silinmez, çöp kutusuyla pasife alınır (geçmiş hareketler korunur).</CardDescription>
         </CardHeader>
         <CardContent>
           <BankaKarti hesaplar={hesaplar} />

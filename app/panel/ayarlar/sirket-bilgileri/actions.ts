@@ -109,6 +109,23 @@ export async function bankaHesabiKaydet(_onceki: Onceki, formData: FormData): Pr
   return basari(v.hesap_id ? "Hesap güncellendi." : "Hesap eklendi.");
 }
 
+/** Banka hesabını pasife alır / yeniden etkinleştirir (hesap silinmez: defter hareketleri ona bağlıdır). */
+export async function bankaHesabiDurumDegistir(hesapId: string, aktif: boolean): Promise<EylemSonucu> {
+  const oturum = await yetkiliOturum(FINANS_YONETIM_ROLLERI);
+  if (!oturum) return YETKISIZ;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hesapId)) return hata("Hesap bulunamadı.");
+
+  const { data, error } = await oturum.supabase.from("isletme_banka_hesabi").update({ aktif }).eq("id", hesapId).select("id");
+  if (error) {
+    console.error("[bankaHesabiDurumDegistir]", error.code);
+    return hata(hataMesajiCoz(error));
+  }
+  if (!data || data.length === 0) return hata("Hesap bulunamadı.");
+  revalidatePath("/panel/ayarlar/sirket-bilgileri");
+  revalidatePath("/panel/finans", "layout");
+  return basari(aktif ? "Hesap yeniden kullanıma açıldı." : "Hesap pasife alındı.");
+}
+
 /** Araç ekle/güncelle (yalnız işletme yöneticisi). Araç silinmez, pasife alınır (gider kayıtları araca bağlı kalabilir). */
 export async function aracKaydet(_onceki: Onceki, formData: FormData): Promise<Onceki> {
   const oturum = await yetkiliOturum(YONETICI_ROLLERI);
