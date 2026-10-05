@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { CalendarDays, CalendarPlus, LayoutDashboard, Link2Off, UserPlus, Users } from "lucide-react";
+import { CalendarPlus, LayoutDashboard, Link2Off, UserPlus, Users } from "lucide-react";
+import { BugunkuDerslerKarti, type BugunkuDers } from "@/components/panel/bugunku-dersler-karti";
 import { CanliCizelge } from "@/components/panel/canli-cizelge";
 import type { CizelgeDersi } from "@/components/panel/gun-cizelgesi";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { KpiCard } from "@/components/ui/kpi-card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { gecerliKullanici } from "@/lib/auth/gecerli-kullanici";
@@ -58,10 +58,7 @@ export default async function PanelAnaSayfa() {
   const donem = gunDonemi(bugun);
   const simdiIso = new Date().toISOString();
 
-  const [girisSonuc, dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, isletmeSonuc, onKayitSonuc, dersTalebiSonuc] = await Promise.all([
-    musteriYetkisi
-      ? supabase.from("giris_kaydi").select("id", { count: "exact", head: true }).eq("giris_tarihi", bugun).eq("sonuc", "kabul").eq("iptal", false)
-      : Promise.resolve(null),
+  const [dersSonuc, alanSonuc, antrenorSonuc, izinliSonuc, isletmeSonuc, onKayitSonuc, dersTalebiSonuc] = await Promise.all([
     // Dersler RLS ile süzülür: yönetici/resepsiyon hepsini, antrenör yalnız kendi derslerini görür.
     dersYetkisi
       ? supabase.from("ders_seansi").select("id, musteri_id, antrenor_id, alan_id, baslangic, bitis, durum").gte("baslangic", donem.baslangic).lt("baslangic", donem.bitis).order("baslangic")
@@ -108,9 +105,18 @@ export default async function PanelAnaSayfa() {
     durum: d.durum,
   }));
 
+  const alanAdlari = new Map(tumAlanlar.map((a) => [a.id, a.ad]));
+  const bugunkuDersler: BugunkuDers[] = dersler.map((d) => ({
+    id: d.id,
+    baslangic: d.baslangic,
+    bitis: d.bitis,
+    musteri_adi: adHaritasi.get(d.musteri_id) ?? "Müşteri",
+    antrenor_adi: antrenorAdi.get(d.antrenor_id) ?? "Antrenör",
+    alan_adi: alanAdlari.get(d.alan_id) ?? "—",
+    durum: d.durum,
+  }));
+
   const planliToplam = dersler.filter((d) => d.durum !== "iptal").length;
-  const tamamlanan = dersler.filter((d) => d.durum === "tamamlandi").length;
-  const girisSayisi = girisSonuc?.count ?? 0;
   const isletmeAdi = isletmeSonuc?.data?.ad ?? null;
 
   return (
@@ -120,31 +126,11 @@ export default async function PanelAnaSayfa() {
         description={`${donem.etiket}${isletmeAdi ? ` · ${isletmeAdi}` : ""}${dersYetkisi ? ` · Bugün ${planliToplam} ders planlandı.` : ""}`}
       />
 
-      <section aria-label="Operasyonel metrikler" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {dersYetkisi && (
-          <KpiCard
-            vurgu
-            label="Bugünkü dersler"
-            value={
-              <>
-                {tamamlanan} <span className="text-base font-medium">/ {planliToplam}</span>
-              </>
-            }
-            icon={CalendarDays}
-          />
-        )}
-        {musteriYetkisi && (
-          <KpiCard
-            label="Bugünkü giriş"
-            value={
-              <>
-                {girisSayisi} <span className="text-base font-medium text-muted-foreground">kişi</span>
-              </>
-            }
-            icon={Users}
-          />
-        )}
-      </section>
+      {dersYetkisi && (
+        <section aria-label="Operasyonel metrikler" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <BugunkuDerslerKarti dersler={bugunkuDersler} />
+        </section>
+      )}
 
       {dersYetkisi && (
         <section aria-label="Günün çizelgesi ve antrenör durumları" className="grid grid-cols-1 gap-6 lg:grid-cols-3">
