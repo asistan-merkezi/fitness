@@ -14,6 +14,11 @@ import type { MesajKanal } from "@/types/mesajlasma";
  *     saglayici_hatasi, rate_limit, zaman_asimi). Yeni kalıcı hata türü HEM merkezde HEM burada eklenmeli.
  *  4. ÖDEME DOĞRULAMASI (kredi yükleme): /api/kredi-yukle yalnız API anahtarıyla korunması YETERLİ DEĞİL; merkez `odemeReferansi`'nı
  *     gerçek bir ödeme kaydına karşı doğrulamak ZORUNDA, yoksa anahtarı olan biri sınırsız "bedava" kredi tanımlayabilir.
+ *  5. KREDİ SATIŞI: fiyatı HER ZAMAN merkez `paketId`'den çözer (istemciden fiyat/adet gelmez). /api/odeme-oturumu `donusUrl`'yi
+ *     işletmenin kayıtlı alan adlarına karşı doğrulamalı (whitelist); aksi halde open redirect olur. Kredi merkezin defterine
+ *     ödeme DOĞRULANDIKTAN sonra eklenir; fitness yalnız bakiyeyi senkronlar. Uçlar:
+ *       POST /api/kredi-paketleri  { tenantId, kanal }                     -> { paketler: [{ paketId, adet, fiyatKurus, paraBirimi }] }
+ *       POST /api/odeme-oturumu    { tenantId, kanal, paketId, donusUrl }  -> { odemeUrl }
  * ============================================================================
  * MESAJ_MERKEZ_BASE_URL / MESAJ_MERKEZ_API_KEY tanımlı değilse `merkezYapilandirildiMi()` false döner ve kuyruk satırları
  * "beklemede" kalır (deneme sayacı artmaz, mesaj kaybolmaz); merkez bağlandığında sıradakiler gönderilir.
@@ -37,6 +42,10 @@ export type MerkezGonderSonucu =
   | { ulasildi: false; hata: string };
 
 export type MerkezBakiyeSonucu = { ulasildi: true; bakiye: number; bakiyeVersiyonu: number } | { ulasildi: false; hata: string };
+
+export type MerkezKrediPaketi = { paketId: string; adet: number; fiyatKurus: number; paraBirimi: string };
+export type MerkezKrediPaketleriSonucu = { ulasildi: true; paketler: MerkezKrediPaketi[] } | { ulasildi: false; hata: string };
+export type MerkezOdemeOturumuSonucu = { ulasildi: true; odemeUrl: string } | { ulasildi: false; hata: string };
 
 function tabanUrl(): string | null {
   const url = process.env.MESAJ_MERKEZ_BASE_URL;
@@ -79,6 +88,22 @@ export async function merkezeGonder(girdi: MerkezGonderGirdi): Promise<MerkezGon
     return { ulasildi: true, basarili: true, saglayiciMesajId: sonuc.veri.saglayiciMesajId, kalanBakiye: sonuc.veri.kalanBakiye, bakiyeVersiyonu: sonuc.veri.bakiyeVersiyonu };
   }
   return { ulasildi: true, basarili: false, hata: sonuc.veri.hata ?? "bilinmeyen_hata", kalanBakiye: sonuc.veri.kalanBakiye, bakiyeVersiyonu: sonuc.veri.bakiyeVersiyonu };
+}
+
+/** Merkezin güncel "Kredi Adet ve Fiyat Çizelgesi"; adete göre artan sıralı döner. */
+export async function merkezdenKrediPaketleriCek(isletmeId: string, kanal: MesajKanal): Promise<MerkezKrediPaketleriSonucu> {
+  const sonuc = await merkezeIstekAt<{ paketler: MerkezKrediPaketi[] }>("/api/kredi-paketleri", { tenantId: isletmeId, kanal });
+  if (!sonuc.ulasildi) return { ulasildi: false, hata: sonuc.hata };
+  const paketler = (sonuc.veri.paketler ?? []).filter((p) => p && typeof p.paketId === "string" && Number.isInteger(p.adet) && p.adet > 0 && Number.isFinite(p.fiyatKurus) && p.fiyatKurus >= 0);
+  return { ulasildi: true, paketler: paketler.sort((a, b) => a.adet - b.adet) };
+}
+
+/** Seçilen paket için merkezin ödeme sayfası adresini ister. Fiyat/adet göndermez; yalnız paketId. */
+export async function merkezdenOdemeOturumuOlustur(girdi: { isletmeId: string; kanal: MesajKanal; paketId: string; donusUrl: string }): Promise<MerkezOdemeOturumuSonucu> {
+  const sonuc = await merkezeIstekAt<{ odemeUrl?: string }>("/api/odeme-oturumu", { tenantId: girdi.isletmeId, kanal: girdi.kanal, paketId: girdi.paketId, donusUrl: girdi.donusUrl });
+  if (!sonuc.ulasildi) return { ulasildi: false, hata: sonuc.hata };
+  if (!sonuc.veri.odemeUrl) return { ulasildi: false, hata: "odeme_url_yok" };
+  return { ulasildi: true, odemeUrl: sonuc.veri.odemeUrl };
 }
 
 export async function merkezdenBakiyeCek(isletmeId: string, kanal: MesajKanal): Promise<MerkezBakiyeSonucu> {
