@@ -39,7 +39,7 @@ export default async function RaporlarSayfasi({ searchParams }: { searchParams: 
   const [{ data: ozetVeri }, { data: hesapVeri }, hareketler, giderler, dersler, aylar] = await Promise.all([
     supabase.rpc("finans_ozet", { p_baslangic: donem.baslangicTarih, p_bitis: donem.bitisTarih }),
     supabase.rpc("hesap_ozet", { p_baslangic: donem.baslangicTarih, p_bitis: donem.bitisTarih }),
-    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, limit: 5000 }),
+    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih }),
     odenmisGiderleriGetir(supabase, donem.baslangicTarih, donem.bitisTarih),
     dersleriGetir(supabase, donem.baslangic, donem.bitis),
     yillik ? yillikSeriGetir(supabase, Number(donem.param)) : Promise.resolve([]),

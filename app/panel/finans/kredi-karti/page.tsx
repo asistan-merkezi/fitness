@@ -29,7 +29,7 @@ export default async function KrediKartiSayfasi({ searchParams }: { searchParams
   const supabase = await createClient();
   const [{ data: ozetVeri }, satirlar] = await Promise.all([
     supabase.rpc("hesap_ozet", { p_baslangic: donem.baslangicTarih, p_bitis: donem.bitisTarih }),
-    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "kart", limit: 5000 }),
+    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "kart" }),
   ]);
   const kart = ((ozetVeri ?? []) as OzetSatiri[]).map((o) => ({ ...o, acilis_kurus: Number(o.acilis_kurus), giren_kurus: Number(o.giren_kurus), cikan_kurus: Number(o.cikan_kurus), kapanis_kurus: Number(o.kapanis_kurus) })).find((o) => o.hesap === "kart");
 

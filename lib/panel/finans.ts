@@ -1,3 +1,5 @@
+import { ibanBicimle } from "@/lib/iban";
+
 /** Finans ekranlarının ortak etiketleri ve saf yardımcıları. */
 
 /** Genel Giderler'in kategorileri ('gider' türü). */
@@ -49,6 +51,8 @@ export const HESAP_KAYNAK_ETIKETLERI: Record<string, string> = {
   gider: "Gider",
   personel: "Personel ödemesi",
   manuel: "Manuel hareket",
+  kasa_baslangic: "Kasa başlangıç",
+  kasa_dengeleme: "Kasa dengeleme",
 };
 
 export const KATEGORI_ETIKETLERI_FINANS: Record<string, string> = { standart: "Standart", gold: "Gold", vip: "VIP", platinum: "Platinum" };
@@ -59,9 +63,34 @@ export type HesapHareketi = {
   banka_hesap_id: string | null;
   yontem: string | null;
   tutar_kurus: number;
-  kaynak: "musteri" | "gider" | "personel" | "manuel";
+  kaynak: "musteri" | "gider" | "personel" | "manuel" | "kasa_baslangic" | "kasa_dengeleme";
   kaynak_id: string;
   aciklama: string | null;
+};
+
+/** `hesap_hareket_detay` görünümünün listede gösterilen ek alanları (tür, karşı taraf, ayrıntı). */
+export type HesapHareketDetayi = HesapHareketi & {
+  tur: string;
+  karsi_taraf: string | null;
+  detay: string | null;
+  kategori: string | null;
+  karsi_iban: string | null;
+  islem_zamani: string | null;
+};
+
+/** Hareket türü etiketleri (liste "Tür" sütunu). Transfer yönü tutar işaretinden gelir. */
+export const HAREKET_TUR_ETIKETLERI: Record<string, string> = {
+  tahsilat: "Tahsilat",
+  iade: "İade",
+  gider: "Gider",
+  personel_odeme: "Personel Ödemesi",
+  personel_avans: "Personel Avansı",
+  giren: "Giriş",
+  cikan: "Çıkış",
+  transfer_gelen: "Hesaplar Arası (Gelen)",
+  transfer_giden: "Hesaplar Arası (Giden)",
+  kasa_baslangic: "Kasa Başlangıç",
+  kasa_dengeleme: "Kasa Dengeleme",
 };
 
 /** Hareketin kısa başlığı: müşteri kaynağında işaret tahsilat/iade ayrımını verir. */
@@ -103,15 +132,29 @@ export function vadesiGecti(vade: string | null, bugun: string): boolean {
 }
 
 /** Hesap defterinde gösterilen satır (sunucuda hazırlanır, istemci bileşenine düz veri olarak geçer). */
-export type DefterSatiri = { tarih: string; tutar_kurus: number; baslik: string; ayrinti: string | null; yontem: string | null };
+export type DefterSatiri = { tarih: string; tutar_kurus: number; tur: string; karsiTaraf: string | null; aciklama: string | null; yontem: string | null };
 
-/** Hesap hareketlerini defter satırına çevirir: başlık (kaynak), ayrıntı (müşteri adı / gider kategorisi / açıklama), yöntem etiketi. */
-export function defterSatirlari(satirlar: (HesapHareketi & { musteri_adi?: string })[]): DefterSatiri[] {
-  return satirlar.map((s) => ({
-    tarih: s.tarih,
-    tutar_kurus: s.tutar_kurus,
-    baslik: hareketBasligi(s),
-    ayrinti: s.kaynak === "musteri" ? (s.musteri_adi ?? null) : s.kaynak === "gider" ? (GIDER_KATEGORI_ETIKETLERI[s.aciklama ?? ""] ?? s.aciklama) : s.aciklama,
-    yontem: s.yontem ? (GIDER_YONTEMLERI[s.yontem] ?? s.yontem) : null,
-  }));
+/** İstanbul saatiyle "GG.AA.YYYY SS:DD" (kasa başlangıç/dengeleme giriş zamanı). */
+export function istanbulZamanYazisi(iso: string): string {
+  return new Intl.DateTimeFormat("tr-TR", { timeZone: "Europe/Istanbul", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(iso)).replace(",", "");
+}
+
+/**
+ * Hesap hareketlerini defter satırına çevirir: Tür · Karşı Taraf · Açıklama. Gider: karşı taraf tedarikçi, açıklama
+ * "Kategori — not"; kasa başlangıç/dengeleme: karşı taraf giren kişi, açıklama giriş zamanı + not.
+ */
+export function defterSatirlari(satirlar: HesapHareketDetayi[]): DefterSatiri[] {
+  return satirlar.map((s) => {
+    const kategori = s.kategori ? (GIDER_KATEGORI_ETIKETLERI[s.kategori] ?? s.kategori) : null;
+    const zaman = s.islem_zamani ? istanbulZamanYazisi(s.islem_zamani) : null;
+    const parcalar = s.kaynak === "gider" ? [kategori, s.detay] : s.kaynak === "kasa_baslangic" || s.kaynak === "kasa_dengeleme" ? [zaman, s.detay] : [s.detay, s.karsi_iban ? `IBAN ${ibanBicimle(s.karsi_iban)}` : null];
+    return {
+      tarih: s.tarih,
+      tutar_kurus: s.tutar_kurus,
+      tur: HAREKET_TUR_ETIKETLERI[s.tur] ?? s.tur,
+      karsiTaraf: s.karsi_taraf ?? (s.kaynak === "gider" ? kategori : null),
+      aciklama: parcalar.filter(Boolean).join(" — ") || null,
+      yontem: s.yontem ? (GIDER_YONTEMLERI[s.yontem] ?? s.yontem) : null,
+    };
+  });
 }

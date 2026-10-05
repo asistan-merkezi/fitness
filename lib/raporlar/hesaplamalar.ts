@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { formatDateForInput, formatTime } from "@/lib/datetime";
 import { AY_ADLARI, GIDER_KATEGORI_ETIKETLERI } from "@/lib/panel/finans";
+import { tumSayfalariOku } from "@/lib/supabase/sayfali-oku";
 import type { DersDurumu } from "@/types/veritabani";
 
 /** Raporlar ekranının saf hesapları ve sayfalı sorguları (klinikteki lib/raporlar/hesaplamalar.ts'in fitness karşılığı). */
@@ -66,7 +67,8 @@ export async function yillikSeriGetir(supabase: SupabaseClient, yil: number): Pr
       return supabase.rpc("finans_ozet", { p_baslangic: baslangic, p_bitis: bitis });
     })
   );
-  return sonuclar.map(({ data }, i) => {
+  return sonuclar.map(({ data, error }, i) => {
+    if (error) throw new Error(`Aylık finans özeti okunamadı: ${error.message}`);
     const o = finansOzetiCoz(data);
     return { ay: i + 1, ayEtiketi: AY_ADLARI[i], gelir: o.net_tahsilat_kurus ?? 0, gider: toplamGider(o) };
   });
@@ -74,24 +76,19 @@ export async function yillikSeriGetir(supabase: SupabaseClient, yil: number): Pr
 
 export type DersSatiri = { id: string; musteri_id: string; baslangic: string; durum: DersDurumu; ucret_kurus: number; hak_dusuldu: boolean; borc_hareket_id: string | null };
 
-/** Dönemdeki dersler (1000'erlik sayfalarla; en çok 5000). `baslangic`/`bitis` UTC ISO (Donem.baslangic/bitis). */
+/** Dönemdeki dersler (1000'erlik sayfalarla, sınırsız; hata fırlatır). `baslangic`/`bitis` UTC ISO (Donem.baslangic/bitis). */
 export async function dersleriGetir(supabase: SupabaseClient, baslangic: string, bitis: string): Promise<DersSatiri[]> {
-  const SAYFA = 1000;
-  const cikti: DersSatiri[] = [];
-  for (let bas = 0; bas < 5000; bas += SAYFA) {
-    const { data } = await supabase
+  const satirlar = await tumSayfalariOku<DersSatiri>((bas, son) =>
+    supabase
       .from("ders_seansi")
       .select("id, musteri_id, baslangic, durum, ucret_kurus, hak_dusuldu, borc_hareket_id")
       .gte("baslangic", baslangic)
       .lt("baslangic", bitis)
       .order("baslangic")
       .order("id")
-      .range(bas, bas + SAYFA - 1);
-    const sayfa = (data ?? []) as DersSatiri[];
-    cikti.push(...sayfa.map((d) => ({ ...d, ucret_kurus: Number(d.ucret_kurus) })));
-    if (sayfa.length < SAYFA) break;
-  }
-  return cikti;
+      .range(bas, son)
+  );
+  return satirlar.map((d) => ({ ...d, ucret_kurus: Number(d.ucret_kurus) }));
 }
 
 export type DersDurumOzeti = { tamamlanan: number; planlanan: number; ertelenen: number; iptalVeGelmedi: number };
@@ -103,22 +100,10 @@ export function dersDurumOzetiHesapla(dersler: { durum: DersDurumu }[]): DersDur
 
 /** Ödenmiş giderler (kategori dağılımı ve Genel/Kamu kırılımı için); sayfalı, en çok 5000. */
 export async function odenmisGiderleriGetir(supabase: SupabaseClient, baslangic: string, bitis: string): Promise<{ tur: string; kategori: string; tutar_kurus: number }[]> {
-  const SAYFA = 1000;
-  const cikti: { tur: string; kategori: string; tutar_kurus: number }[] = [];
-  for (let bas = 0; bas < 5000; bas += SAYFA) {
-    const { data } = await supabase
-      .from("gider")
-      .select("tur, kategori, tutar_kurus")
-      .eq("durum", "odendi")
-      .gte("odeme_tarihi", baslangic)
-      .lt("odeme_tarihi", bitis)
-      .order("id")
-      .range(bas, bas + SAYFA - 1);
-    const sayfa = (data ?? []) as { tur: string; kategori: string; tutar_kurus: number | string }[];
-    cikti.push(...sayfa.map((g) => ({ ...g, tutar_kurus: Number(g.tutar_kurus) })));
-    if (sayfa.length < SAYFA) break;
-  }
-  return cikti;
+  const satirlar = await tumSayfalariOku<{ tur: string; kategori: string; tutar_kurus: number | string }>((bas, son) =>
+    supabase.from("gider").select("tur, kategori, tutar_kurus").eq("durum", "odendi").gte("odeme_tarihi", baslangic).lt("odeme_tarihi", bitis).order("id").range(bas, son)
+  );
+  return satirlar.map((g) => ({ ...g, tutar_kurus: Number(g.tutar_kurus) }));
 }
 
 export type GunlukKalem = {
@@ -165,7 +150,7 @@ export function gunlukDokumHesapla(
     });
   }
   for (const h of hareketler) {
-    if (h.kaynak === "manuel") continue;
+    if (h.kaynak === "manuel" || h.kaynak === "kasa_baslangic" || h.kaynak === "kasa_dengeleme") continue;
     const g = gun(h.tarih);
     const gelirMi = h.tutar_kurus > 0;
     const tutar = Math.abs(h.tutar_kurus);

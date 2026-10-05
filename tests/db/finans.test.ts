@@ -377,4 +377,91 @@ describe("finans: hesaplar, giderler, kasa-banka defteri, fatura, özet", () => 
       expect(await hataMesaji(() => rpc(adminA, "SELECT public.finans_ozet('2026-10-02','2026-10-01')"))).toMatch(/tarih_araligi_gecersiz/);
     });
   });
+  describe("kasa kontrol: başlangıç zamanı, dengeleme, hareket detayı", () => {
+    // Başlangıç zamanı gerçek now() ile damgalanır; yalıtım için ayrı işletme ve "bugün"ü veritabanından alan pencereler.
+    let isletmeC: string;
+    let adminC: string;
+    let muhasebeC: string;
+    let resepsiyonC: string;
+    let bankaC: string;
+    let gun: string;
+    let sonraki: string;
+    let sonrakiGun2: string;
+    const kasaSatiri = async (k: string, bas: string, bit: string) => (await ozet(k, bas, bit)).find((x) => x.hesap === "kasa")!;
+
+    beforeAll(async () => {
+      isletmeC = await isletmeOlustur(db, "Salon C");
+      adminC = await kullaniciOlustur(db, { isletmeId: isletmeC, rol: "isletme_admin", adSoyad: "Yönetici C" });
+      muhasebeC = await kullaniciOlustur(db, { isletmeId: isletmeC, rol: "muhasebe" });
+      resepsiyonC = await kullaniciOlustur(db, { isletmeId: isletmeC, rol: "resepsiyon" });
+      bankaC = await kimlikle(db, adminC, async () => (await db.query<{ id: string }>("INSERT INTO public.isletme_banka_hesabi (isletme_id, banka_adi, hesap_sahibi, iban, acilis_bakiye_kurus) VALUES ($1,'Yapı Kredi','Salon C','TR330006100519786457841326',0) RETURNING id", [isletmeC])).rows[0].id);
+      const t = (await db.query<{ gun: string; sonraki: string; sonraki2: string }>("SELECT (now() AT TIME ZONE 'Europe/Istanbul')::date::text AS gun, ((now() AT TIME ZONE 'Europe/Istanbul')::date + 1)::text AS sonraki, ((now() AT TIME ZONE 'Europe/Istanbul')::date + 2)::text AS sonraki2")).rows[0];
+      gun = t.gun;
+      sonraki = t.sonraki;
+      sonrakiGun2 = t.sonraki2;
+      await kimlikle(db, adminC, () => db.query("UPDATE public.isletme SET kasa_acilis_kurus = 50000 WHERE id = $1", [isletmeC]));
+    });
+
+    it("zamansız eski başlangıç dönem açılışıdır; yalnız yönetici kaydeder", async () => {
+      expect(await kasaSatiri(muhasebeC, gun, sonraki)).toMatchObject({ acilis_kurus: 50_000, giren_kurus: 0, kapanis_kurus: 50_000 });
+      expect(await hataMesaji(() => rpc(muhasebeC, "SELECT public.kasa_baslangic_kaydet(1000)"))).toMatch(/yetki_yetersiz/);
+      expect(await hataMesaji(() => rpc(adminC, "SELECT public.kasa_baslangic_kaydet(NULL)"))).toMatch(/tutar_gecersiz/);
+    });
+
+    it("kaydedilince tutar girildiği günde Kasa Başlangıç hareketi olur, açılış 0; sonraki dönem açılışı taşır", async () => {
+      await rpc(adminC, "SELECT public.kasa_baslangic_kaydet(75000)");
+      expect(await kasaSatiri(adminC, gun, sonraki)).toMatchObject({ acilis_kurus: 0, giren_kurus: 75_000, cikan_kurus: 0, kapanis_kurus: 75_000 });
+      expect(await kasaSatiri(adminC, sonraki, sonrakiGun2)).toMatchObject({ acilis_kurus: 75_000, giren_kurus: 0, kapanis_kurus: 75_000 });
+      const d = await rpc<{ tur: string; karsi_taraf: string | null; tutar_kurus: number; islem_zamani: string | null }>(adminC, "SELECT tur, karsi_taraf, tutar_kurus, islem_zamani FROM public.hesap_hareket_detay WHERE kaynak = 'kasa_baslangic'");
+      expect(d).toHaveLength(1);
+      expect(d[0]).toMatchObject({ tur: "kasa_baslangic", karsi_taraf: "Yönetici C" });
+      expect(Number(d[0].tutar_kurus)).toBe(75_000);
+      expect(d[0].islem_zamani).not.toBeNull();
+    });
+
+    it("dengeleme işaretlidir: + kasaya ekler, − düşer; sıfır reddedilir; aynı anahtar çift kayıt açmaz; yalnız yönetici yazar", async () => {
+      const anahtar = "66666666-6666-4666-8666-666666666666";
+      await rpc(adminC, "SELECT public.kasa_dengele(-2500, 'sayım farkı', $1)", [anahtar]);
+      await rpc(adminC, "SELECT public.kasa_dengele(-2500, 'sayım farkı', $1)", [anahtar]); // idempotent
+      await rpc(adminC, "SELECT public.kasa_dengele(1000, NULL, NULL)");
+      // Dengeleme tarihi testte sabitlenen "bugün"dür (2026-10-01); başlangıç zamanı gerçek now(): pencere ikisini de kapsar.
+      const ilk = gun < "2026-10-01" ? gun : "2026-10-01";
+      expect(await kasaSatiri(adminC, ilk, sonraki)).toMatchObject({ giren_kurus: 76_000, cikan_kurus: 2500, kapanis_kurus: 73_500 });
+      expect(await hataMesaji(() => rpc(adminC, "SELECT public.kasa_dengele(0, 'x', NULL)"))).toMatch(/tutar_gecersiz/);
+      expect(await hataMesaji(() => rpc(muhasebeC, "SELECT public.kasa_dengele(100, 'x', NULL)"))).toMatch(/yetki_yetersiz/);
+      expect(await hataMesaji(() => rpc(resepsiyonC, "SELECT public.kasa_dengele(100, 'x', NULL)"))).toMatch(/yetki_yetersiz/);
+      const d = await rpc<{ karsi_taraf: string | null; detay: string | null }>(adminC, "SELECT karsi_taraf, detay FROM public.hesap_hareket_detay WHERE kaynak = 'kasa_dengeleme' AND tutar_kurus = -2500");
+      expect(d).toEqual([{ karsi_taraf: "Yönetici C", detay: "sayım farkı" }]);
+    });
+
+    it("dengeleme değişmezdir ve doğrudan yazılamaz; muhasebe okur, resepsiyon başlangıç/dengelemeyi görmez", async () => {
+      expect(await hataMesaji(() => db.query("UPDATE public.kasa_dengeleme SET tutar_kurus = 1"))).toMatch(/defter_degismez/);
+      expect(await hataMesaji(() => db.query("DELETE FROM public.kasa_dengeleme"))).toMatch(/defter_degismez/);
+      expect(await hataMesaji(() => kimlikle(db, adminC, () => db.query("INSERT INTO public.kasa_dengeleme (isletme_id, tutar_kurus) VALUES ($1, 5)", [isletmeC])))).toMatch(/permission denied/i);
+      expect((await rpc(muhasebeC, "SELECT 1 FROM public.hesap_hareket_gorunum WHERE kaynak IN ('kasa_baslangic','kasa_dengeleme')")).length).toBe(3);
+      expect((await rpc(resepsiyonC, "SELECT 1 FROM public.hesap_hareket_gorunum WHERE kaynak IN ('kasa_baslangic','kasa_dengeleme')")).length).toBe(0);
+      // Başka işletme bu kayıtları görmez.
+      expect((await rpc(adminB, "SELECT 1 FROM public.hesap_hareket_detay WHERE kaynak IN ('kasa_baslangic','kasa_dengeleme')")).length).toBe(0);
+    });
+
+    it("transfer yönü HER ZAMAN tutar işaretinden okunur: kasa→banka transferinde kasa bacağı giden, banka bacağı gelen", async () => {
+      await rpc(adminC, "SELECT public.kasa_banka_hareket_ekle('transfer', 3000, true, NULL, false, $1)", [bankaC]);
+      await rpc(adminC, "SELECT public.kasa_banka_hareket_ekle('transfer', 800, false, $1, true, NULL)", [bankaC]); // bankadan kasaya
+      const satirlar = await rpc<{ hesap: string; tur: string; karsi_taraf: string; tutar_kurus: number }>(adminC, "SELECT hesap, tur, karsi_taraf, tutar_kurus FROM public.hesap_hareket_detay WHERE kaynak = 'manuel' ORDER BY tutar_kurus");
+      const ozetKasa = satirlar.filter((x) => x.hesap === "kasa").map((x) => ({ tur: x.tur, karsi: x.karsi_taraf, tutar: Number(x.tutar_kurus) }));
+      expect(ozetKasa).toEqual([
+        { tur: "transfer_giden", karsi: "Yapı Kredi", tutar: -3000 },
+        { tur: "transfer_gelen", karsi: "Yapı Kredi", tutar: 800 },
+      ]);
+      const ozetBanka = satirlar.filter((x) => x.hesap === "banka").map((x) => ({ tur: x.tur, karsi: x.karsi_taraf, tutar: Number(x.tutar_kurus) }));
+      expect(ozetBanka).toEqual([
+        { tur: "transfer_giden", karsi: "Kasa", tutar: -800 },
+        { tur: "transfer_gelen", karsi: "Kasa", tutar: 3000 },
+      ]);
+      // Kasa kapanışı: 73.500 − 3.000 + 800; banka: +3.000 − 800.
+      expect((await kasaSatiri(adminC, gun, sonraki)).kapanis_kurus).toBe(73_500 - 3000 + 800);
+      const banka = (await ozet(adminC, gun, sonraki)).find((x) => x.banka_hesap_id === bankaC)!;
+      expect(banka.kapanis_kurus).toBe(3000 - 800);
+    });
+  });
 });

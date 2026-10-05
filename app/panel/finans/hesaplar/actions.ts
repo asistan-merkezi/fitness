@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { acilisBakiyeSemasi, formVerisi, ilkHata, kasaBankaHareketSemasi } from "@/lib/dogrulama";
+import { acilisBakiyeSemasi, formVerisi, ilkHata, kasaBankaHareketSemasi, kasaBaslangicSemasi, kasaDengelemeSemasi } from "@/lib/dogrulama";
 import { basari, type EylemSonucu, hata, YETKISIZ, yetkiliOturum } from "@/lib/eylem";
 import { hataMesajiCoz } from "@/lib/hata-mesajlari";
 import { YONETICI_ROLLERI } from "@/lib/panel/roller";
@@ -58,9 +58,9 @@ export async function acilisBakiyeKaydet(_onceki: Onceki, formData: FormData): P
   if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
   const v = ayristirma.data;
 
-  const { data, error } = kasaMi(v.hesap)
-    ? await oturum.supabase.from("isletme").update({ kasa_acilis_kurus: v.tutar }).eq("id", oturum.kullanici.isletme_id).select("id")
-    : await oturum.supabase.from("isletme_banka_hesabi").update({ acilis_bakiye_kurus: v.tutar }).eq("id", v.hesap).select("id");
+  // Kasa başlangıcı Kasa Kontrol'den (kasaBaslangicKaydet) girilir; burada yalnız banka hesabı açılışı.
+  if (kasaMi(v.hesap)) return hata("Kasa başlangıç tutarı Kasa Kontrol penceresinden girilir.");
+  const { data, error } = await oturum.supabase.from("isletme_banka_hesabi").update({ acilis_bakiye_kurus: v.tutar }).eq("id", v.hesap).select("id");
   if (error) {
     console.error("[acilisBakiyeKaydet]", error.code);
     return hata(hataMesajiCoz(error));
@@ -68,4 +68,39 @@ export async function acilisBakiyeKaydet(_onceki: Onceki, formData: FormData): P
   if (!data || data.length === 0) return hata("Hesap bulunamadı.");
   yenile();
   return basari("Açılış bakiyesi kaydedildi.");
+}
+
+/** Kasa başlangıç tutarı (Kasa Kontrol): girildiği günde "Kasa Başlangıç" hareketi olur; giren kişi ve zaman sunucuda damgalanır. */
+export async function kasaBaslangicKaydet(_onceki: Onceki, formData: FormData): Promise<Onceki> {
+  const oturum = await yetkiliOturum(YONETICI_ROLLERI);
+  if (!oturum) return YETKISIZ;
+
+  const ayristirma = kasaBaslangicSemasi.safeParse(formVerisi(formData));
+  if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
+
+  const { error } = await oturum.supabase.rpc("kasa_baslangic_kaydet", { p_tutar_kurus: ayristirma.data.tutar });
+  if (error) {
+    console.error("[kasaBaslangicKaydet]", error.code);
+    return hata(hataMesajiCoz(error));
+  }
+  yenile();
+  return basari("Kasa başlangıç tutarı kaydedildi.");
+}
+
+/** Kasa Dengeleme (Kasa Kontrol): işaretli bedel kasaya eklenir (+) ya da kasadan düşer (−); değişmez kayıt, düzeltme yeni dengelemeyle. */
+export async function kasaDengelemeKaydet(_onceki: Onceki, formData: FormData): Promise<Onceki> {
+  const oturum = await yetkiliOturum(YONETICI_ROLLERI);
+  if (!oturum) return YETKISIZ;
+
+  const ayristirma = kasaDengelemeSemasi.safeParse(formVerisi(formData));
+  if (!ayristirma.success) return hata(ilkHata(ayristirma.error));
+  const v = ayristirma.data;
+
+  const { error } = await oturum.supabase.rpc("kasa_dengele", { p_tutar_kurus: v.tutar, p_aciklama: v.aciklama ?? undefined, p_anahtar: v.anahtar });
+  if (error) {
+    console.error("[kasaDengelemeKaydet]", error.code);
+    return hata(hataMesajiCoz(error));
+  }
+  yenile();
+  return basari("Kasa dengeleme kaydedildi.");
 }

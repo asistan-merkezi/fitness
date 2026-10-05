@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Pencil, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { KlinikDonemCubugu } from "@/components/panel/donem-cubugu";
 import { GrupluDefter } from "@/components/panel/gruplu-defter";
 import { buttonVariants } from "@/components/ui/button";
@@ -13,16 +13,16 @@ import { bugunIstanbulTarihi } from "@/lib/datetime";
 import { donemCoz } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
 import { defterSatirlari } from "@/lib/panel/finans";
-import { hesapHareketleriGetir, manuelKayitlariGetir } from "@/lib/panel/hesap-hareketleri";
+import { hesapHareketleriGetir } from "@/lib/panel/hesap-hareketleri";
 import { FINANS_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { CikanDiyalog, GirenDiyalog } from "../finans/hesaplar/hareket-diyaloglari";
-import { AcilisFormu } from "../finans/hesaplar/manuel-formlar";
-import { ManuelKayitlar } from "../finans/hesaplar/manuel-kayitlar";
+import { KasaKontrolDiyalog } from "../finans/hesaplar/kasa-kontrol";
 import { hareketPencereVerileri } from "../finans/hesaplar/veri";
 
 export const metadata: Metadata = { title: "Kasa" };
 
+type IsletmeKasa = { kasa_acilis_kurus: number; kasa_baslangic_zamani: string | null; kasa_baslangic_giren: { ad_soyad: string } | null };
 type OzetSatiri = { hesap: string; banka_hesap_id: string | null; acilis_kurus: number; giren_kurus: number; cikan_kurus: number; kapanis_kurus: number };
 
 export default async function KasaSayfasi({ searchParams }: { searchParams: Promise<{ gorunum?: string; tarih?: string }> }) {
@@ -36,17 +36,16 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
   const bugun = bugunIstanbulTarihi();
 
   const supabase = await createClient();
-  const [{ data: ozetVeri }, satirlar, manuelKayitlar, pencere, { data: isletmeVeri }] = await Promise.all([
+  const [{ data: ozetVeri }, satirlar, pencere, { data: isletmeVeri }] = await Promise.all([
     supabase.rpc("hesap_ozet", { p_baslangic: donem.baslangicTarih, p_bitis: donem.bitisTarih }),
-    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "kasa", limit: 5000 }),
-    manuelKayitlariGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "kasa" }),
+    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "kasa" }),
     hareketPencereVerileri(supabase),
-    supabase.from("isletme").select("kasa_acilis_kurus").eq("id", kullanici.isletme_id).maybeSingle<{ kasa_acilis_kurus: number }>(),
+    // Kasa Kontrol penceresi: başlangıç tutarı + giriş zamanı + giren kişi (yalnız yönetici penceresi kullanır).
+    yonetici ? supabase.from("isletme").select("kasa_acilis_kurus, kasa_baslangic_zamani, kasa_baslangic_giren:kullanici!kasa_baslangic_giren_id(ad_soyad)").eq("id", kullanici.isletme_id).maybeSingle<IsletmeKasa>() : Promise.resolve({ data: null }),
   ]);
   const baslangicTutari = Number(isletmeVeri?.kasa_acilis_kurus ?? 0);
   const kasa = ((ozetVeri ?? []) as OzetSatiri[]).map((o) => ({ ...o, acilis_kurus: Number(o.acilis_kurus), giren_kurus: Number(o.giren_kurus), cikan_kurus: Number(o.cikan_kurus), kapanis_kurus: Number(o.kapanis_kurus) })).find((o) => o.hesap === "kasa");
   const hesaplar = [{ kod: "kasa", ad: "Kasa" }, ...pencere.hesapSecenekleri.map((h) => ({ kod: h.id, ad: h.ad }))];
-  const hesapAdlari = new Map(pencere.hesapSecenekleri.map((h) => [h.id, h.ad]));
 
   return (
     <>
@@ -67,25 +66,10 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
         }
       />
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <Card className="min-w-72 flex-1">
-          <CardContent>
-            <details className="group">
-              <summary className="flex cursor-pointer list-none items-center gap-3 select-none">
-                <span className="text-sm text-muted-foreground">Kasa Başlangıç Tutarı</span>
-                <span className="text-base font-semibold tabular-nums">{kurusTLyazi(baslangicTutari)}</span>
-                {yonetici && <Pencil className="size-3.5 text-muted-foreground" aria-label="Düzenle" />}
-              </summary>
-              {yonetici && (
-                <div className="mt-3">
-                  <AcilisFormu hesapKodu="kasa" acilisKurus={baslangicTutari} />
-                </div>
-              )}
-            </details>
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap items-center justify-end gap-3">
         {yonetici && (
           <div className="flex flex-wrap gap-2">
+            <KasaKontrolDiyalog baslangicKurus={baslangicTutari} baslangicZamani={isletmeVeri?.kasa_baslangic_zamani ?? null} baslangicGiren={isletmeVeri?.kasa_baslangic_giren?.ad_soyad ?? null} girenKisi={kullanici.ad_soyad ?? ""} />
             <GirenDiyalog hesap="kasa" bankaMi={false} bugun={bugun} />
             <CikanDiyalog hesap="kasa" bankaMi={false} hesaplar={hesaplar} hesapSecenekleri={pencere.hesapSecenekleri} personel={pencere.personel} araclar={pencere.araclar} bugun={bugun} />
           </div>
@@ -103,21 +87,11 @@ export default async function KasaSayfasi({ searchParams }: { searchParams: Prom
 
       <Card>
         <CardHeader>
-          <CardTitle>Kasa hareketleri</CardTitle>
-          <CardDescription>Nakit tahsilat/iade, nakit gider ve personel ödemesi otomatik düşer; diğer girişleri ve çıkışları yukarıdaki düğmelerle kaydedin. Satıra tıklayınca kalemler açılır.</CardDescription>
+          <CardTitle>Kasa Hareketleri</CardTitle>
+          <CardDescription>Nakit tahsilat/iade, nakit gider, personel ödemesi, manuel giriş/çıkış/transfer, kasa başlangıç ve dengeleme burada tek listede görünür. Satıra tıklayınca o günün (yıllıkta o ayın) tüm hareketleri açılır. Defter değişmezdir: hata için ters kayıt girin.</CardDescription>
         </CardHeader>
         <CardContent>
           <GrupluDefter satirlar={defterSatirlari(satirlar)} acilisKurus={kasa?.acilis_kurus ?? 0} gruplama={donem.gorunum === "yil" ? "ay" : "gun"} girenBaslik="Nakit Tahsilat" cikanBaslik="Nakit Ödenen Gider" bosMesaj="Bu dönemde kasa hareketi yok." />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Manuel kasa kayıtları</CardTitle>
-          <CardDescription>Elle girilen giriş, çıkış ve transferler. Kayıtlar değişmez; hata için ters kayıt girin.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ManuelKayitlar kayitlar={manuelKayitlar} hesap="kasa" hesapAdlari={hesapAdlari} bosMetin="Bu dönemde manuel kasa kaydı yok." />
         </CardContent>
       </Card>
     </>

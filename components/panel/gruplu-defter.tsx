@@ -16,7 +16,7 @@ const gunEtiketi = (t: string) => `${t.slice(8, 10)}.${t.slice(5, 7)}.${t.slice(
 function ozet(satirlar: DefterSatiri[]): string | null {
   const sayac = new Map<string, number>();
   for (const s of satirlar) {
-    const ad = s.ayrinti ?? s.baslik;
+    const ad = s.karsiTaraf ?? s.tur;
     sayac.set(ad, (sayac.get(ad) ?? 0) + 1);
   }
   const metin = [...sayac.entries()].map(([ad, adet]) => (adet > 1 ? `${ad} (${adet})` : ad)).join(", ");
@@ -25,7 +25,7 @@ function ozet(satirlar: DefterSatiri[]): string | null {
 
 /**
  * Hesap defteri (klinikteki LedgerView düzeni): hareketler günlere (yıllık görünümde aylara) göre gruplanır, her grupta
- * giren / çıkan ve YÜRÜYEN bakiye görünür; satıra tıklayınca o günün kalemleri açılır. Bakiye açılış bakiyesinden başlar.
+ * giren / çıkan ve YÜRÜYEN bakiye görünür; satıra tıklayınca o günün/ayın tüm hareketleri (Tarih · Tür · Karşı Taraf · Açıklama · Tutar) açılır. Bakiye açılış bakiyesinden başlar.
  * Tutarlar işaretlidir (+ giriş, − çıkış). Yalnız dönemin satırları verilmelidir; açılış = dönem başı bakiye.
  */
 export function GrupluDefter({
@@ -132,21 +132,35 @@ export function GrupluDefter({
                 </button>
               )}
               {gorunur && (
-                <div className="flex flex-col gap-1.5 border-t border-border bg-surface-2/60 px-3 py-2 pl-8">
-                  {g.satirlar.map((s, i) => (
-                    <div key={i} className="flex items-start justify-between gap-3 text-xs">
-                      <span className="text-muted-foreground">
-                        {gruplama === "ay" && `${gunEtiketi(s.tarih)} — `}
-                        <span className="font-medium text-foreground">{s.baslik}</span>
-                        {s.ayrinti && ` · ${s.ayrinti}`}
-                        {s.yontem && ` · ${s.yontem}`}
-                      </span>
-                      <span className={cn("shrink-0 tabular-nums", s.tutar_kurus >= 0 ? "text-success" : "text-destructive")}>
-                        {s.tutar_kurus >= 0 ? "+" : "−"}
-                        {kurusTLyazi(Math.abs(s.tutar_kurus))}
-                      </span>
-                    </div>
-                  ))}
+                <div className="overflow-x-auto border-t border-border bg-surface-2/60 px-3 py-2">
+                  <table className="w-full min-w-[34rem] text-xs">
+                    <thead>
+                      <tr className="text-left text-muted-foreground">
+                        <th className="py-1 pr-3 font-medium">Tarih</th>
+                        <th className="py-1 pr-3 font-medium">Tür</th>
+                        <th className="py-1 pr-3 font-medium">Karşı Taraf</th>
+                        <th className="py-1 pr-3 font-medium">Açıklama</th>
+                        <th className="py-1 text-right font-medium">Tutar</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {g.satirlar.map((s, i) => (
+                        <tr key={i} className="border-t border-border/60 align-top">
+                          <td className="whitespace-nowrap py-1.5 pr-3 tabular-nums text-muted-foreground">{gunEtiketi(s.tarih)}</td>
+                          <td className="py-1.5 pr-3 font-medium">
+                            {s.tur}
+                            {s.yontem && <span className="font-normal text-muted-foreground"> · {s.yontem}</span>}
+                          </td>
+                          <td className="py-1.5 pr-3">{s.karsiTaraf ?? "—"}</td>
+                          <td className="py-1.5 pr-3 text-muted-foreground">{s.aciklama ?? "—"}</td>
+                          <td className={cn("whitespace-nowrap py-1.5 text-right font-medium tabular-nums", s.tutar_kurus >= 0 ? "text-success" : "text-destructive")}>
+                            {s.tutar_kurus >= 0 ? "+" : "−"}
+                            {kurusTLyazi(Math.abs(s.tutar_kurus))}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

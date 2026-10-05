@@ -12,13 +12,12 @@ import { bugunIstanbulTarihi } from "@/lib/datetime";
 import { donemCoz } from "@/lib/donem";
 import { kurusTLyazi } from "@/lib/para";
 import { defterSatirlari } from "@/lib/panel/finans";
-import { hesapHareketleriGetir, manuelKayitlariGetir } from "@/lib/panel/hesap-hareketleri";
+import { hesapHareketleriGetir } from "@/lib/panel/hesap-hareketleri";
 import { FINANS_YONETIM_ROLLERI } from "@/lib/panel/roller";
 import { createClient } from "@/lib/supabase/server";
 import { cn } from "@/lib/utils";
 import { CikanDiyalog, GirenDiyalog } from "../hesaplar/hareket-diyaloglari";
 import { AcilisFormu } from "../hesaplar/manuel-formlar";
-import { ManuelKayitlar } from "../hesaplar/manuel-kayitlar";
 import { hareketPencereVerileri } from "../hesaplar/veri";
 
 export const metadata: Metadata = { title: "Banka" };
@@ -47,7 +46,6 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
     .map((o) => ({ ...o, acilis_kurus: Number(o.acilis_kurus), giren_kurus: Number(o.giren_kurus), cikan_kurus: Number(o.cikan_kurus), kapanis_kurus: Number(o.kapanis_kurus) }));
   const kayitliAcilis = new Map(((hesapKayitlari ?? []) as { id: string; acilis_bakiye_kurus: number }[]).map((h) => [h.id, Number(h.acilis_bakiye_kurus)]));
   const hesaplar = [{ kod: "kasa", ad: "Kasa" }, ...pencere.hesapSecenekleri.map((h) => ({ kod: h.id, ad: h.ad }))];
-  const hesapAdlari = new Map(pencere.hesapSecenekleri.map((h) => [h.id, h.ad]));
 
   // Klinikteki gibi tek hesap seçilidir (varsayılan: ilk hesap); "Tümü" sekmesi yoktur.
   const hesapAnahtari = (id: string | null) => id ?? "atanmamis";
@@ -56,10 +54,7 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
   const gorunenSatirlar = secili ? bankaSatirlari.filter((b) => (b.banka_hesap_id ?? "atanmamis") === secili) : bankaSatirlari;
   const toplam = (alan: "acilis_kurus" | "giren_kurus" | "cikan_kurus" | "kapanis_kurus") => gorunenSatirlar.reduce((t, b) => t + b[alan], 0);
 
-  const [satirlar, manuelKayitlar] = await Promise.all([
-    hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "banka", bankaHesapId: secili, limit: 5000 }),
-    manuelKayitlariGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: seciliGercek ?? "banka" }),
-  ]);
+  const satirlar = await hesapHareketleriGetir(supabase, { baslangic: donem.baslangicTarih, bitis: donem.bitisTarih, hesap: "banka", bankaHesapId: secili });
   // Hesap adı veritabanında "Banka · Şube" gelir; klinikteki gibi "Banka — Şube" gösterilir.
   const hesapEtiketi = (ad: string | null) => (ad ?? "Hesap atanmamış").replace(" · ", " — ");
   const baglanti = (h?: string) => `/panel/finans/banka?gorunum=${donem.gorunum}&tarih=${donem.param}${h ? `&hesap=${h}` : ""}`;
@@ -113,21 +108,11 @@ export default async function BankaSayfasi({ searchParams }: { searchParams: Pro
 
           <Card>
             <CardHeader>
-              <CardTitle>Hesap hareketleri</CardTitle>
-              <CardDescription>Havale/EFT tahsilat ve iadeleri, havale ile ödenen giderler ve personel ödemeleri otomatik düşer. Satıra tıklayınca kalemler açılır.</CardDescription>
+              <CardTitle>Hesap Hareketleri</CardTitle>
+              <CardDescription>Havale/EFT tahsilat ve iadeleri, havale ile ödenen giderler, personel ödemeleri ve manuel giriş/çıkış/transferler burada tek listede görünür. Satıra tıklayınca o günün (yıllıkta o ayın) tüm hareketleri açılır. Defter değişmezdir: hata için ters kayıt girin.</CardDescription>
             </CardHeader>
             <CardContent>
               <GrupluDefter satirlar={defterSatirlari(satirlar)} acilisKurus={toplam("acilis_kurus")} gruplama={donem.gorunum === "yil" ? "ay" : "gun"} girenBaslik="Havale Tahsilat" cikanBaslik="Havale Ödenen Gider" bosMesaj="Bu dönemde banka hareketi yok." />
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Havale kayıtları</CardTitle>
-              <CardDescription>Elle girilen giriş, çıkış ve transferler. Kayıtlar değişmez; hata için ters kayıt girin.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ManuelKayitlar kayitlar={manuelKayitlar} hesap={seciliGercek ?? ""} hesapAdlari={hesapAdlari} bosMetin="Bu dönemde manuel banka kaydı yok." />
             </CardContent>
           </Card>
 

@@ -682,18 +682,29 @@ export const kasaBankaHareketSemasi = z
     }
   });
 
+/** İşaretli TL tutarı (kuruş): "-" ile eksi girilebilir; boş / yalnız "-" → 0. */
+const isaretliTutar = z
+  .string()
+  .trim()
+  .refine((v) => /^-?/.test(v) && (tlYaziKurusa(v.replace(/^-/, "")) !== null || v === "" || v === "-"), "Geçerli bir tutar girin.")
+  .transform((v) => {
+    if (v === "" || v === "-") return 0;
+    const eksi = v.startsWith("-");
+    const kurus = tlYaziKurusa(v.replace(/^-/, "")) ?? 0;
+    return eksi ? -kurus : kurus;
+  });
+
 export const acilisBakiyeSemasi = z.object({
   hesap: hesapSecimi,
-  tutar: z
-    .string()
-    .trim()
-    .refine((v) => /^-?/.test(v) && (tlYaziKurusa(v.replace(/^-/, "")) !== null || v === "" || v === "-"), "Geçerli bir tutar girin.")
-    .transform((v) => {
-      if (v === "" || v === "-") return 0;
-      const eksi = v.startsWith("-");
-      const kurus = tlYaziKurusa(v.replace(/^-/, "")) ?? 0;
-      return eksi ? -kurus : kurus;
-    }),
+  tutar: isaretliTutar,
+});
+
+/** Kasa Kontrol: başlangıç tutarı (eksi olabilir) ve işaretli dengeleme bedeli (+ kasaya ekler, − kasadan düşer; sıfır olamaz). */
+export const kasaBaslangicSemasi = z.object({ tutar: isaretliTutar });
+export const kasaDengelemeSemasi = z.object({
+  tutar: isaretliTutar.refine((k) => k !== 0, "Dengeleme bedeli sıfır olamaz (eksi değer kasadan düşer)."),
+  aciklama: metinOpsiyonel(300),
+  anahtar: z.uuid(),
 });
 
 export const iskontoOranlariSemasi = z.object({
