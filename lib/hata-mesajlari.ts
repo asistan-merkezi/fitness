@@ -113,6 +113,11 @@ const KOD_MESAJLARI: Record<string, string> = {
   on_kayit_sonuclanmis: "Bu ön kayıt zaten sonuçlandırılmış.",
   kanal_gecersiz: "Geçersiz mesaj kanalı.",
   miktar_gecersiz: "Miktar geçersiz.",
+  antrenman_adi_mevcut: "Bu adla bir antrenman tanımı zaten var.",
+  antrenman_bulunamadi: "Antrenman tanımı bulunamadı.",
+  adim_bulunamadi: "Antrenman hareketi bulunamadı; sayfayı yenileyip tekrar deneyin.",
+  adim_gerekli: "En az bir hareket ekleyin.",
+  adim_gecersiz: "Antrenman ve hareket adları en az 2 karakter olmalı.",
 };
 
 /** Uzun kod önce: `izin_cakisma` mesajı `cakisma` kodunu da içerir, en özgül kod kazanmalı. */

@@ -46,7 +46,7 @@ export const MENU_GRUPLARI: readonly MenuGrubu[] = [
       { href: "/panel/uyelik-paketleri", etiket: "Paketler", ikon: "paket", roller: PAKET_GORUNTULEME_ROLLERI },
       { href: "/panel/yonetim/donanim", etiket: "Donanım", ikon: "ekipman", roller: YONETICI_ROLLERI },
       { href: "/panel/yonetim/hizmet-tanimlari", etiket: "Hizmet Tanımları", ikon: "hizmet", roller: YONETICI_ROLLERI, yakinda: true },
-      { href: "/panel/yonetim/antrenman-programlari", etiket: "Antrenman Programları", ikon: "program", roller: YONETICI_ROLLERI, yakinda: true },
+      { href: "/panel/yonetim/antrenman-tanimlari", etiket: "Antrenman Tanımları", ikon: "program", roller: YONETICI_ROLLERI },
       { href: "/panel/yonetim/denetim-gecmisi", etiket: "Denetim Geçmişi", ikon: "denetim", roller: YONETICI_ROLLERI },
     ],
   },

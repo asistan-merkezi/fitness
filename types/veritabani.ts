@@ -106,6 +106,27 @@ export type CheckInSonucu = {
 
 export type AlanSatiri = { id: string; ad: string; aktif: boolean };
 
+export type EgzersizSatiri = { id: string; ad: string; ekipman: string | null; sure_dakika: number | null; aktif: boolean };
+
+export type AntrenmanAdimiSatiri = {
+  id: string;
+  ad: string;
+  ekipman: string | null;
+  set_sayisi: number | null;
+  tekrar: string | null;
+  sure_dakika: number | null;
+  sira: number;
+};
+
+export type AntrenmanTanimiSatiri = {
+  id: string;
+  ad: string;
+  aciklama: string | null;
+  sure_dakika: number | null;
+  aktif: boolean;
+  adimlar: AntrenmanAdimiSatiri[];
+};
+
 export type DersDurumu = "planlandi" | "geldi" | "gecikmeli_geldi" | "derste" | "iptal" | "gelmedi" | "ertelendi" | "tamamlandi";
 
 export type DersSeansiSatiri = {

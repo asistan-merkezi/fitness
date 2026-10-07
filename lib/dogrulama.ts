@@ -375,6 +375,53 @@ export const alanSemasi = z.object({
 });
 
 // ---------------------------------------------------------------------------------------------------------
+/** Ekipman adı: boşsa null, doluysa 2-100 karakter (DB kısıtıyla aynı). */
+const ekipmanOpsiyonel = z
+  .string()
+  .trim()
+  .optional()
+  .refine((v) => !v || (v.length >= 2 && v.length <= 100), "Ekipman adı 2-100 karakter olmalı.")
+  .transform((v) => (v ? v : null));
+
+export const egzersizSemasi = z.object({
+  egzersiz_id: uuidOpsiyonel,
+  ad: isimAlani,
+  ekipman: ekipmanOpsiyonel,
+  sure_dakika: tamSayiOpsiyonel(1, 480, "Süre 1-480 dakika olmalı."),
+  aktif: onay,
+});
+
+const antrenmanAdimiSemasi = z.object({
+  id: uuidOpsiyonel,
+  ad: isimAlani,
+  ekipman: ekipmanOpsiyonel,
+  set_sayisi: tamSayiOpsiyonel(1, 50, "Set sayısı 1-50 olmalı."),
+  tekrar: metinOpsiyonel(20),
+  sure_dakika: tamSayiOpsiyonel(1, 480, "Süre 1-480 dakika olmalı."),
+});
+
+/** `adimlar`: form alanında JSON dizisi (adım listesi dinamik olduğundan tek gizli alan). */
+export const antrenmanTanimiSemasi = z.object({
+  antrenman_id: uuidOpsiyonel,
+  ad: isimAlani,
+  aciklama: metinOpsiyonel(500),
+  adimlar: z
+    .string()
+    .transform((v, ctx) => {
+      try {
+        const ham: unknown = JSON.parse(v);
+        return Array.isArray(ham) ? ham : [];
+      } catch {
+        ctx.addIssue({ code: "custom", message: "Adım listesi okunamadı." });
+        return z.NEVER;
+      }
+    })
+    .pipe(z.array(antrenmanAdimiSemasi).min(1, "En az bir hareket ekleyin.").max(50, "En fazla 50 hareket eklenebilir.")),
+});
+
+export const antrenmanAktifSemasi = z.object({ antrenman_id: z.uuid(), aktif: onay });
+
+// ---------------------------------------------------------------------------------------------------------
 export const personelProfilSemasi = z
   .object({
     kullanici_id: z.uuid(),
