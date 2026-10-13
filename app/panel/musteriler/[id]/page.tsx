@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Banknote, CalendarPlus, CreditCard, Dumbbell, MessageSquareHeart, Phone, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
+import { ArrowLeft, CalendarPlus, CreditCard, Dumbbell, MessageSquareHeart, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import { bitiyorUyarisi, gecenSureYuzdesi, kalanGun } from "@/lib/panel/uyelik-o
 import { createClient } from "@/lib/supabase/server";
 import { cn, telefonGoster, yasHesapla } from "@/lib/utils";
 import type { GirisKaydiSatiri, HareketSatiri, MusteriHassasSatiri, MusteriSatiri, MusteriVeliSatiri, PaketSatiri, UyelikGorunumSatiri } from "@/types/veritabani";
+import { MesajAtModal } from "./mesaj-at-modal";
 import { type RiskBayragi, RiskBandi } from "./risk-bandi";
 import { TalepFormu, TalepYanitDugmeleri } from "./talep-formu";
 import { HassasBilgiFormu, IadeFormu, MusteriBilgiFormu, OdemeFormu, SatisFormu, UyelikIslemleri } from "./islem-formlari";
@@ -201,24 +202,11 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 px-(--card-spacing)">
-          <Link href={`/panel/musteriler/${id}?sekme=cari#odeme`} className={buttonVariants({ size: "lg" })}>
-            <Banknote aria-hidden /> Ödeme Al
-          </Link>
-          <Link href={`/panel/musteriler/${id}?sekme=uyelikler#uyelik-sat`} className={buttonVariants({ variant: "outline", size: "lg" })}>
-            <CreditCard aria-hidden /> Üyelik Sat
-          </Link>
-          {musteri.aktif && (
-            <Link href={`/panel/dersler?yeni=1&uye=${id}`} className={buttonVariants({ variant: "outline", size: "lg" })}>
-              <CalendarPlus aria-hidden /> Ders Ekle
-            </Link>
-          )}
+        <div className="flex flex-col items-start gap-2 px-(--card-spacing)">
           <Link href={`/panel/musteriler/${id}?sekme=talepler`} className={buttonVariants({ variant: "outline", size: "lg" })}>
             <MessageSquareHeart aria-hidden /> Talep ve Öneriler
           </Link>
-          <a href={`tel:${musteri.telefon}`} className={buttonVariants({ variant: "outline", size: "lg" })}>
-            <Phone aria-hidden /> Ara
-          </a>
+          <MesajAtModal musteriId={id} />
         </div>
       </Card>
 
