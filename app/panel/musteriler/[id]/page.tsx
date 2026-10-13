@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarPlus, CreditCard, Dumbbell, MessageSquareHeart, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
+import { ArrowLeft, CalendarPlus, CreditCard, Dumbbell, Mail, MessageSquareHeart, Phone, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -166,14 +166,17 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
 
   return (
     <>
-      <Link href="/panel/musteriler" className="inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="size-4" aria-hidden /> Müşteriler
-      </Link>
+      <div className="flex justify-end">
+        <Link href="/panel/musteriler" className={buttonVariants({ variant: "outline", size: "lg" })}>
+          Müşterilere dön
+        </Link>
+      </div>
 
       <RiskBandi musteriId={id} bayraklar={riskBayraklari} eskiBayraklar={musteri.risk_bayraklari} duzenlenebilir />
 
       <Card className="gap-5">
-        <div className="flex flex-wrap items-start gap-4 px-(--card-spacing)">
+        <div className="flex flex-wrap items-start justify-between gap-4 px-(--card-spacing)">
+         <div className="flex min-w-0 flex-1 items-start gap-4">
           <Avatar name={musteri.ad_soyad} className="size-16 text-lg" />
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -181,10 +184,16 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
               <StatusBadge tone="primary">{KATEGORI_ETIKETLERI[musteri.kategori]}</StatusBadge>
               {!musteri.aktif && <StatusBadge tone="slate">Pasif</StatusBadge>}
             </div>
-            <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-              {telefonGoster(musteri.telefon)}
-              {musteri.eposta && ` · ${musteri.eposta}`}
-              {yasHesapla(musteri.dogum_tarihi) !== null && ` · ${yasHesapla(musteri.dogum_tarihi)} yaşında`}
+            <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground tabular-nums">
+              <a href={`tel:${musteri.telefon}`} className="inline-flex items-center gap-1.5 hover:text-foreground">
+                <Phone className="size-4 text-primary" aria-hidden /> {telefonGoster(musteri.telefon)}
+              </a>
+              {musteri.eposta && (
+                <a href={`mailto:${musteri.eposta}`} className="inline-flex items-center gap-1.5 hover:text-foreground">
+                  <Mail className="size-4 text-primary" aria-hidden /> {musteri.eposta}
+                </a>
+              )}
+              {yasHesapla(musteri.dogum_tarihi) !== null && <span>{yasHesapla(musteri.dogum_tarihi)} yaşında</span>}
             </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {aktifUyelik && (
@@ -200,13 +209,13 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
               )}
             </div>
           </div>
-        </div>
-
-        <div className="flex flex-col items-start gap-2 px-(--card-spacing)">
-          <Link href={`/panel/musteriler/${id}?sekme=talepler`} className={buttonVariants({ variant: "outline", size: "lg" })}>
-            <MessageSquareHeart aria-hidden /> Talep ve Öneriler
-          </Link>
-          <MesajAtModal musteriId={id} />
+         </div>
+          <div className="flex w-full flex-col gap-2 sm:w-64">
+            <Link href={`/panel/musteriler/${id}?sekme=talepler`} className={cn(buttonVariants({ variant: "outline", size: "lg" }), "justify-start border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300")}>
+              <MessageSquareHeart aria-hidden /> Talep ve Öneriler
+            </Link>
+            <MesajAtModal musteriId={id} className="justify-start border-sky-300 bg-sky-50 text-sky-800 hover:bg-sky-100 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-300" />
+          </div>
         </div>
       </Card>
 

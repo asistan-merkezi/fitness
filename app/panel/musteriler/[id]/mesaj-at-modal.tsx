@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { MessageSquare } from "lucide-react";
+import { Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { StatusBadge } from "@/components/ui/status-badge";
@@ -14,7 +14,7 @@ import { type MesajSecenegi, type MesajSecenekleri, musteriMesajiGonder, musteri
  * Mesaj At (klinikteki hasta Mesaj At penceresi): şablon listesi → metni düzenle, kanal(lar)ı işaretle, gönder.
  * Ticari şablon, müşterinin ticari ileti onayı yoksa pasiftir; sunucu da aynı kuralı yeniden denetler.
  */
-export function MesajAtModal({ musteriId }: { musteriId: string }) {
+export function MesajAtModal({ musteriId, className }: { musteriId: string; className?: string }) {
   const [acik, setAcik] = useState(false);
   const [secenekler, setSecenekler] = useState<MesajSecenekleri | null>(null);
   const [secili, setSecili] = useState<MesajSecenegi | null>(null);
@@ -69,8 +69,8 @@ export function MesajAtModal({ musteriId }: { musteriId: string }) {
 
   return (
     <>
-      <Button type="button" variant="outline" size="lg" onClick={() => degistir(true)}>
-        <MessageSquare aria-hidden /> Mesaj At
+      <Button type="button" variant="outline" size="lg" className={className} onClick={() => degistir(true)}>
+        <Send aria-hidden /> Mesaj At
       </Button>
       <Dialog open={acik} onOpenChange={degistir}>
         <DialogContent className="max-w-xl">
