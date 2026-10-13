@@ -111,7 +111,7 @@ export default async function MusterilerSayfasi({ searchParams }: { searchParams
       {error && <p role="alert" className="text-sm text-destructive">Müşteriler yüklenemedi. Lütfen sayfayı yenileyin.</p>}
 
       {!error && musteriler.length === 0 ? (
-        <EmptyState icon={Users} title={sorgu ? "Eşleşen müşteri yok" : "Henüz müşteri yok"} description={sorgu ? "Farklı bir ad, telefon veya üye numarası deneyin." : "İlk müşteriyi ekleyerek başlayın."} />
+        <EmptyState icon={Users} title={sorgu ? "Eşleşen müşteri yok" : "Henüz müşteri yok"} description={sorgu ? "Farklı bir ad veya telefon deneyin." : "İlk müşteriyi ekleyerek başlayın."} />
       ) : (
         <>
           {/* <768px: kart listesi */}
@@ -162,7 +162,6 @@ export default async function MusterilerSayfasi({ searchParams }: { searchParams
                         </div>
                         <span>
                           <span className="block text-sm font-semibold text-foreground hover:underline">{s.m.ad_soyad}</span>
-                          <span className="block text-xs text-muted-foreground tabular-nums">Üye no {s.m.uye_no}</span>
                         </span>
                       </Link>
                     </TableCell>

@@ -72,7 +72,7 @@ export function DersFormu({
           <Alan etiket="Müşteri" htmlFor="d_musteri">
             {sabitMusteri ? (
               <>
-                <Input id="d_musteri" value={`${sabitMusteri.ad_soyad} · #${sabitMusteri.uye_no} · ${telefonGoster(sabitMusteri.telefon)}`} disabled readOnly />
+                <Input id="d_musteri" value={`${sabitMusteri.ad_soyad} · ${telefonGoster(sabitMusteri.telefon)}`} disabled readOnly />
                 <input type="hidden" name="musteri_id" value={sabitMusteri.id} />
               </>
             ) : (

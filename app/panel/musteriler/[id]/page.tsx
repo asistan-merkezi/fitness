@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Banknote, CalendarDays, CalendarPlus, CreditCard, Dumbbell, MessageSquareHeart, Phone, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
+import { ArrowLeft, Banknote, CalendarPlus, CreditCard, Dumbbell, MessageSquareHeart, Phone, ShieldCheck, Ticket, User, Wallet } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,8 +29,7 @@ export const metadata: Metadata = { title: "Müşteri" };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SEKMELER = [
   { kod: "bilgiler", etiket: "Kişisel Bilgiler" },
-  { kod: "uyelikler", etiket: "Üyelikler" },
-  { kod: "giris", etiket: "Ders & Giriş" },
+  { kod: "uyelikler", etiket: "Ders & Üyelikler" },
   { kod: "cari", etiket: "Cari & Ödeme" },
   { kod: "talepler", etiket: "Talep & Öneriler" },
 ] as const;
@@ -81,13 +80,15 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
   if (!UUID.test(id)) notFound();
   const { sekme: sekmeParam } = await searchParams;
   // Sekme yoksa müşteri kartı (bölüm kartları) gösterilir; klinikteki hasta dosyası gibi.
-  const sekme: Sekme | null = SEKMELER.some((s) => s.kod === sekmeParam) ? (sekmeParam as Sekme) : null;
+  // Eski "giris" (Ders & Giriş) sekmesi Ders & Üyelikler'e birleşti.
+  const sekmeKodu = sekmeParam === "giris" ? "uyelikler" : sekmeParam;
+  const sekme: Sekme | null = SEKMELER.some((s) => s.kod === sekmeKodu) ? (sekmeKodu as Sekme) : null;
 
   const supabase = await createClient();
   const { data: musteri } = await supabase.from("musteri").select("*").eq("id", id).maybeSingle<MusteriSatiri>();
   if (!musteri) notFound();
 
-  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc, hesapSonuc, iskontoSonuc, bekleyenTalepSonuc, dersSonuc, riskSonuc] = await Promise.all([
+  const [hassasSonuc, veliSonuc, uyelikSonuc, hareketSonuc, girisSonuc, paketSonuc, onamSonuc, bakiyeSonuc, hesapSonuc, iskontoSonuc, dersSonuc, riskSonuc] = await Promise.all([
     supabase.from("musteri_hassas").select("*").eq("musteri_id", id).maybeSingle<MusteriHassasSatiri>(),
     supabase.from("musteri_veli").select("ad_soyad, telefon, yakinlik").eq("musteri_id", id).maybeSingle<MusteriVeliSatiri>(),
     supabase.from("uyelik_gorunum").select("*").eq("musteri_id", id).order("baslangic_tarihi", { ascending: false }),
@@ -98,7 +99,6 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
     supabase.from("musteri_bakiye").select("bakiye_kurus").eq("musteri_id", id).maybeSingle<{ bakiye_kurus: number }>(),
     supabase.rpc("banka_hesap_secenekleri"),
     supabase.from("kategori_iskonto_orani").select("yuzde").eq("kategori", musteri.kategori).maybeSingle<{ yuzde: number }>(),
-    supabase.from("musteri_ders_talebi").select("id", { count: "exact", head: true }).eq("musteri_id", id).eq("durum", "bekliyor"),
     supabase.from("ders_seansi").select("id, baslangic, durum, antrenor_id, alan_id, gecikme_dakika").eq("musteri_id", id).order("baslangic", { ascending: false }).limit(30),
     supabase.from("musteri_risk_bayragi").select("id, tip, seviye, aciklama").eq("musteri_id", id).eq("aktif", true).order("created_at"),
   ]);
@@ -118,7 +118,6 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
   const hesaplar = (hesapSonuc.data ?? []) as { id: string; ad: string }[];
   const kategoriYuzdesi = Number(iskontoSonuc.data?.yuzde ?? 0);
 
-  const bekleyenTalepSayisi = bekleyenTalepSonuc.count ?? 0;
   const [talepSonuc, yorumSonuc, antrenorListeSonuc] =
     sekme === "talepler"
       ? await Promise.all([
@@ -163,8 +162,6 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
   const kvkkOnayli = sonOnam.get("kvkk_aydinlatma")?.verildi === true;
 
   const aktifUyelik = uyelikler.find((u) => u.gecerli_durum === "aktif" || u.gecerli_durum === "dondurulmus");
-  const sonGiris = girisler.find((g) => g.sonuc === "kabul" && !g.iptal);
-  const bakiyeDurumu = bakiyeKurus < 0 ? { etiket: "Borçlu", ton: "rose" as const } : bakiyeKurus > 0 ? { etiket: "Alacaklı", ton: "emerald" as const } : { etiket: "Dengede", ton: "slate" as const };
 
   return (
     <>
@@ -184,7 +181,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
               {!musteri.aktif && <StatusBadge tone="slate">Pasif</StatusBadge>}
             </div>
             <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-              #{musteri.uye_no} · {telefonGoster(musteri.telefon)}
+              {telefonGoster(musteri.telefon)}
               {musteri.eposta && ` · ${musteri.eposta}`}
               {yasHesapla(musteri.dogum_tarihi) !== null && ` · ${yasHesapla(musteri.dogum_tarihi)} yaşında`}
             </p>
@@ -202,14 +199,6 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
               )}
             </div>
           </div>
-        </div>
-
-        <div className="mx-(--card-spacing) flex flex-wrap items-center justify-between gap-4 rounded-lg bg-surface p-4">
-          <div>
-            <p className="text-etiket text-muted-foreground">Cari bakiye durumu</p>
-            <p className={cn("text-metric mt-1 text-[2rem] leading-10", bakiyeKurus < 0 && "text-destructive")}>{kurusTLyazi(bakiyeKurus)}</p>
-          </div>
-          <StatusBadge tone={bakiyeDurumu.ton}>{bakiyeDurumu.etiket}</StatusBadge>
         </div>
 
         <div className="flex flex-wrap gap-2 px-(--card-spacing)">
@@ -236,11 +225,9 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
       {sekme === null ? (
         <section aria-label="Müşteri bölümleri" className="grid grid-cols-2 items-stretch gap-3 sm:grid-cols-4">
           <OzetModulKarti href={`/panel/musteriler/${id}?sekme=bilgiler`} etiket="Kişisel Bilgiler" ozet="Kişisel bilgiler & iletişim" ikon={User} ton="blue" uyari={!kvkkOnayli} />
-          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=uyelikler`} etiket="Üyelikler" ozet={aktifUyelik ? `${aktifUyelik.paket_adi}${aktifUyelik.tur === "seans" ? ` · ${aktifUyelik.kalan_hak} hak` : ""}` : `${uyelikler.length} kayıt · aktif yok`} ikon={Ticket} ton="emerald" uyari={!aktifUyelik} />
-          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=giris`} etiket="Ders & Giriş" ozet={yaklasanDersler[0] ? `Sonraki: ${formatDateTime(yaklasanDersler[0].baslangic)}` : sonGiris ? `Son giriş: ${formatDate(sonGiris.zaman)}` : dersler.length > 0 ? `${dersler.length} ders kaydı` : "Ders yok"} ikon={CalendarDays} ton="cyan" />
-          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=cari`} etiket="Cari & Ödeme" ozet={bakiyeKurus < 0 ? `Borç · ${kurusTLyazi(-bakiyeKurus)}` : `Alacak · ${kurusTLyazi(bakiyeKurus)}`} ozetTonu={bakiyeKurus < 0 ? "rose" : "emerald"} ikon={Wallet} ton="amber" />
-          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=talepler`} etiket="Talep & Öneriler" ozet={bekleyenTalepSayisi > 0 ? `${bekleyenTalepSayisi} bekleyen talep` : "Talep ve yorum girişi"} ikon={MessageSquareHeart} ton="rose" uyari={bekleyenTalepSayisi > 0} />
+          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=uyelikler`} etiket="Ders & Üyelikler" ozet={yaklasanDersler[0] ? `Sonraki ders: ${formatDateTime(yaklasanDersler[0].baslangic)}` : aktifUyelik ? `${aktifUyelik.paket_adi}${aktifUyelik.tur === "seans" ? ` · ${aktifUyelik.kalan_hak} hak` : ""}` : `${uyelikler.length} kayıt · aktif yok`} ikon={Ticket} ton="emerald" uyari={!aktifUyelik} />
           <OzetModulKarti href="#" etiket="Antrenman & Ölçüm" ikon={Dumbbell} ton="violet" yakinda />
+          <OzetModulKarti href={`/panel/musteriler/${id}?sekme=cari`} etiket="Cari & Ödeme" ozet={bakiyeKurus < 0 ? `Borç · ${kurusTLyazi(-bakiyeKurus)}` : `Alacak · ${kurusTLyazi(bakiyeKurus)}`} ozetTonu={bakiyeKurus < 0 ? "rose" : "emerald"} ikon={Wallet} ton="amber" />
         </section>
       ) : (
         <div className="flex items-center justify-between gap-3">
@@ -398,7 +385,7 @@ export default async function MusteriDetaySayfasi({ params, searchParams }: { pa
         </>
       )}
 
-      {sekme === "giris" && (
+      {sekme === "uyelikler" && (
         <>
         <section className="flex flex-col gap-3" aria-label="Ders listesi">
           <div className="flex items-center justify-between gap-3">

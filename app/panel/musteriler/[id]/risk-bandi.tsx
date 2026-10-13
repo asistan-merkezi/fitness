@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { AlertTriangle, Plus } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import { Alan } from "@/components/panel/form-alanlari";
 import { SecimKutusu } from "@/components/panel/eylem-formu";
 import { Button } from "@/components/ui/button";
@@ -86,7 +86,7 @@ function EkleFormu({ musteriId }: { musteriId: string }) {
 
 /**
  * Risk Bandı (klinikteki hasta risk bandı): müşteri kartının üstünde sağlık/sakatlık uyarıları. Bant en yüksek seviyeye göre
- * renklenir; tıklayınca pencere açılır (liste, kaldır, yeni ekle). Bayrak yoksa küçük bir "Risk bayrağı ekle" düğmesi görünür.
+ * renklenir; tıklayınca pencere açılır (liste, kaldır, yeni ekle). Bayrak yoksa hiçbir şey çizilmez.
  */
 export function RiskBandi({ musteriId, bayraklar, eskiBayraklar, duzenlenebilir }: { musteriId: string; bayraklar: RiskBayragi[]; eskiBayraklar: string[]; duzenlenebilir: boolean }) {
   const [acik, setAcik] = useState(false);
@@ -95,13 +95,7 @@ export function RiskBandi({ musteriId, bayraklar, eskiBayraklar, duzenlenebilir 
 
   return (
     <>
-      {toplam === 0 ? (
-        duzenlenebilir && (
-          <Button type="button" variant="outline" size="sm" className="w-fit" onClick={() => setAcik(true)}>
-            <Plus aria-hidden /> Risk bayrağı ekle
-          </Button>
-        )
-      ) : (
+      {toplam > 0 && (
         <button type="button" onClick={() => setAcik(true)} className={cn("flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors hover:brightness-95", BANT_SINIFI[enYuksek])}>
           <AlertTriangle className="size-5 shrink-0" aria-hidden />
           <span className="flex flex-wrap items-center gap-1.5">

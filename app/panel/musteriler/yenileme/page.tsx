@@ -77,7 +77,6 @@ export default async function YenilemeSayfasi({ searchParams }: { searchParams: 
           <Link href={`/panel/musteriler/${s.musteri_id}`} className="font-semibold hover:underline">
             {m?.ad_soyad ?? "Müşteri"}
           </Link>
-          {m && <span className="ml-2 text-xs text-muted-foreground tabular-nums">#{m.uye_no}</span>}
           <p className="text-sm text-muted-foreground">
             {s.paket_adi} · bitiş {gunYazi(s.bitis_tarihi)}
             {s.yeniPaket && ` → ${s.yeniPaket}`}

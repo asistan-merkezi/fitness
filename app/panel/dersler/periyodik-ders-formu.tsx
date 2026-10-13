@@ -86,7 +86,7 @@ export function PeriyodikDersFormu({
           <Alan etiket="Müşteri" htmlFor="p_musteri">
             {sabitMusteri ? (
               <>
-                <Input id="p_musteri" value={`${sabitMusteri.ad_soyad} · #${sabitMusteri.uye_no} · ${telefonGoster(sabitMusteri.telefon)}`} disabled readOnly />
+                <Input id="p_musteri" value={`${sabitMusteri.ad_soyad} · ${telefonGoster(sabitMusteri.telefon)}`} disabled readOnly />
                 <input type="hidden" name="musteri_id" value={sabitMusteri.id} />
               </>
             ) : (

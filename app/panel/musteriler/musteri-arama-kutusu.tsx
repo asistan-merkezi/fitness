@@ -32,7 +32,7 @@ export function MusteriAramaKutusu({ baslangic }: { baslangic: string }) {
   return (
     <div className="relative max-w-sm">
       <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-      <Input name="q" type="search" placeholder="Ad, telefon veya üye no ile ara" aria-label="Müşteri ara" value={deger} onChange={(e) => degistir(e.target.value)} className="h-11 pl-8" autoComplete="off" />
+      <Input name="q" type="search" placeholder="Ad veya telefon ile ara" aria-label="Müşteri ara" value={deger} onChange={(e) => degistir(e.target.value)} className="h-11 pl-8" autoComplete="off" />
     </div>
   );
 }

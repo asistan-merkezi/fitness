@@ -26,7 +26,7 @@ export function CariAlacaklarListesi({ satirlar }: { satirlar: CariOzetSatiri[] 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="relative w-full max-w-sm">
           <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
-          <Input type="search" placeholder="Müşteri adı veya üye no ile ara" aria-label="Müşteri ara" value={arama} onChange={(e) => setArama(e.target.value)} className="pl-8" />
+          <Input type="search" placeholder="Müşteri adı ile ara" aria-label="Müşteri ara" value={arama} onChange={(e) => setArama(e.target.value)} className="pl-8" />
         </div>
         <p className="text-sm text-muted-foreground">
           Toplam kalan: <span className="font-semibold text-destructive tabular-nums">{kurusTLyazi(kalanToplam)}</span>
@@ -53,7 +53,6 @@ export function CariAlacaklarListesi({ satirlar }: { satirlar: CariOzetSatiri[] 
                   <TableCell className="p-0">
                     <Link href={href} className="block px-4 py-3.5 font-medium hover:underline">
                       {s.ad_soyad}
-                      <span className="block text-xs font-normal text-muted-foreground tabular-nums">Üye no {s.uye_no}</span>
                     </Link>
                   </TableCell>
                   <TableCell className="p-0">

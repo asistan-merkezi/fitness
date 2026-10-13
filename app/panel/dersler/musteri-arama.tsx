@@ -43,7 +43,7 @@ export function MusteriArama({
         id={id}
         value={sorgu}
         disabled={disabled}
-        placeholder="Ad, telefon veya üye no yazın..."
+        placeholder="Ad veya telefon yazın..."
         autoComplete="off"
         role="combobox"
         aria-expanded={acik}
@@ -79,7 +79,7 @@ export function MusteriArama({
               >
                 <span className="truncate font-medium">{m.ad_soyad}</span>
                 <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                  #{m.uye_no} · {telefonGoster(m.telefon)}
+                  {telefonGoster(m.telefon)}
                 </span>
               </button>
             ))

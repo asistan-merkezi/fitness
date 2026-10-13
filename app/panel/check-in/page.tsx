@@ -72,7 +72,7 @@ export default async function CheckInSayfasi({ searchParams }: { searchParams: P
       <form action="/panel/check-in" method="get" className="flex gap-2" role="search">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground" strokeWidth={1.5} aria-hidden />
-          <Input name="q" defaultValue={sorgu} placeholder="Ad, telefon veya üye no..." aria-label="Müşteri ara" autoComplete="off" autoFocus className="h-12 pl-10 text-base" />
+          <Input name="q" defaultValue={sorgu} placeholder="Ad veya telefon..." aria-label="Müşteri ara" autoComplete="off" autoFocus className="h-12 pl-10 text-base" />
         </div>
         <Button type="submit" size="lg">
           Ara
@@ -83,7 +83,7 @@ export default async function CheckInSayfasi({ searchParams }: { searchParams: P
         <section className="flex flex-col gap-3" aria-label="Arama sonuçları">
           <h2 className="text-etiket text-muted-foreground">Arama sonuçları ({adaylar.length})</h2>
           {adaylar.length === 0 ? (
-            <EmptyState icon={Search} title="Eşleşen müşteri yok" description="Farklı bir ad, telefon veya üye numarası deneyin." />
+            <EmptyState icon={Search} title="Eşleşen müşteri yok" description="Farklı bir ad veya telefon deneyin." />
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               {adaylar.map((m) => {
@@ -107,7 +107,7 @@ export default async function CheckInSayfasi({ searchParams }: { searchParams: P
                             {m.ad_soyad}
                           </Link>
                           <p className="text-sm text-muted-foreground tabular-nums">
-                            #{m.uye_no} · {telefonGoster(m.telefon)}
+                            {telefonGoster(m.telefon)}
                           </p>
                         </div>
                         <StatusBadge tone={durum.ton}>{durum.etiket}</StatusBadge>
@@ -192,7 +192,6 @@ export default async function CheckInSayfasi({ searchParams }: { searchParams: P
                           {m?.ad_soyad ?? "Müşteri"}
                         </Link>
                         <p className="text-xs text-muted-foreground tabular-nums">
-                          {m ? `#${m.uye_no} · ` : ""}
                           {GIRIS_KAYNAKLARI[g.kaynak] ?? g.kaynak}
                         </p>
                       </div>
